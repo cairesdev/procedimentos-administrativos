@@ -10,6 +10,7 @@ contratosRouter.post("/", async (req, res, next) => {
     const resultado = await container.criarContrato.executar({
       ...dados,
       orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
     });
     res.status(201).json(resultado);
   } catch (error) {

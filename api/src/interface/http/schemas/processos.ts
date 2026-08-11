@@ -53,3 +53,7 @@ export const rascunhoSolicitacaoSchema = z.object({
 export const enviarSolicitacaoSchema = z.object({
   setorDestinoId: z.string().uuid().optional(),
 });
+
+export const cancelarSolicitacaoSchema = z.object({
+  motivo: z.string().max(300).optional(),
+});

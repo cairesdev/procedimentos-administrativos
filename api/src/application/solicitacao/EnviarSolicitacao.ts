@@ -1,4 +1,5 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 import type { ProcessoRepository } from "../ports/ProcessoRepository";
 import type { SolicitacaoRepository } from "../ports/SolicitacaoRepository";
@@ -8,6 +9,7 @@ import type { GeradorNumeroProcesso } from "../shared/GeradorNumeroProcesso";
 export type EnviarSolicitacaoEntrada = {
   orgaoId: string;
   solicitacaoId: string;
+  usuarioId?: string;
   setorDestinoId?: string; // override manual, quando o fluxo permitir
 };
 
@@ -18,6 +20,7 @@ export class EnviarSolicitacao {
     private readonly processos: ProcessoRepository,
     private readonly fluxos: FluxoRepository,
     private readonly numeracao: GeradorNumeroProcesso,
+    private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -69,6 +72,21 @@ export class EnviarSolicitacao {
         tx,
       );
       await this.solicitacoes.marcarEnviada(dados.solicitacaoId, processoId, tx);
+
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: "SOLICITACAO_ENVIADA",
+        referenciaId: processoId,
+        detalhes: {
+          solicitacaoId: dados.solicitacaoId,
+          unidadeSolicitanteId: solicitacao.unidadeSolicitanteId,
+          numeroProtocolo: numeros.protocolo,
+          setorDestinoId: destino.setorId,
+          itens: solicitacao.itens,
+          valorTotal: solicitacao.itens.reduce((soma, i) => soma + i.valorCalculado, 0),
+        },
+      }, tx);
 
       return { processoId, ...numeros };
     });

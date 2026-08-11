@@ -1,4 +1,5 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 import type { SolicitacaoRepository } from "../ports/SolicitacaoRepository";
 import type { TramitacaoRepository } from "../ports/TramitacaoRepository";
@@ -18,6 +19,7 @@ export class EmitirParecer {
   constructor(
     private readonly tramitacao: TramitacaoRepository,
     private readonly solicitacoes: SolicitacaoRepository,
+    private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -66,6 +68,19 @@ export class EmitirParecer {
       }
 
       await this.tramitacao.encerrarProcesso(dados.processoId, tx);
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: "PARECER_EMITIDO",
+        referenciaId: dados.processoId,
+        detalhes: {
+          parecerId,
+          favoravel: dados.favoravel,
+          justificativa: dados.justificativa,
+          lotacaoId: dados.lotacaoId,
+          saldoDevolvido: !dados.favoravel && solicitacao ? solicitacao.itens : undefined,
+        },
+      }, tx);
       return { parecerId };
     });
   };

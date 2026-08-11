@@ -526,6 +526,59 @@ const executar = async () => {
   });
   conferir(recusa.status === 422, "envio acima do saldo devolve 422");
 
+  // --- Auditoria ----------------------------------------------------------
+  const trilha = await chamar(
+    "GET",
+    `/auditoria?referencia=${processoId}`,
+    undefined,
+    admin,
+  );
+  const eventos = trilha.map((r: any) => r.tipoEvento);
+  conferir(
+    eventos.includes("SOLICITACAO_ENVIADA"),
+    "auditoria registrou o envio da solicitação",
+  );
+  conferir(
+    eventos.includes("PROCESSO_MOVIDO"),
+    "auditoria registrou a mudança de setor",
+  );
+  conferir(
+    eventos.includes("ORDEM_EMITIDA"),
+    "auditoria registrou a ordem de fornecimento",
+  );
+  conferir(
+    eventos.includes("PARECER_EMITIDO"),
+    "auditoria registrou o parecer",
+  );
+
+  const envioAuditado = trilha.find(
+    (r: any) => r.tipoEvento === "SOLICITACAO_ENVIADA",
+  );
+  conferir(
+    envioAuditado.usuarioNome === "Usuário SERVIDOR" &&
+      envioAuditado.detalhes.numeroProtocolo === envio.protocolo,
+    "registro traz autor e detalhes do evento",
+  );
+
+  const cancelamentos = await chamar(
+    "GET",
+    "/auditoria?tipo=SOLICITACAO_CANCELADA&limite=5",
+    undefined,
+    admin,
+  );
+  conferir(
+    cancelamentos.length > 0,
+    "filtro por tipo de evento devolve o cancelamento",
+  );
+
+  const semPermissao = await fetch(`${API}/auditoria`, {
+    headers: { Authorization: `Bearer ${tokenServidor}` },
+  });
+  conferir(
+    semPermissao.status === 403,
+    "servidor comum não lê a trilha de auditoria (403)",
+  );
+
   console.log(`\n${passos} verificações passaram.\n`);
 };
 

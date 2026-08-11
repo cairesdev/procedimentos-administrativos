@@ -1,16 +1,18 @@
 import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ContratoRepository, NovoContrato } from "../ports/ContratoRepository";
 import type { ProcessoRepository } from "../ports/ProcessoRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 import type { GeradorNumeroProcesso } from "../shared/GeradorNumeroProcesso";
 
-export type CriarContratoEntrada = Omit<NovoContrato, "processoId">;
+export type CriarContratoEntrada = Omit<NovoContrato, "processoId"> & { usuarioId?: string };
 
 export class CriarContrato {
   constructor(
     private readonly contratos: ContratoRepository,
     private readonly processos: ProcessoRepository,
     private readonly numeracao: GeradorNumeroProcesso,
+    private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -42,6 +44,20 @@ export class CriarContrato {
         tx,
       );
       const id = await this.contratos.criar({ ...dados, processoId }, tx);
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: "CONTRATO_CRIADO",
+        referenciaId: processoId,
+        detalhes: {
+          contratoId: id,
+          numero: dados.numero,
+          fornecedorId: dados.fornecedorId,
+          valorTotal: dados.valorTotal,
+          quantidadeItens: dados.itens.length,
+          numeroProtocolo: numeros.protocolo,
+        },
+      }, tx);
       return { id, numeroProtocolo: numeros.protocolo, numeroProcessoAdm: numeros.processoAdm };
     });
   };

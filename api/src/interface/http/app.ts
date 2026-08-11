@@ -4,6 +4,7 @@ import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
 import { solicitacoesRouter } from "./routes/solicitacoes";
 import { processosRouter } from "./routes/processos";
+import { auditoriaRouter } from "./routes/auditoria";
 import { setoresRouter, unidadesRouter } from "./routes/organizacao";
 import { fornecedoresRouter } from "./routes/fornecedores";
 import { fluxosRouter } from "./routes/fluxos";
@@ -24,6 +25,7 @@ export const criarApp = () => {
   app.use("/setores", authenticate, resolveTenant(), setoresRouter);
   app.use("/usuarios", authenticate, resolveTenant(), usuariosRouter);
   app.use("/fluxos", authenticate, resolveTenant(), fluxosRouter);
+  app.use("/auditoria", authenticate, resolveTenant(), auditoriaRouter);
 
   // Fornecedor é cadastro global — autenticação basta.
   app.use("/fornecedores", authenticate, fornecedoresRouter);

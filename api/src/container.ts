@@ -14,6 +14,7 @@ import { EmitirOrdemFornecimento } from "./application/tramitacao/EmitirOrdemFor
 import { PostgresAnexoRepository } from "./infrastructure/db/PostgresAnexoRepository";
 import { MinioArmazenamento } from "./infrastructure/storage/MinioArmazenamento";
 import { AnexosDeProcesso } from "./application/anexo/AnexosDeProcesso";
+import { PostgresAuditoriaRepository } from "./infrastructure/db/PostgresAuditoriaRepository";
 import { GeradorNumeroProcesso } from "./application/shared/GeradorNumeroProcesso";
 import { CriarLicitacao } from "./application/licitacao/CriarLicitacao";
 import { CriarContrato } from "./application/contrato/CriarContrato";
@@ -33,6 +34,7 @@ const organizacao = new PostgresOrganizacaoRepository();
 const fornecedores = new PostgresFornecedorRepository();
 const fluxoConfiguracao = new PostgresFluxoConfiguracaoRepository();
 const tramitacao = new PostgresTramitacaoRepository();
+const auditoria = new PostgresAuditoriaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 
 export const container = {
@@ -47,13 +49,16 @@ export const container = {
   criarUsuario: new CriarUsuario(usuarios),
   manterFornecedor: new ManterFornecedor(fornecedores),
   criarLicitacao: new CriarLicitacao(licitacoes),
-  criarContrato: new CriarContrato(contratos, processos, numeracao, executarEmTransacao),
+  criarContrato: new CriarContrato(contratos, processos, numeracao, auditoria, executarEmTransacao),
   montarRascunho: new MontarRascunhoSolicitacao(solicitacoes, executarEmTransacao),
-  enviarSolicitacao: new EnviarSolicitacao(solicitacoes, processos, usuarios, numeracao, executarEmTransacao),
-  cancelarSolicitacao: new CancelarSolicitacao(solicitacoes, processos, executarEmTransacao),
+  enviarSolicitacao: new EnviarSolicitacao(solicitacoes, processos, usuarios, numeracao, auditoria, executarEmTransacao),
+  cancelarSolicitacao: new CancelarSolicitacao(solicitacoes, processos, auditoria, executarEmTransacao),
   tramitacao,
-  despacharProcesso: new DespacharProcesso(tramitacao, usuarios, executarEmTransacao),
-  emitirParecer: new EmitirParecer(tramitacao, solicitacoes, executarEmTransacao),
-  emitirOrdem: new EmitirOrdemFornecimento(tramitacao, processos, executarEmTransacao),
-  anexosDeProcesso: new AnexosDeProcesso(new PostgresAnexoRepository(), tramitacao, new MinioArmazenamento()),
+  auditoria,
+  despacharProcesso: new DespacharProcesso(tramitacao, usuarios, auditoria, executarEmTransacao),
+  emitirParecer: new EmitirParecer(tramitacao, solicitacoes, auditoria, executarEmTransacao),
+  emitirOrdem: new EmitirOrdemFornecimento(tramitacao, processos, auditoria, executarEmTransacao),
+  anexosDeProcesso: new AnexosDeProcesso(
+    new PostgresAnexoRepository(), tramitacao, new MinioArmazenamento(), auditoria,
+  ),
 };

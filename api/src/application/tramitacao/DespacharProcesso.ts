@@ -1,4 +1,5 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 import type { DestinoEtapa, TramitacaoRepository } from "../ports/TramitacaoRepository";
 import type { FluxoRepository } from "../ports/UsuarioRepository";
@@ -18,6 +19,7 @@ export class DespacharProcesso {
   constructor(
     private readonly tramitacao: TramitacaoRepository,
     private readonly fluxos: FluxoRepository,
+    private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -55,6 +57,20 @@ export class DespacharProcesso {
       if (destino) {
         await this.tramitacao.moverProcesso(dados.processoId, destino, tx);
       }
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: destino ? "PROCESSO_MOVIDO" : "PROCESSO_DESPACHADO",
+        referenciaId: dados.processoId,
+        detalhes: {
+          despachoId,
+          tipo: dados.tipo,
+          lotacaoId: dados.lotacaoId,
+          setorOrigemId: processo.setorAtualId,
+          setorDestinoId: destino?.setorId,
+          departamentoDestinoId: destino?.departamentoId,
+        },
+      }, tx);
       return { despachoId };
     });
   };

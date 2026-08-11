@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import type { AnexoDetalhe, AnexoRepository, ArmazenamentoArquivos } from "../ports/ArmazenamentoArquivos";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { TramitacaoRepository } from "../ports/TramitacaoRepository";
 
 export type AnexarEntrada = {
@@ -19,6 +20,7 @@ export class AnexosDeProcesso {
     private readonly anexos: AnexoRepository,
     private readonly tramitacao: TramitacaoRepository,
     private readonly storage: ArmazenamentoArquivos,
+    private readonly auditoria: AuditoriaRepository,
   ) {}
 
   anexar = async (dados: AnexarEntrada): Promise<{ id: string }> => {
@@ -40,6 +42,18 @@ export class AnexosDeProcesso {
         arquivo: caminho,
         enviadoPorUsuarioId: dados.usuarioId,
       });
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: "ANEXO_ADICIONADO",
+        referenciaId: dados.processoId,
+        detalhes: {
+          anexoId: id,
+          tipoDocumento: dados.tipoDocumento,
+          nomeOriginal: dados.nomeOriginal,
+          tamanhoBytes: dados.conteudo.length,
+        },
+      });
       return { id };
     } catch (error) {
       await this.storage.remover(caminho);
@@ -60,12 +74,19 @@ export class AnexosDeProcesso {
     return { url };
   };
 
-  remover = async (orgaoId: string, anexoId: string): Promise<void> => {
+  remover = async (orgaoId: string, anexoId: string, usuarioId?: string): Promise<void> => {
     // Nome do arquivo sempre resolvido pelo id no banco — nunca vem pela URL.
     const anexo = await this.anexos.buscar(orgaoId, anexoId);
     if (!anexo) throw new NaoEncontrado("Anexo não encontrado");
     await this.anexos.remover(anexoId);
     await this.storage.remover(anexo.arquivo);
+    await this.auditoria.registrar({
+      orgaoId,
+      usuarioId,
+      tipoEvento: "ANEXO_REMOVIDO",
+      referenciaId: anexo.processoId,
+      detalhes: { anexoId, tipoDocumento: anexo.tipoDocumento, arquivo: anexo.arquivo },
+    });
   };
 }
 

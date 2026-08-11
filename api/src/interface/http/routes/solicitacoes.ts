@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { container } from "../../../container";
-import { enviarSolicitacaoSchema, rascunhoSolicitacaoSchema } from "../schemas/processos";
+import {
+  cancelarSolicitacaoSchema, enviarSolicitacaoSchema, rascunhoSolicitacaoSchema,
+} from "../schemas/processos";
 
 export const solicitacoesRouter = Router();
 
@@ -37,6 +39,7 @@ solicitacoesRouter.post("/:id/enviar", async (req, res, next) => {
     const resultado = await container.enviarSolicitacao.executar({
       orgaoId: req.sessao!.orgaoId,
       solicitacaoId: req.params.id!,
+      usuarioId: req.sessao!.usuarioId,
       setorDestinoId: dados.setorDestinoId,
     });
     res.json(resultado);
@@ -47,7 +50,13 @@ solicitacoesRouter.post("/:id/enviar", async (req, res, next) => {
 
 solicitacoesRouter.post("/:id/cancelar", async (req, res, next) => {
   try {
-    await container.cancelarSolicitacao.executar(req.sessao!.orgaoId, req.params.id!);
+    const { motivo } = cancelarSolicitacaoSchema.parse(req.body ?? {});
+    await container.cancelarSolicitacao.executar({
+      orgaoId: req.sessao!.orgaoId,
+      solicitacaoId: req.params.id!,
+      usuarioId: req.sessao!.usuarioId,
+      motivo,
+    });
     res.json({ message: "Solicitação cancelada e saldo devolvido aos contratos" });
   } catch (error) {
     next(error);

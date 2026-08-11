@@ -1,0 +1,48 @@
+import type { Tx } from "./Transacao";
+
+// Só eventos de negócio — nunca edição simples de cadastro.
+export type TipoEvento =
+  | "CONTRATO_CRIADO"
+  | "SOLICITACAO_ENVIADA"
+  | "SOLICITACAO_CANCELADA"
+  | "PROCESSO_DESPACHADO"
+  | "PROCESSO_MOVIDO"
+  | "PARECER_EMITIDO"
+  | "ORDEM_EMITIDA"
+  | "ANEXO_ADICIONADO"
+  | "ANEXO_REMOVIDO";
+
+export type EventoAuditoria = {
+  orgaoId: string;
+  usuarioId?: string;
+  tipoEvento: TipoEvento;
+  referenciaId?: string;
+  detalhes?: Record<string, unknown>;
+};
+
+export type RegistroAuditoria = {
+  id: string;
+  tipoEvento: TipoEvento;
+  referenciaId: string | null;
+  usuarioId: string | null;
+  usuarioNome: string | null;
+  detalhes: Record<string, unknown> | null;
+  data: string;
+};
+
+export type FiltroAuditoria = {
+  orgaoId: string;
+  referenciaId?: string;
+  tipoEvento?: string;
+  desde?: string;
+  ate?: string;
+  limite: number;
+  deslocamento: number;
+};
+
+export interface AuditoriaRepository {
+  // tx opcional: dentro de transação o registro é atômico com o efeito;
+  // fora dela (anexos) grava direto no pool.
+  registrar(evento: EventoAuditoria, tx?: Tx): Promise<void>;
+  listar(filtro: FiltroAuditoria): Promise<RegistroAuditoria[]>;
+}

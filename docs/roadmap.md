@@ -29,6 +29,11 @@ Verificação estática: FKs resolvem, ordem válida, isolamento por orgao confi
 | POST /processos/:id/parecer | CONTROLADORIA/ADMIN; encerra; desfavorável devolve saldo |
 | POST /processos/:id/ordens | COMPRAS/ADMIN; 1 por contrato; NF única por fornecedor |
 | /processos/:id/anexos (POST/GET/download/DELETE) | MinIO, compensação, URL pré-assinada |
+| GET /auditoria | ADMIN/GESTOR/CONTROLADORIA; filtros referência, tipo, período, paginação |
+
+**Auditoria** — `auditoria_log` gravado dentro das transações dos use cases (contrato criado,
+solicitação enviada/cancelada, processo despachado/movido, parecer, ordem, anexo adicionado/removido),
+com autor, referência ao processo e detalhes em JSONB.
 
 **Seed e smoke test** — `api/db/seed.sql` (prefeitura demo + módulo + admin) e `npm run smoke`
 (`api/scripts/smoke.ts`): ~20 verificações do ciclo real, incluindo cancelamento, saldo
@@ -36,22 +41,20 @@ insuficiente, NF duplicada, papel e lotação inválidos.
 
 ## Pendente (ordem sugerida)
 
-1. **Auditoria plugada** — gravar `auditoria_log` nos eventos de negócio (despacho, parecer,
-   cancelamento, envio, ordem).
-2. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos
+1. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos
    extras).
-3. **Link externo do fornecedor** — token de acesso para fornecedor completar cadastro/documentos
+2. **Link externo do fornecedor** — token de acesso para fornecedor completar cadastro/documentos
    sem login.
-4. **Atendimento externo de balcão** — busca por número de protocolo, anexar como requerente,
+3. **Atendimento externo de balcão** — busca por número de protocolo, anexar como requerente,
    redespachar.
-5. **Documentos emitidos** — comprovantes/declarações com timbre da prefeitura + QR do código
+4. **Documentos emitidos** — comprovantes/declarações com timbre da prefeitura + QR do código
    (`documento_emitido`, `orgao_documento_config`).
-6. **Prazos de etapa** — sinalizar processos vencidos na fila (prazo_dias/prazo_ativo já existem).
-7. **Painel web** (`web/`, Next.js, vazio) — admin + rotas públicas no mesmo app (decisão tomada).
-8. **Testes automatizados** — nada escrito ainda.
-9. **Módulos Frotas, Patrimônio, Almoxarifado** — schema pronto, API não iniciada. Seguir
+5. **Prazos de etapa** — sinalizar processos vencidos na fila (prazo_dias/prazo_ativo já existem).
+6. **Painel web** (`web/`, Next.js, vazio) — admin + rotas públicas no mesmo app (decisão tomada).
+7. **Testes automatizados** — nada escrito ainda.
+8. **Módulos Frotas, Patrimônio, Almoxarifado** — schema pronto, API não iniciada. Seguir
     levantamento em `docs/decisoes.md` + UML de cada um.
-10. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
+9. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Dívidas conhecidas
 

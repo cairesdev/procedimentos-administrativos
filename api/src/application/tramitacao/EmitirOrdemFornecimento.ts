@@ -1,4 +1,5 @@
 import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
+import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 import type { NumeracaoSequencia } from "../ports/ProcessoRepository";
 import type { NovaOrdemFornecimento, TramitacaoRepository } from "../ports/TramitacaoRepository";
@@ -13,6 +14,7 @@ export class EmitirOrdemFornecimento {
   constructor(
     private readonly tramitacao: TramitacaoRepository,
     private readonly sequencias: NumeracaoSequencia,
+    private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -62,6 +64,21 @@ export class EmitirOrdemFornecimento {
         },
         tx,
       );
+      await this.auditoria.registrar({
+        orgaoId: dados.orgaoId,
+        usuarioId: dados.usuarioId,
+        tipoEvento: "ORDEM_EMITIDA",
+        referenciaId: dados.processoId,
+        detalhes: {
+          ordemId,
+          numero,
+          contratoId: dados.contratoId,
+          fornecedorId,
+          valor: dados.valor,
+          numeroNotaFiscal: dados.numeroNotaFiscal,
+          numeroEmpenho: dados.numeroEmpenho,
+        },
+      }, tx);
       return { ordemId, numero };
     });
   };

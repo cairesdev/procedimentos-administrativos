@@ -112,7 +112,9 @@ processosRouter.get("/:id/anexos/:anexoId/download", async (req, res, next) => {
 
 processosRouter.delete("/:id/anexos/:anexoId", async (req, res, next) => {
   try {
-    await container.anexosDeProcesso.remover(req.sessao!.orgaoId, req.params.anexoId!);
+    await container.anexosDeProcesso.remover(
+      req.sessao!.orgaoId, req.params.anexoId!, req.sessao!.usuarioId,
+    );
     res.json({ message: "Anexo removido" });
   } catch (error) {
     next(error);
