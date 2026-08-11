@@ -3,23 +3,29 @@
 import { Button } from "@/shared/ui/button";
 import { InputField } from "@/shared/ui/form-field";
 import { Alert, FieldGrid } from "@/shared/ui/layout";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createSupplier } from "../actions";
+import { createSupplier, updateSupplier } from "../actions";
 import { supplierSchema, type SupplierInput } from "../schemas";
+import type { Supplier } from "../types";
 
-export const SupplierForm = () => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<SupplierInput>({
+export const SupplierForm = ({ supplier }: { supplier?: Supplier }) => {
+  const closeModal = useModalClose();
+  const isEditing = Boolean(supplier);
+  const { form, onSubmit, isSubmitting } = useResourceForm<SupplierInput>({
     schema: supplierSchema as never,
     defaultValues: {
-      documento: "",
-      razaoSocial: "",
-      endereco: "",
-      email: "",
-      telefone: "",
-      inscricaoEstadual: "",
-      inscricaoMunicipal: "",
+      documento: supplier?.documento ?? "",
+      razaoSocial: supplier?.razaoSocial ?? "",
+      endereco: supplier?.endereco ?? "",
+      email: supplier?.email ?? "",
+      telefone: supplier?.telefone ?? "",
+      inscricaoEstadual: supplier?.inscricaoEstadual ?? "",
+      inscricaoMunicipal: supplier?.inscricaoMunicipal ?? "",
     },
-    action: createSupplier,
+    action: (values) => (supplier ? updateSupplier(supplier.id, values) : createSupplier(values)),
+    resetOnSuccess: !isEditing,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -35,7 +41,9 @@ export const SupplierForm = () => {
         <InputField
           label="CNPJ ou CPF"
           required
+          readOnly={isEditing}
           placeholder="Somente números"
+          hint={isEditing ? "O documento identifica o cadastro e não muda." : undefined}
           error={errors.documento?.message}
           {...form.register("documento")}
         />
@@ -69,12 +77,9 @@ export const SupplierForm = () => {
         />
       </FieldGrid>
 
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
-
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar fornecedor"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar fornecedor"}
         </Button>
       </div>
     </form>

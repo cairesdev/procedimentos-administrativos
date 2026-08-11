@@ -7,6 +7,8 @@ export const endpoints = {
   users: "/usuarios",
   suppliers: "/fornecedores",
   bids: "/licitacoes",
+  priceRecords: "/atas",
+  priceRecordItems: (recordId: string) => `/atas/${recordId}/itens`,
   contracts: "/contratos",
   contractItems: (contractId: string) => `/contratos/${contractId}/itens`,
   workflows: (processType: string) => `/fluxos/${processType}`,

@@ -62,3 +62,24 @@
 .wide {
   grid-column: 1 / -1;
 }
+
+.prefixed {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.prefix {
+  position: absolute;
+  left: 10px;
+  font-size: 13px;
+  color: var(--texto_apagado);
+  pointer-events: none;
+}
+
+.control_prefixed {
+  padding-left: 34px;
+  width: 100%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

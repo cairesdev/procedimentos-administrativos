@@ -13,7 +13,11 @@ export const metadata: Metadata = {
   description: "Gestão de processos administrativos municipais",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="pt-BR" className={inter.variable}>
       <body>{children}</body>

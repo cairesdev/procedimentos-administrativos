@@ -15,6 +15,11 @@ import { PostgresAnexoRepository } from "./infrastructure/db/PostgresAnexoReposi
 import { MinioArmazenamento } from "./infrastructure/storage/MinioArmazenamento";
 import { AnexosDeProcesso } from "./application/anexo/AnexosDeProcesso";
 import { PostgresAuditoriaRepository } from "./infrastructure/db/PostgresAuditoriaRepository";
+import { PostgresAtaRepository } from "./infrastructure/db/PostgresAtaRepository";
+import { CriarAta } from "./application/ata/CriarAta";
+import { EditarAta } from "./application/ata/EditarAta";
+import { EditarLicitacao } from "./application/licitacao/EditarLicitacao";
+import { EditarContrato } from "./application/contrato/EditarContrato";
 import { GeradorNumeroProcesso } from "./application/shared/GeradorNumeroProcesso";
 import { CriarLicitacao } from "./application/licitacao/CriarLicitacao";
 import { CriarContrato } from "./application/contrato/CriarContrato";
@@ -23,7 +28,10 @@ import { EnviarSolicitacao } from "./application/solicitacao/EnviarSolicitacao";
 import { CancelarSolicitacao } from "./application/solicitacao/CancelarSolicitacao";
 import { AutenticarUsuario } from "./application/auth/AutenticarUsuario";
 import { CriarUsuario } from "./application/usuario/CriarUsuario";
+import { EditarUsuario } from "./application/usuario/EditarUsuario";
 import { ManterFornecedor } from "./application/fornecedor/ManterFornecedor";
+import { PostgresAdminSistemaRepository } from "./infrastructure/db/PostgresAdminSistemaRepository";
+import { AdministrarSistema } from "./application/admin/AdministrarSistema";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -35,9 +43,13 @@ const fornecedores = new PostgresFornecedorRepository();
 const fluxoConfiguracao = new PostgresFluxoConfiguracaoRepository();
 const tramitacao = new PostgresTramitacaoRepository();
 const auditoria = new PostgresAuditoriaRepository();
+const atas = new PostgresAtaRepository();
+const adminSistema = new PostgresAdminSistemaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 
 export const container = {
+  adminSistema,
+  administrarSistema: new AdministrarSistema(adminSistema, usuarios),
   licitacoes,
   contratos,
   solicitacoes,
@@ -47,7 +59,13 @@ export const container = {
   fluxoConfiguracao,
   autenticarUsuario: new AutenticarUsuario(usuarios),
   criarUsuario: new CriarUsuario(usuarios),
+  editarUsuario: new EditarUsuario(usuarios),
   manterFornecedor: new ManterFornecedor(fornecedores),
+  atas,
+  criarAta: new CriarAta(atas, executarEmTransacao),
+  editarAta: new EditarAta(atas, executarEmTransacao),
+  editarLicitacao: new EditarLicitacao(licitacoes),
+  editarContrato: new EditarContrato(contratos, processos, executarEmTransacao),
   criarLicitacao: new CriarLicitacao(licitacoes),
   criarContrato: new CriarContrato(contratos, processos, numeracao, auditoria, executarEmTransacao),
   montarRascunho: new MontarRascunhoSolicitacao(solicitacoes, executarEmTransacao),

@@ -4,7 +4,8 @@ import { listUsers } from "@/features/users/queries";
 import { UserForm } from "@/features/users/components/UserForm";
 import { UserTable } from "@/features/users/components/UserTable";
 import { requirePermission } from "@/shared/auth/guards";
-import { Card, Columns, PageHeader } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { ModalTrigger } from "@/shared/ui/Modal";
 
 export default async function UsersPage() {
   const viewer = await requirePermission("users:read");
@@ -17,19 +18,29 @@ export default async function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Usuários" subtitle="Servidores com acesso ao sistema desta prefeitura" />
+      <PageHeader
+        title="Usuários"
+        subtitle="Servidores com acesso ao sistema desta prefeitura"
+        action={
+          viewer.can("users:write") ? (
+            <ModalTrigger
+              label="Novo usuário"
+              title="Novo usuário"
+              description="O papel define o nível de acesso; a lotação define em nome de quem ele atua."
+            >
+              <UserForm assignmentOptions={assignmentOptions} />
+            </ModalTrigger>
+          ) : null
+        }
+      />
 
-      <Columns>
-        <Card title={`${users.length} cadastrados`} padded={false}>
-          <UserTable users={users} />
-        </Card>
-
-        {viewer.can("users:write") ? (
-          <Card title="Novo usuário">
-            <UserForm assignmentOptions={assignmentOptions} />
-          </Card>
-        ) : null}
-      </Columns>
+      <Card title={`${users.length} cadastrados`} padded={false}>
+        <UserTable
+          users={users}
+          canWrite={viewer.can("users:write")}
+          assignmentOptions={assignmentOptions}
+        />
+      </Card>
     </>
   );
 }

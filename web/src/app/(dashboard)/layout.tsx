@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { logout } from "@/features/auth/actions";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { AssignmentSwitcher } from "@/features/auth/components/AssignmentSwitcher";
@@ -6,6 +5,7 @@ import { getViewer } from "@/shared/auth/guards";
 import { navigation } from "@/shared/auth/navigation";
 import { hasModule } from "@/shared/auth/permissions";
 import { Button } from "@/shared/ui/button";
+import { Sidebar } from "./Sidebar";
 import styles from "./dashboard.module.css";
 
 const initials = (name: string): string =>
@@ -24,7 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     getActiveAssignmentId(),
   ]);
 
-  const menu = navigation
+  const sections = navigation
     .map((section) => ({
       ...section,
       links: section.links.filter(
@@ -63,19 +63,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </header>
 
       <div className={styles.body}>
-        <nav className={styles.sidebar}>
-          {menu.map((section) => (
-            <div key={section.group}>
-              <p className={styles.sidebar_group}>{section.group.toUpperCase()}</p>
-              {section.links.map((link) => (
-                <Link key={link.href} href={link.href} className={styles.sidebar_link}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </nav>
-
+        <Sidebar sections={sections} />
         <main className={styles.content}>{children}</main>
       </div>
     </div>

@@ -39,6 +39,12 @@ com autor, referência ao processo e detalhes em JSONB.
 (`api/scripts/smoke.ts`): ~20 verificações do ciclo real, incluindo cancelamento, saldo
 insuficiente, NF duplicada, papel e lotação inválidos.
 
+**Painel web** — Next.js 16 em `web/`: login (NextAuth), navegação por etapa do processo,
+cadastros com modal, wizard de contrato (origem licitação/ata → dados → itens → revisão),
+importação de itens colando planilha, fila do setor, montagem de solicitação com saldo à vista,
+despacho, parecer e ordem de fornecimento. Painel `/admin` para a equipe do produto: prefeituras,
+módulos, timbre e primeiro administrador.
+
 ## Pendente (ordem sugerida)
 
 1. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos

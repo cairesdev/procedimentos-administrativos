@@ -8,7 +8,27 @@ import { bidSchema, type BidInput } from "./schemas";
 
 export const createBid = async (input: BidInput) =>
   runAction(async () => {
-    const body = bidSchema.parse(input);
-    await apiRequest(endpoints.bids, { method: "POST", body });
+    const { resumo, ...body } = bidSchema.parse(input);
+    await apiRequest(endpoints.bids, {
+      method: "POST",
+      body: { ...body, resumo: resumo?.trim() || undefined },
+    });
     revalidatePath("/licitacoes");
   }, "Licitação cadastrada");
+
+// Depois que a licitação origina contrato ou ata, a API só aceita resumo e objeto.
+export const updateBid = async (id: string, input: BidInput) =>
+  runAction(async () => {
+    const { resumo, ...body } = bidSchema.parse(input);
+    await apiRequest(`${endpoints.bids}/${id}`, {
+      method: "PATCH",
+      body: { ...body, resumo: resumo?.trim() || null },
+    });
+    revalidatePath("/licitacoes");
+  }, "Licitação atualizada");
+
+export const deleteBid = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.bids}/${id}`, { method: "DELETE" });
+    revalidatePath("/licitacoes");
+  }, "Licitação excluída");

@@ -2,27 +2,43 @@
 
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField, TextareaField } from "@/shared/ui/form-field";
-import { Alert, FieldGrid } from "@/shared/ui/layout";
+import { FieldGrid } from "@/shared/ui/layout";
+import { CurrencyField } from "@/shared/ui/CurrencyField";
+import { TagSelect } from "@/shared/ui/TagSelect";
 import { humanize } from "@/shared/ui/labels";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import type { Unit } from "@/features/units/types";
-import { createBid } from "../actions";
+import { createBid, updateBid } from "../actions";
 import { bidSchema, type BidInput } from "../schemas";
-import { BID_MODALITIES } from "../types";
+import { BID_MODALITIES, type Bid } from "../types";
 
-export const BidForm = ({ units }: { units: Unit[] }) => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<BidInput>({
+export const BidForm = ({
+  units,
+  bid,
+  selectedUnits = [],
+}: {
+  units: Unit[];
+  bid?: Bid;
+  selectedUnits?: string[];
+}) => {
+  const isEditing = Boolean(bid);
+  const closeModal = useModalClose();
+  const { form, onSubmit, isSubmitting } = useResourceForm<BidInput>({
     schema: bidSchema as never,
     defaultValues: {
-      numero: "",
-      resumo: "",
-      objeto: "",
-      modalidade: "PREGAO_ELETRONICO",
-      dataAssinatura: "",
-      valorTotal: 0,
-      unidadesDestinadas: [],
+      numero: bid?.numero ?? "",
+      resumo: bid?.resumo ?? "",
+      objeto: bid?.objeto ?? "",
+      modalidade: bid?.modalidade ?? "PREGAO_ELETRONICO",
+      dataAssinatura: bid?.dataAssinatura?.slice(0, 10) ?? "",
+      valorTotal: bid?.valorTotal ?? 0,
+      unidadesDestinadas: selectedUnits,
     },
-    action: createBid,
+    action: (values) => (bid ? updateBid(bid.id, values) : createBid(values)),
+    redirectTo: isEditing ? undefined : "/licitacoes",
+    resetOnSuccess: false,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -54,14 +70,7 @@ export const BidForm = ({ units }: { units: Unit[] }) => {
           error={errors.dataAssinatura?.message}
           {...form.register("dataAssinatura")}
         />
-        <InputField
-          label="Valor total"
-          type="number"
-          step="0.01"
-          required
-          error={errors.valorTotal?.message}
-          {...form.register("valorTotal")}
-        />
+        <CurrencyField control={form.control} name="valorTotal" label="Valor total" required />
       </FieldGrid>
 
       <InputField label="Resumo" error={errors.resumo?.message} {...form.register("resumo")} />
@@ -71,22 +80,18 @@ export const BidForm = ({ units }: { units: Unit[] }) => {
         error={errors.objeto?.message}
         {...form.register("objeto")}
       />
-      <SelectField
+      <TagSelect
+        control={form.control}
+        name="unidadesDestinadas"
         label="Unidades destinadas"
         required
-        multiple
         options={units.map((unit) => ({ value: unit.id, label: unit.nome }))}
-        hint="Segure Ctrl para escolher mais de uma."
-        error={errors.unidadesDestinadas?.message}
-        {...form.register("unidadesDestinadas")}
+        searchPlaceholder="Buscar secretaria…"
       />
-
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
 
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar licitação"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar licitação"}
         </Button>
       </div>
     </form>

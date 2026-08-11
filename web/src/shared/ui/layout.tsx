@@ -108,3 +108,43 @@ export const Alert = ({
 };
 
 export const numericCell = styles.numeric;
+
+export const Toolbar = ({ children }: { children: ReactNode }) => (
+  <div className={styles.toolbar}>{children}</div>
+);
+
+export const Steps = ({
+  steps,
+  current,
+}: {
+  steps: string[];
+  current: number;
+}) => (
+  <ol className={styles.steps}>
+    {steps.map((step, index) => (
+      <li key={step} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <span
+          className={`${styles.step} ${
+            index === current ? styles.step_active : index < current ? styles.step_done : ""
+          }`}
+          aria-current={index === current ? "step" : undefined}
+        >
+          <span className={styles.step_index}>{index < current ? "✓" : index + 1}</span>
+          {step}
+        </span>
+        {index < steps.length - 1 ? <span className={styles.step_divider} aria-hidden="true" /> : null}
+      </li>
+    ))}
+  </ol>
+);
+
+export const SummaryGrid = ({ items }: { items: { label: string; value: ReactNode }[] }) => (
+  <div className={styles.summary}>
+    {items.map((item) => (
+      <div key={item.label} className={styles.summary_item}>
+        <p className={styles.summary_label}>{item.label}</p>
+        <p className={styles.summary_value}>{item.value}</p>
+      </div>
+    ))}
+  </div>
+);

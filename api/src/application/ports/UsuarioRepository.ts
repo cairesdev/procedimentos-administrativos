@@ -51,6 +51,14 @@ export type PerfilUsuario = UsuarioResumo & {
   modulos: string[];
 };
 
+export type EdicaoUsuario = {
+  nome?: string;
+  email?: string;
+  papelBase?: string;
+  senhaHash?: string;
+  ativo?: boolean;
+};
+
 export interface UsuarioRepository {
   buscarPorIdentificador(identificador: string): Promise<UsuarioAutenticavel | null>;
   existeEmail(email: string): Promise<boolean>;
@@ -59,6 +67,11 @@ export interface UsuarioRepository {
   criarLotacao(dados: NovaLotacao): Promise<string>;
   listar(orgaoId: string): Promise<UsuarioResumo[]>;
   buscarPerfil(usuarioId: string): Promise<PerfilUsuario | null>;
+  buscarPorId(orgaoId: string, id: string): Promise<UsuarioResumo | null>;
+  atualizar(orgaoId: string, id: string, dados: EdicaoUsuario): Promise<void>;
+  contarVinculos(id: string): Promise<Record<string, number>>;
+  remover(orgaoId: string, id: string): Promise<void>;
+  removerLotacoes(usuarioId: string): Promise<void>;
 }
 
 export type FluxoEtapaDestino = {

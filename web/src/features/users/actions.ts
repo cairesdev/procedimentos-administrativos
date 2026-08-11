@@ -20,3 +20,26 @@ export const createUser = async (input: UserInput) =>
     });
     revalidatePath("/usuarios");
   }, "Usuário cadastrado");
+
+export const updateUser = async (id: string, input: UserInput) =>
+  runAction(async () => {
+    const parsed = userSchema.parse(input);
+    const { destino: _destino, username: _username, senha, ...user } = parsed;
+    await apiRequest(`${endpoints.users}/${id}`, {
+      method: "PATCH",
+      body: senha ? { ...user, senha } : user,
+    });
+    revalidatePath("/usuarios");
+  }, "Usuário atualizado");
+
+export const setUserActive = async (id: string, active: boolean) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.users}/${id}`, { method: "PATCH", body: { ativo: active } });
+    revalidatePath("/usuarios");
+  }, active ? "Usuário reativado" : "Usuário inativado");
+
+export const deleteUser = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.users}/${id}`, { method: "DELETE" });
+    revalidatePath("/usuarios");
+  }, "Usuário excluído");

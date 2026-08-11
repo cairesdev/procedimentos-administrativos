@@ -8,7 +8,7 @@ export const userSchema = z.object({
   username: z
     .string()
     .regex(/^[a-z0-9._-]{3,40}$/, "Minúsculas, números, ponto, hífen e underline (3 a 40)"),
-  senha: z.string().min(8, "Mínimo de 8 caracteres"),
+  senha: z.string().min(8, "Mínimo de 8 caracteres").or(z.literal("")).optional(),
   papelBase: z.enum(ROLES),
   destino: z.string().optional(),
 });

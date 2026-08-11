@@ -2,13 +2,12 @@
 
 import { Button } from "@/shared/ui/button";
 import { InputField } from "@/shared/ui/form-field";
-import { Alert } from "@/shared/ui/layout";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import { authenticate } from "../actions";
 import { loginSchema, type LoginInput } from "../schemas";
 
 export const LoginForm = ({ callbackUrl }: { callbackUrl: string }) => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<LoginInput>({
+  const { form, onSubmit, isSubmitting } = useResourceForm<LoginInput>({
     schema: loginSchema,
     defaultValues: { identificador: "", senha: "" },
     action: (values) => authenticate(values, callbackUrl),
@@ -34,8 +33,6 @@ export const LoginForm = ({ callbackUrl }: { callbackUrl: string }) => {
         error={errors.senha?.message}
         {...form.register("senha")}
       />
-
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
 
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Entrando…" : "Entrar"}

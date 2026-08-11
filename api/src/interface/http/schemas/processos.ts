@@ -57,3 +57,23 @@ export const enviarSolicitacaoSchema = z.object({
 export const cancelarSolicitacaoSchema = z.object({
   motivo: z.string().max(300).optional(),
 });
+
+export const editarLicitacaoSchema = z.object({
+  numero: z.string().min(1).max(40).optional(),
+  resumo: z.string().max(300).nullable().optional(),
+  objeto: z.string().min(1).optional(),
+  modalidade: z.enum([
+    "PREGAO_ELETRONICO", "PREGAO_PRESENCIAL", "CONCORRENCIA", "DISPENSA",
+    "INEXIGIBILIDADE", "CHAMADA_PUBLICA", "LEILAO", "DIALOGO_COMPETITIVO",
+  ]).optional(),
+  dataAssinatura: z.string().date().optional(),
+  valorTotal: z.number().positive().optional(),
+  unidadesDestinadas: z.array(z.string().uuid()).min(1).optional(),
+});
+
+export const editarContratoSchema = z.object({
+  dataInicio: z.string().date().optional(),
+  dataFim: z.string().date().optional(),
+  fiscalNomeMatricula: z.string().max(200).nullable().optional(),
+  unidadesDestinadas: z.array(z.string().uuid()).min(1).optional(),
+});

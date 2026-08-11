@@ -1,7 +1,9 @@
 import express from "express";
 import { authRouter } from "./routes/auth";
+import { adminRouter } from "./routes/admin";
 import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
+import { atasRouter } from "./routes/atas";
 import { solicitacoesRouter } from "./routes/solicitacoes";
 import { processosRouter } from "./routes/processos";
 import { auditoriaRouter } from "./routes/auditoria";
@@ -20,6 +22,9 @@ export const criarApp = () => {
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/auth", authRouter);
 
+  // Painel do produto: escopo de token próprio, fora do isolamento por órgão.
+  app.use("/admin", adminRouter);
+
   // Cadastros organizacionais: órgão ativo, sem exigência de módulo.
   app.use("/unidades", authenticate, resolveTenant(), unidadesRouter);
   app.use("/setores", authenticate, resolveTenant(), setoresRouter);
@@ -32,6 +37,7 @@ export const criarApp = () => {
 
   // Módulo de processos: exige habilitação do módulo para o órgão.
   app.use("/licitacoes", authenticate, resolveTenant("PROCESSOS"), licitacoesRouter);
+  app.use("/atas", authenticate, resolveTenant("PROCESSOS"), atasRouter);
   app.use("/contratos", authenticate, resolveTenant("PROCESSOS"), contratosRouter);
   app.use("/solicitacoes", authenticate, resolveTenant("PROCESSOS"), solicitacoesRouter);
   app.use("/processos", authenticate, resolveTenant("PROCESSOS"), processosRouter);

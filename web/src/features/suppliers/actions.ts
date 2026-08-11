@@ -12,3 +12,12 @@ export const createSupplier = async (input: SupplierInput) =>
     await apiRequest(endpoints.suppliers, { method: "POST", body });
     revalidatePath("/fornecedores");
   }, "Fornecedor cadastrado no cadastro global");
+
+// Cadastro global: sem exclusão, e a API registra histórico de cada alteração.
+export const updateSupplier = async (id: string, input: SupplierInput) =>
+  runAction(async () => {
+    const parsed = supplierSchema.parse(input);
+    const { documento: _documento, ...body } = parsed;
+    await apiRequest(`${endpoints.suppliers}/${id}`, { method: "PATCH", body });
+    revalidatePath("/fornecedores");
+  }, "Fornecedor atualizado — alteração registrada em histórico");

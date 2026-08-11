@@ -6,3 +6,8 @@ export const listSectors = () => apiRequest<Sector[]>(endpoints.sectors);
 
 export const listDepartments = (sectorId: string) =>
   apiRequest<Department[]>(endpoints.departments(sectorId));
+
+export const findSector = async (sectorId: string) => {
+  const sectors = await listSectors();
+  return sectors.find((sector) => sector.id === sectorId) ?? null;
+};

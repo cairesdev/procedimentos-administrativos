@@ -59,3 +59,35 @@ export const criarUsuarioSchema = z.object({
   ]),
   lotacoes: z.array(lotacaoSchema).default([]),
 });
+
+export const editarUnidadeSchema = z.object({
+  nome: z.string().min(1).max(150).optional(),
+  sigla: z.string().max(20).nullable().optional(),
+  ativo: z.boolean().optional(),
+});
+
+export const editarSetorSchema = z.object({
+  nome: z.string().min(1).max(150).optional(),
+  tipo: z.enum([
+    "PROTOCOLO", "COMPRAS", "CONTROLADORIA",
+    "ALIMENTACAO_ESCOLAR", "FROTAS", "PATRIMONIO", "OPERACIONAL",
+  ]).optional(),
+  ativo: z.boolean().optional(),
+});
+
+export const editarDepartamentoSchema = z.object({
+  nome: z.string().min(1).max(150).optional(),
+  categoriaAtendimento: z.string().max(100).nullable().optional(),
+  ativo: z.boolean().optional(),
+});
+
+export const editarUsuarioSchema = z.object({
+  nome: z.string().min(1).max(150).optional(),
+  email: z.string().email().optional(),
+  papelBase: z.enum([
+    "ADMIN", "GESTOR", "SERVIDOR", "PROTOCOLO",
+    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA",
+  ]).optional(),
+  senha: z.string().min(8).optional(),
+  ativo: z.boolean().optional(),
+});

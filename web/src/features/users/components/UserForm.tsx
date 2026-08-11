@@ -2,25 +2,36 @@
 
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField, type Option } from "@/shared/ui/form-field";
-import { Alert, FieldGrid } from "@/shared/ui/layout";
+import { FieldGrid } from "@/shared/ui/layout";
 import { humanize } from "@/shared/ui/labels";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createUser } from "../actions";
+import { createUser, updateUser } from "../actions";
 import { userSchema, type UserInput } from "../schemas";
-import { ROLES } from "../types";
+import { ROLES, type User } from "../types";
 
-export const UserForm = ({ assignmentOptions }: { assignmentOptions: Option[] }) => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<UserInput>({
+export const UserForm = ({
+  assignmentOptions,
+  user,
+}: {
+  assignmentOptions: Option[];
+  user?: User;
+}) => {
+  const closeModal = useModalClose();
+  const isEditing = Boolean(user);
+  const { form, onSubmit, isSubmitting } = useResourceForm<UserInput>({
     schema: userSchema,
     defaultValues: {
-      nome: "",
-      email: "",
+      nome: user?.nome ?? "",
+      email: user?.email ?? "",
       username: "",
       senha: "",
-      papelBase: "SERVIDOR",
+      papelBase: user?.papelBase ?? "SERVIDOR",
       destino: "",
     },
-    action: createUser,
+    action: (values) => (user ? updateUser(user.id, values) : createUser(values)),
+    resetOnSuccess: !isEditing,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -41,19 +52,22 @@ export const UserForm = ({ assignmentOptions }: { assignmentOptions: Option[] })
           error={errors.email?.message}
           {...form.register("email")}
         />
-        <InputField
-          label="Nome de usuário"
-          required
-          placeholder="joao.silva"
-          error={errors.username?.message}
-          {...form.register("username")}
-        />
+        {isEditing ? null : (
+          <InputField
+            label="Nome de usuário"
+            required
+            placeholder="joao.silva"
+            error={errors.username?.message}
+            {...form.register("username")}
+          />
+        )}
       </FieldGrid>
       <FieldGrid>
         <InputField
-          label="Senha provisória"
+          label={isEditing ? "Nova senha" : "Senha provisória"}
           type="password"
-          required
+          required={!isEditing}
+          hint={isEditing ? "Deixe em branco para manter a senha atual." : undefined}
           error={errors.senha?.message}
           {...form.register("senha")}
         />
@@ -66,21 +80,20 @@ export const UserForm = ({ assignmentOptions }: { assignmentOptions: Option[] })
           {...form.register("papelBase")}
         />
       </FieldGrid>
-      <SelectField
-        label="Lotação"
-        emptyOption="Sem lotação"
-        options={assignmentOptions}
-        hint="Em nome de quem o usuário atua nos despachos."
-        error={errors.destino?.message}
-        {...form.register("destino")}
-      />
-
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
+      {isEditing ? null : (
+        <SelectField
+          label="Lotação"
+          emptyOption="Sem lotação"
+          options={assignmentOptions}
+          hint="Em nome de quem o usuário atua nos despachos."
+          error={errors.destino?.message}
+          {...form.register("destino")}
+        />
+      )}
 
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar usuário"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar usuário"}
         </Button>
       </div>
     </form>

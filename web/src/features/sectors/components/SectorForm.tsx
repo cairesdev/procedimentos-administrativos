@@ -2,18 +2,22 @@
 
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField } from "@/shared/ui/form-field";
-import { Alert } from "@/shared/ui/layout";
 import { humanize } from "@/shared/ui/labels";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createSector } from "../actions";
+import { createSector, updateSector } from "../actions";
 import { sectorSchema, type SectorInput } from "../schemas";
-import { SECTOR_TYPES } from "../types";
+import { SECTOR_TYPES, type Sector } from "../types";
 
-export const SectorForm = () => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<SectorInput>({
+export const SectorForm = ({ sector }: { sector?: Sector }) => {
+  const closeModal = useModalClose();
+  const isEditing = Boolean(sector);
+  const { form, onSubmit, isSubmitting } = useResourceForm<SectorInput>({
     schema: sectorSchema,
-    defaultValues: { nome: "", tipo: "PROTOCOLO" },
-    action: createSector,
+    defaultValues: { nome: sector?.nome ?? "", tipo: sector?.tipo ?? "PROTOCOLO" },
+    action: (values) => (sector ? updateSector(sector.id, values) : createSector(values)),
+    resetOnSuccess: !isEditing,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -35,12 +39,9 @@ export const SectorForm = () => {
         {...form.register("tipo")}
       />
 
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
-
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar setor"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar setor"}
         </Button>
       </div>
     </form>

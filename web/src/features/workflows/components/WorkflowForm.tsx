@@ -3,7 +3,7 @@
 import { useFieldArray } from "react-hook-form";
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField } from "@/shared/ui/form-field";
-import { Alert, FieldGrid } from "@/shared/ui/layout";
+import { FieldGrid } from "@/shared/ui/layout";
 import { humanize } from "@/shared/ui/labels";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import type { Sector } from "@/features/sectors/types";
@@ -28,7 +28,7 @@ export const WorkflowForm = ({
   workflow: Workflow | null;
   processType: string;
 }) => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<WorkflowInput>({
+  const { form, onSubmit, isSubmitting } = useResourceForm<WorkflowInput>({
     schema: workflowSchema as never,
     defaultValues: {
       tipoProcesso: processType as WorkflowInput["tipoProcesso"],
@@ -42,6 +42,7 @@ export const WorkflowForm = ({
         })) ?? [emptyStep],
     },
     action: saveWorkflow,
+    resetOnSuccess: false,
   });
 
   const { errors } = form.formState;
@@ -113,9 +114,6 @@ export const WorkflowForm = ({
           </div>
         ))}
       </div>
-
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
 
       <div>
         <Button type="submit" disabled={isSubmitting}>

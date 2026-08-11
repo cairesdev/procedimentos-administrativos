@@ -33,5 +33,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/((?!login|modulo-indisponivel|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!login|admin|modulo-indisponivel|api/auth|_next/static|_next/image|favicon.ico).*)"],
 };

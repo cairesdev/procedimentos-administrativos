@@ -1,0 +1,37 @@
+import { z } from "zod";
+import { MODULES } from "./types";
+
+export const tenantSchema = z.object({
+  cnpj: z
+    .string()
+    .transform((value) => value.replace(/\D/g, ""))
+    .refine((value) => value.length === 14, "CNPJ deve ter 14 dígitos"),
+  nome: z.string().min(1, "Informe o nome").max(200),
+  uf: z.string().length(2, "UF com 2 letras").transform((value) => value.toUpperCase()),
+  municipio: z.string().min(1, "Informe o município").max(120),
+  endereco: z.string().optional(),
+  modulos: z.array(z.enum(MODULES as [string, ...string[]])).default([]),
+});
+
+export const letterheadSchema = z.object({
+  arquivoLogomarca: z.string().max(255).optional(),
+  cabecalhoTimbre: z.string().optional(),
+  rodapeTimbre: z.string().optional(),
+});
+
+export const firstAdminSchema = z.object({
+  nome: z.string().min(1, "Informe o nome").max(150),
+  email: z.email("E-mail inválido"),
+  username: z.string().regex(/^[a-z0-9._-]{3,40}$/, "Minúsculas, números, ponto, hífen e underline"),
+  senha: z.string().min(8, "Mínimo de 8 caracteres"),
+});
+
+export const adminLoginSchema = z.object({
+  email: z.email("E-mail inválido"),
+  senha: z.string().min(1, "Informe a senha"),
+});
+
+export type TenantInput = z.input<typeof tenantSchema>;
+export type LetterheadInput = z.input<typeof letterheadSchema>;
+export type FirstAdminInput = z.input<typeof firstAdminSchema>;
+export type AdminLoginInput = z.input<typeof adminLoginSchema>;

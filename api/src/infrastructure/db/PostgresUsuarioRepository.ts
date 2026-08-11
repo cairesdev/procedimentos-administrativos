@@ -1,6 +1,6 @@
 import { pool } from "./pool";
 import type {
-  FluxoEtapaDestino, FluxoRepository, NovaLotacao, NovoUsuario, PerfilUsuario,
+  EdicaoUsuario, FluxoEtapaDestino, FluxoRepository, NovaLotacao, NovoUsuario, PerfilUsuario,
   UsuarioAutenticavel, UsuarioRepository, UsuarioResumo,
 } from "../../application/ports/UsuarioRepository";
 
@@ -18,6 +18,24 @@ const SQL = {
   criarLotacao: `
     INSERT INTO lotacao (usuario_id, unidade_id, setor_id, departamento_id)
     VALUES ($1, $2, $3, $4) RETURNING id`,
+  buscarPorId: `
+    SELECT id, nome, email, papel_base AS "papelBase", ativo
+      FROM usuario WHERE orgao_id = $1 AND id = $2`,
+  atualizar: `
+    UPDATE usuario
+       SET nome = COALESCE($3, nome),
+           email = COALESCE($4, email),
+           papel_base = COALESCE($5, papel_base),
+           senha_hash = COALESCE($6, senha_hash),
+           ativo = COALESCE($7, ativo)
+     WHERE orgao_id = $1 AND id = $2`,
+  vinculos: `
+    SELECT
+      (SELECT count(*) FROM despacho WHERE usuario_id = $1) AS despachos,
+      (SELECT count(*) FROM parecer WHERE usuario_id = $1) AS pareceres,
+      (SELECT count(*) FROM auditoria_log WHERE usuario_id = $1) AS registros_de_auditoria`,
+  remover: `DELETE FROM usuario WHERE orgao_id = $1 AND id = $2`,
+  removerLotacoes: `DELETE FROM lotacao WHERE usuario_id = $1`,
   listar: `
     SELECT id, nome, email, papel_base AS "papelBase", ativo
       FROM usuario WHERE orgao_id = $1 ORDER BY nome`,
@@ -85,6 +103,35 @@ export class PostgresUsuarioRepository implements UsuarioRepository, FluxoReposi
   listar = async (orgaoId: string): Promise<UsuarioResumo[]> => {
     const { rows } = await pool.query(SQL.listar, [orgaoId]);
     return rows;
+  };
+
+  buscarPorId = async (orgaoId: string, id: string): Promise<UsuarioResumo | null> => {
+    const { rows } = await pool.query(SQL.buscarPorId, [orgaoId, id]);
+    return rows[0] ?? null;
+  };
+
+  atualizar = async (orgaoId: string, id: string, dados: EdicaoUsuario): Promise<void> => {
+    await pool.query(SQL.atualizar, [
+      orgaoId, id, dados.nome ?? null, dados.email ?? null,
+      dados.papelBase ?? null, dados.senhaHash ?? null, dados.ativo ?? null,
+    ]);
+  };
+
+  contarVinculos = async (id: string): Promise<Record<string, number>> => {
+    const { rows } = await pool.query(SQL.vinculos, [id]);
+    return Object.fromEntries(
+      Object.entries(rows[0] as Record<string, string>)
+        .map(([chave, valor]) => [chave, Number(valor)])
+        .filter(([, quantidade]) => (quantidade as number) > 0),
+    );
+  };
+
+  remover = async (orgaoId: string, id: string): Promise<void> => {
+    await pool.query(SQL.remover, [orgaoId, id]);
+  };
+
+  removerLotacoes = async (usuarioId: string): Promise<void> => {
+    await pool.query(SQL.removerLotacoes, [usuarioId]);
   };
 
   buscarPerfil = async (usuarioId: string): Promise<PerfilUsuario | null> => {

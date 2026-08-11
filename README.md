@@ -21,6 +21,7 @@ psql procedimentos -f api/db/migrations/0004_patrimonio.sql
 psql procedimentos -f api/db/migrations/0005_almoxarifado.sql
 psql procedimentos -f api/db/migrations/0006_solicitacao_rascunho.sql
 psql procedimentos -f api/db/migrations/0007_login_identificador.sql
+psql procedimentos -f api/db/migrations/0008_admin_sistema.sql
 
 # 2. MinIO (dev)
 docker run -d -p 9000:9000 minio/minio server /data
@@ -42,6 +43,15 @@ psql procedimentos -f api/db/seed.sql
 
 Cria a Prefeitura Demo, habilita o módulo PROCESSOS e o admin `admin.demo` / `12345678`.
 Login: `POST /auth/login` `{ "identificador": "admin.demo", "senha": "12345678" }`.
+
+## Administração do sistema
+
+A migration `0008_admin_sistema.sql` cria a tabela própria da equipe do produto e um acesso
+inicial: `suporte@procedimentos.app` / `12345678`, em `/admin/login`.
+
+Pelo painel `/admin` dá para cadastrar prefeituras, ligar e desligar módulos, configurar timbre
+dos documentos e criar o primeiro usuário ADMIN de cada prefeitura — o que antes só era possível
+por SQL.
 
 ## Usuários de teste (um por nível)
 

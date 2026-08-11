@@ -1,6 +1,10 @@
 import { Badge, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import type { Supplier } from "@/features/suppliers/types";
+import type { Unit } from "@/features/units/types";
+import { RowActions } from "@/shared/ui/RowActions";
+import { deleteContract } from "../actions";
+import { ContractEditForm } from "./ContractEditForm";
 import type { Contract } from "../types";
 
 const validityTone = (endDate: string) => {
@@ -13,16 +17,24 @@ const validityTone = (endDate: string) => {
 export const ContractTable = ({
   contracts,
   suppliers,
+  units,
+  canWrite,
 }: {
   contracts: Contract[];
   suppliers: Supplier[];
+  units: Unit[];
+  canWrite: boolean;
 }) => {
   const supplierName = (id: string) =>
     suppliers.find((supplier) => supplier.id === id)?.razaoSocial ?? "—";
 
   return (
     <Table
-      columns={["Número", "Fornecedor", "Vigência", "Valor", "Situação"]}
+      columns={
+        canWrite
+          ? ["Número", "Fornecedor", "Vigência", "Valor", "Situação", ""]
+          : ["Número", "Fornecedor", "Vigência", "Valor", "Situação"]
+      }
       isEmpty={contracts.length === 0}
       emptyMessage="Nenhum contrato cadastrado."
     >
@@ -39,6 +51,17 @@ export const ContractTable = ({
             <td>
               <Badge tone={validity.tone}>{validity.label}</Badge>
             </td>
+            {canWrite ? (
+              <td>
+                <RowActions
+                  label={`contrato ${contract.numero}`}
+                  editTitle="Editar contrato"
+                  editForm={<ContractEditForm contract={contract} units={units} />}
+                  onDelete={deleteContract.bind(null, contract.id)}
+                  deleteWarning="Contrato com solicitação, ordem ou saldo consumido não pode ser excluído."
+                />
+              </td>
+            ) : null}
           </tr>
         );
       })}

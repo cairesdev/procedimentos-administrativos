@@ -2,16 +2,22 @@
 
 import { Button } from "@/shared/ui/button";
 import { InputField } from "@/shared/ui/form-field";
-import { Alert } from "@/shared/ui/layout";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createUnit } from "../actions";
+import { createUnit, updateUnit } from "../actions";
 import { unitSchema, type UnitInput } from "../schemas";
+import type { Unit } from "../types";
 
-export const UnitForm = () => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<UnitInput>({
+export const UnitForm = ({ unit }: { unit?: Unit }) => {
+  const closeModal = useModalClose();
+  const isEditing = Boolean(unit);
+
+  const { form, onSubmit, isSubmitting } = useResourceForm<UnitInput>({
     schema: unitSchema,
-    defaultValues: { nome: "", sigla: "" },
-    action: createUnit,
+    defaultValues: { nome: unit?.nome ?? "", sigla: unit?.sigla ?? "" },
+    action: (values) => (unit ? updateUnit(unit.id, values) : createUnit(values)),
+    resetOnSuccess: !isEditing,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -32,12 +38,9 @@ export const UnitForm = () => {
         {...form.register("sigla")}
       />
 
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
-
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar unidade"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar unidade"}
         </Button>
       </div>
     </form>

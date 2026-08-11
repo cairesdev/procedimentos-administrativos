@@ -10,13 +10,18 @@ export type NavLink = {
 
 export type NavSection = {
   group: string;
+  icon: NavIcon;
   links: NavLink[];
 };
 
-// O menu é filtrado por permissão do papel e por módulo habilitado na prefeitura.
+export type NavIcon = "inbox" | "fileSignature" | "building" | "shieldCheck";
+
+// Organizado pela etapa do processo, não por tabela do banco.
+// Licitação e ata convivem como origens — nenhuma é fixada como caminho único.
 export const navigation: NavSection[] = [
   {
-    group: "Processos",
+    group: "Meu trabalho",
+    icon: "inbox",
     links: [
       { href: "/processos", label: "Fila do setor", permission: "processes:read", module: "PROCESSOS" },
       { href: "/solicitacoes", label: "Solicitações", permission: "requests:read", module: "PROCESSOS" },
@@ -24,14 +29,17 @@ export const navigation: NavSection[] = [
   },
   {
     group: "Contratação",
+    icon: "fileSignature",
     links: [
       { href: "/licitacoes", label: "Licitações", permission: "bids:read", module: "PROCESSOS" },
+      { href: "/atas", label: "Atas de registro", permission: "bids:read", module: "PROCESSOS" },
       { href: "/contratos", label: "Contratos", permission: "contracts:read", module: "PROCESSOS" },
       { href: "/fornecedores", label: "Fornecedores", permission: "suppliers:read" },
     ],
   },
   {
-    group: "Cadastros",
+    group: "Organização",
+    icon: "building",
     links: [
       { href: "/unidades", label: "Unidades", permission: "units:read" },
       { href: "/setores", label: "Setores", permission: "sectors:read" },
@@ -40,6 +48,7 @@ export const navigation: NavSection[] = [
   },
   {
     group: "Controle",
+    icon: "shieldCheck",
     links: [
       { href: "/fluxos", label: "Fluxo de processos", permission: "workflows:read", module: "PROCESSOS" },
       { href: "/auditoria", label: "Auditoria", permission: "audit:read" },

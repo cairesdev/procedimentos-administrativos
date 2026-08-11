@@ -3,16 +3,34 @@
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField } from "@/shared/ui/form-field";
 import { Alert } from "@/shared/ui/layout";
+import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createDepartment } from "../actions";
+import { createDepartment, updateDepartment } from "../actions";
 import { departmentSchema, type DepartmentInput } from "../schemas";
-import type { Sector } from "../types";
+import type { Department, Sector } from "../types";
 
-export const DepartmentForm = ({ sectors }: { sectors: Sector[] }) => {
-  const { form, onSubmit, result, isSubmitting } = useResourceForm<DepartmentInput>({
+export const DepartmentForm = ({
+  sectors,
+  department,
+  sectorId,
+}: {
+  sectors: Sector[];
+  department?: Department;
+  sectorId?: string;
+}) => {
+  const closeModal = useModalClose();
+  const isEditing = Boolean(department);
+  const { form, onSubmit, isSubmitting } = useResourceForm<DepartmentInput>({
     schema: departmentSchema,
-    defaultValues: { setorId: "", nome: "", categoriaAtendimento: "" },
-    action: createDepartment,
+    defaultValues: {
+      setorId: sectorId ?? "",
+      nome: department?.nome ?? "",
+      categoriaAtendimento: department?.categoriaAtendimento ?? "",
+    },
+    action: (values) =>
+      department ? updateDepartment(department.id, values) : createDepartment(values),
+    resetOnSuccess: !isEditing,
+    onDone: closeModal,
   });
 
   const { errors } = form.formState;
@@ -23,14 +41,18 @@ export const DepartmentForm = ({ sectors }: { sectors: Sector[] }) => {
 
   return (
     <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
-      <SelectField
-        label="Setor"
-        required
-        emptyOption="Selecione"
-        options={sectors.map((sector) => ({ value: sector.id, label: sector.nome }))}
-        error={errors.setorId?.message}
-        {...form.register("setorId")}
-      />
+      {sectorId ? (
+        <input type="hidden" {...form.register("setorId")} />
+      ) : (
+        <SelectField
+          label="Setor"
+          required
+          emptyOption="Selecione"
+          options={sectors.map((sector) => ({ value: sector.id, label: sector.nome }))}
+          error={errors.setorId?.message}
+          {...form.register("setorId")}
+        />
+      )}
       <InputField
         label="Nome"
         required
@@ -46,12 +68,9 @@ export const DepartmentForm = ({ sectors }: { sectors: Sector[] }) => {
         {...form.register("categoriaAtendimento")}
       />
 
-      {result.error ? <Alert tone="error">{result.error}</Alert> : null}
-      {result.success ? <Alert tone="success">{result.success}</Alert> : null}
-
       <div>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Cadastrar departamento"}
+          {isSubmitting ? "Salvando…" : isEditing ? "Salvar alterações" : "Cadastrar departamento"}
         </Button>
       </div>
     </form>

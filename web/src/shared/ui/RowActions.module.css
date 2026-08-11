@@ -1,0 +1,57 @@
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.action {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--raio);
+  color: var(--texto_apagado);
+  cursor: pointer;
+  padding: 5px;
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao), color var(--transicao), border-color var(--transicao);
+}
+
+.action:hover {
+  background: var(--superficie);
+  border-color: var(--borda);
+  color: var(--acao);
+}
+
+.action_danger:hover {
+  background: var(--perigo_suave);
+  border-color: #f2cfcc;
+  color: var(--perigo);
+}
+
+.confirm {
+  display: grid;
+  gap: 14px;
+}
+
+.confirm_message {
+  font-size: 14px;
+}
+
+.confirm_target {
+  font-weight: 500;
+}
+
+.confirm_actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.danger_button {
+  background: var(--perigo);
+}
+
+.danger_button:hover:not(:disabled) {
+  background: #9c2820;
+}

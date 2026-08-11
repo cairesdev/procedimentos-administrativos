@@ -2,7 +2,8 @@ import { listSuppliers } from "@/features/suppliers/queries";
 import { SupplierForm } from "@/features/suppliers/components/SupplierForm";
 import { SupplierTable } from "@/features/suppliers/components/SupplierTable";
 import { requirePermission } from "@/shared/auth/guards";
-import { Card, Columns, PageHeader } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { ModalTrigger } from "@/shared/ui/Modal";
 
 export default async function SuppliersPage() {
   const viewer = await requirePermission("suppliers:read");
@@ -13,19 +14,22 @@ export default async function SuppliersPage() {
       <PageHeader
         title="Fornecedores"
         subtitle="Cadastro global, compartilhado entre as prefeituras"
+        action={
+          viewer.can("suppliers:write") ? (
+            <ModalTrigger
+              label="Novo fornecedor"
+              title="Novo fornecedor"
+              description="Alterações neste cadastro valem para todas as prefeituras e ficam registradas em histórico."
+            >
+              <SupplierForm />
+            </ModalTrigger>
+          ) : null
+        }
       />
 
-      <Columns>
-        <Card title={`${suppliers.length} encontrados`} padded={false}>
-          <SupplierTable suppliers={suppliers} />
-        </Card>
-
-        {viewer.can("suppliers:write") ? (
-          <Card title="Novo fornecedor">
-            <SupplierForm />
-          </Card>
-        ) : null}
-      </Columns>
+      <Card title={`${suppliers.length} encontrados`} padded={false}>
+        <SupplierTable suppliers={suppliers} canWrite={viewer.can("suppliers:write")} />
+      </Card>
     </>
   );
 }

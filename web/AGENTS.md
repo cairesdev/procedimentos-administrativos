@@ -63,6 +63,16 @@ serve para esconder o que o usuário não pode fazer.
 - Formulários: `useResourceForm` (React Hook Form + Zod) valida no cliente; a server action
   revalida com o mesmo schema antes de chamar a API e devolve `{ error }` ou `{ success }`.
 - Toda action que altera dados chama `revalidatePath` da rota afetada.
+- **Server → Client não aceita função como prop.** `ModalTrigger` recebe JSX pronto em `children`;
+  o formulário obtém o fechamento com `useModalClose()` (contexto), nunca por render prop.
+  Exceção: server actions são serializáveis — passe com `.bind(null, id)`
+  (`onDelete={deleteUnit.bind(null, unit.id)}`), nunca `() => deleteUnit(id)`.
+- Ações de linha usam `RowActions` (editar em modal, inativar e excluir com confirmação).
+  A exclusão é definitiva e só passa sem vínculo; o caminho normal é inativar.
+- Formulários servem para criar e editar: recebem o registro opcional
+  (`<UnitForm unit={unit} />`) e alternam a action e o rótulo do botão.
+- Valores monetários usam `CurrencyField` (guarda número, exibe 1.234,56);
+  seleção múltipla usa `TagSelect`; listas de itens usam `ItemsEditor` (aceita colar planilha).
 - Cores, espaçamento e raios saem das variáveis em `globals.css` — nunca hex solto no componente.
 
 ## Verificação

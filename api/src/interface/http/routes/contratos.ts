@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { container } from "../../../container";
-import { criarContratoSchema } from "../schemas/processos";
+import { criarContratoSchema, editarContratoSchema } from "../schemas/processos";
 
 export const contratosRouter = Router();
 
@@ -32,6 +32,25 @@ contratosRouter.get("/:id/itens", async (req, res, next) => {
   try {
     const itens = await container.contratos.listarItens(req.sessao!.orgaoId, req.params.id!);
     res.json(itens);
+  } catch (error) {
+    next(error);
+  }
+});
+
+contratosRouter.patch("/:id", async (req, res, next) => {
+  try {
+    const dados = editarContratoSchema.parse(req.body);
+    await container.editarContrato.executar(req.sessao!.orgaoId, req.params.id!, dados);
+    res.json({ message: "Contrato atualizado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+contratosRouter.delete("/:id", async (req, res, next) => {
+  try {
+    await container.editarContrato.remover(req.sessao!.orgaoId, req.params.id!);
+    res.json({ message: "Contrato excluído e processo cancelado" });
   } catch (error) {
     next(error);
   }
