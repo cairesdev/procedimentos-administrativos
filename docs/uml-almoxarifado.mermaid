@@ -1,0 +1,143 @@
+erDiagram
+    %% ============ MODULO ALMOXARIFADO / ALIMENTACAO ESCOLAR ============
+    %% Estoque generico com tipos personalizaveis (alimentacao escolar, limpeza...)
+    %% Saida por lote FEFO sugerido com ajuste manual; validade so alerta, nunca bloqueia
+    %% Reserva de estoque com expiracao configuravel (liga/desliga + prazo)
+    %% Toda etapa gera comprovante documental
+    %% LOCAL e cadastro compartilhado (ver uml-entidades.mermaid)
+
+    ORGAO ||--o{ ALMOXARIFADO : possui
+    ORGAO ||--o{ TIPO_ESTOQUE : personaliza
+    ALMOXARIFADO ||--o{ LOCAL : atende "escola/hospital vinculado a um almoxarifado"
+    ALMOXARIFADO ||--o{ REMESSA_ESTOQUE : recebe
+    TIPO_ESTOQUE ||--o{ REMESSA_ESTOQUE : classifica
+    ORGAO ||--o{ PRODUTO : cataloga
+    REMESSA_ESTOQUE ||--o{ LOTE : gera
+    PRODUTO ||--o{ LOTE : agrupa
+    LOCAL ||--o{ SOLICITACAO_ESTOQUE : solicita
+    USUARIO ||--o{ SOLICITACAO_ESTOQUE : autora "inclui nutricionista pela unidade"
+    SOLICITACAO_ESTOQUE ||--o{ SOLICITACAO_ESTOQUE_ITEM : contem
+    PRODUTO ||--o{ SOLICITACAO_ESTOQUE_ITEM : pedido
+    SOLICITACAO_ESTOQUE_ITEM ||--o{ LIBERACAO_LOTE : atendido_por
+    LOTE ||--o{ LIBERACAO_LOTE : origem "multi-remessa discriminada no documento"
+    LOCAL ||--o{ ESTOQUE_LOCAL : mantem
+    PRODUTO ||--o{ ESTOQUE_LOCAL : saldo
+    LOCAL ||--o{ CONSUMO : declara
+    LOCAL ||--o{ DEVOLUCAO : devolve
+    ALMOXARIFADO ||--o{ DEVOLUCAO : aceita
+    ALMOXARIFADO ||--o{ TRANSFERENCIA_ALMOX : envia
+    ALMOXARIFADO ||--o{ TRANSFERENCIA_ALMOX : recebe
+    ALMOXARIFADO ||--o{ AJUSTE_ESTOQUE : corrige
+    SOLICITACAO_ESTOQUE ||--o{ COMPROVANTE : documenta
+
+    ALMOXARIFADO {
+        uuid id PK "N por prefeitura"
+        uuid orgao_id FK
+        string nome
+        bool ativo
+    }
+    TIPO_ESTOQUE {
+        uuid id PK "categoria personalizavel"
+        uuid orgao_id FK
+        string nome "alimentacao escolar, limpeza..."
+        bool ativo
+    }
+    REMESSA_ESTOQUE {
+        uuid id PK
+        uuid almoxarifado_id FK
+        string codigo UK "pesquisavel"
+        string titulo
+        date data
+        string local_armazenado
+        uuid tipo_estoque_id FK
+    }
+    PRODUTO {
+        uuid id PK "agregador - saldo total soma lotes"
+        uuid orgao_id FK
+        string nome
+        string unidade_medida "KG LITRO PCT..."
+    }
+    LOTE {
+        uuid id PK "importado por planilha ou manual"
+        uuid remessa_id FK
+        uuid produto_id FK
+        decimal quantidade
+        decimal saldo
+        date data_validade "opcional - alerta sem bloqueio"
+    }
+    SOLICITACAO_ESTOQUE {
+        uuid id PK
+        uuid local_solicitante_id FK
+        uuid autor_usuario_id FK
+        uuid tipo_estoque_id FK "filtro por categoria"
+        enum status "SOLICITADA | LIBERADA | EM_TRANSITO | RECEBIDA | RECUSADA | CANCELADA | EXPIRADA"
+        datetime data
+        datetime reserva_expira_em "configuravel liga/desliga + prazo"
+    }
+    SOLICITACAO_ESTOQUE_ITEM {
+        uuid id PK
+        uuid solicitacao_id FK
+        uuid produto_id FK
+        decimal quantidade_solicitada "gera reserva"
+        decimal saldo_da_unidade_no_momento "exibido ao responsavel"
+        decimal quantidade_liberada "decisao do responsavel"
+        decimal quantidade_recebida "confirmacao da unidade - pode divergir"
+    }
+    LIBERACAO_LOTE {
+        uuid id PK "FEFO sugerido, ajustavel"
+        uuid solicitacao_item_id FK
+        uuid lote_id FK
+        decimal quantidade
+    }
+    ESTOQUE_LOCAL {
+        uuid id PK "saldo por produto na unidade"
+        uuid local_id FK
+        uuid produto_id FK
+        decimal saldo
+    }
+    CONSUMO {
+        uuid id PK
+        uuid local_id FK
+        uuid produto_id FK
+        decimal quantidade
+        enum forma "ITEM_A_ITEM | DECLARACAO_PERIODICA"
+        date periodo_inicio "quando declaracao periodica"
+        date periodo_fim
+        datetime data
+    }
+    DEVOLUCAO {
+        uuid id PK "volta ao estoque apos aceite"
+        uuid local_id FK
+        uuid almoxarifado_id FK
+        uuid produto_id FK
+        decimal quantidade
+        enum status "PENDENTE | ACEITA | RECUSADA"
+        uuid aceito_por_usuario_id FK
+        datetime data
+    }
+    TRANSFERENCIA_ALMOX {
+        uuid id PK
+        uuid almoxarifado_origem_id FK
+        uuid almoxarifado_destino_id FK
+        uuid lote_id FK
+        decimal quantidade
+        datetime data
+    }
+    AJUSTE_ESTOQUE {
+        uuid id PK "inventario/contagem fisica"
+        uuid almoxarifado_id FK
+        uuid lote_id FK
+        decimal saldo_anterior
+        decimal saldo_corrigido
+        enum motivo "PERDA | AVARIA | VENCIDO | ERRO_LANCAMENTO"
+        uuid usuario_id FK
+        datetime data
+    }
+    COMPROVANTE {
+        uuid id PK "gerado em cada etapa"
+        uuid solicitacao_id FK "ou outra referencia"
+        enum tipo "SOLICITACAO | LIBERACAO | RECEBIMENTO | DEVOLUCAO | ABASTECIMENTO"
+        string numero
+        string arquivo
+        datetime data
+    }

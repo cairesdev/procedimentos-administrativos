@@ -1,0 +1,355 @@
+erDiagram
+    %% ============ ORGANIZACIONAL ============
+    ORGAO ||--o{ ORGAO_MODULO : habilita
+    ORGAO ||--|| ORGAO_DOCUMENTO_CONFIG : timbra
+    ORGAO ||--o{ DOCUMENTO_EMITIDO : emite
+    ORGAO ||--o{ UNIDADE : possui
+    ORGAO ||--o{ SETOR : possui
+    ORGAO ||--o{ USUARIO : possui
+    ORGAO ||--o{ LOCAL : possui
+    UNIDADE ||--o{ LOCAL : reaproveitada_como
+    SETOR ||--o{ DEPARTAMENTO : contem
+    USUARIO ||--o{ LOTACAO : atua_por
+    UNIDADE ||--o{ LOTACAO : lota
+    SETOR ||--o{ LOTACAO : lota
+    DEPARTAMENTO ||--o{ LOTACAO : lota
+    USUARIO ||--o{ USUARIO_PERMISSAO : recebe
+
+    ORGAO {
+        uuid id PK
+        string cnpj UK
+        string nome
+        string uf
+        string municipio
+        string endereco
+        bool ativo
+    }
+    ORGAO_MODULO {
+        uuid id PK
+        uuid orgao_id FK
+        enum modulo "PROCESSOS | FROTAS | PATRIMONIO | ALMOXARIFADO | ..."
+        bool ativo "controlado pelo super admin"
+        datetime data_ativacao
+        datetime data_desativacao
+    }
+    ORGAO_DOCUMENTO_CONFIG {
+        uuid orgao_id PK "timbragem dos documentos emitidos"
+        string arquivo_logomarca
+        string cabecalho_timbre
+        string rodape_timbre
+    }
+    DOCUMENTO_EMITIDO {
+        uuid id PK "transversal - relatorios declaracoes comprovantes"
+        uuid orgao_id FK
+        enum modulo "PROCESSOS | FROTAS | PATRIMONIO | ALMOXARIFADO"
+        string tipo "comprovante declaracao relatorio..."
+        string codigo UK "pesquisavel - vira QR code interno"
+        uuid referencia_id "registro de origem no modulo"
+        string arquivo
+        datetime data
+    }
+    LOCAL {
+        uuid id PK "cadastro compartilhado entre modulos"
+        uuid orgao_id FK
+        uuid unidade_id FK "opcional - unidade reaproveitada"
+        string codigo "ex 001 - prefixo do tombamento"
+        string nome "escola hospital ginasio..."
+        bool ativo
+    }
+    UNIDADE {
+        uuid id PK
+        uuid orgao_id FK
+        string nome
+        string sigla
+        bool ativo
+    }
+    SETOR {
+        uuid id PK
+        uuid orgao_id FK
+        string nome
+        enum tipo "PROTOCOLO | COMPRAS | CONTROLADORIA | ALIMENTACAO_ESCOLAR | ..."
+        bool ativo
+    }
+    DEPARTAMENTO {
+        uuid id PK
+        uuid setor_id FK
+        string nome
+        string categoria_atendimento
+        bool ativo
+    }
+    USUARIO {
+        uuid id PK
+        uuid orgao_id FK
+        string nome
+        string email
+        string senha_hash
+        enum papel_base "ADMIN | GESTOR | SERVIDOR | PROTOCOLO | COMPRAS | CONTROLADORIA | NUTRICIONISTA"
+        bool ativo
+    }
+    LOTACAO {
+        uuid id PK
+        uuid usuario_id FK
+        uuid unidade_id FK "opcional - um dos tres"
+        uuid setor_id FK "opcional - um dos tres"
+        uuid departamento_id FK "opcional - um dos tres"
+    }
+    USUARIO_PERMISSAO {
+        uuid id PK
+        uuid usuario_id FK
+        string permissao
+        bool concedida
+    }
+
+    %% ============ CADASTROS ============
+    FORNECEDOR ||--o{ FORNECEDOR_HISTORICO : registra
+    FORNECEDOR ||--o{ REQUERENTE : referenciado_por
+    ORGAO ||--o{ REQUERENTE : possui
+
+    FORNECEDOR {
+        uuid id PK "cadastro GLOBAL - sem orgao_id"
+        string documento UK "CNPJ ou CPF"
+        string razao_social
+        string endereco
+        string email
+        string telefone
+        string inscricao_estadual
+        string inscricao_municipal
+    }
+    FORNECEDOR_HISTORICO {
+        uuid id PK
+        uuid fornecedor_id FK
+        string alterado_por "prefeitura ou link externo"
+        json dados_anteriores
+        datetime data
+    }
+    REQUERENTE {
+        uuid id PK
+        uuid orgao_id FK
+        enum tipo "FORNECEDOR | CIDADAO | OUTRO_ORGAO | SERVIDOR"
+        uuid fornecedor_id FK "quando tipo FORNECEDOR"
+        string documento
+        string nome
+        string contato_email
+        string contato_telefone
+    }
+
+    %% ============ CONTRATACAO ============
+    ORGAO ||--o{ LICITACAO : possui
+    LICITACAO }o--o{ UNIDADE : destina
+    LICITACAO ||--o{ ATA_REGISTRO_PRECOS : origina
+    ATA_REGISTRO_PRECOS ||--o{ ATA_ITEM : contem
+    LICITACAO ||--o{ CONTRATO : origina
+    ATA_REGISTRO_PRECOS ||--o{ CONTRATO : origina
+    FORNECEDOR ||--o{ CONTRATO : firmado_com
+    CONTRATO }o--o{ UNIDADE : destina
+    CONTRATO ||--o{ DOTACAO_ORCAMENTARIA : detalha
+    CONTRATO ||--o{ ITEM : contem
+    CONTRATO ||--o{ CONTRATO_CAMPO_EXTRA : define
+    ATA_ITEM ||--o{ ITEM : copia_para
+    ITEM ||--o{ ITEM_VALOR_EXTRA : preenche
+    CONTRATO_CAMPO_EXTRA ||--o{ ITEM_VALOR_EXTRA : tipifica
+    PROCESSO ||--|| CONTRATO : formaliza
+
+    LICITACAO {
+        uuid id PK
+        uuid orgao_id FK
+        string numero "numero/ano ex 025-2026"
+        string resumo
+        string objeto
+        enum modalidade "lista fixa do sistema"
+        date data_assinatura
+        decimal valor_total
+    }
+    ATA_REGISTRO_PRECOS {
+        uuid id PK
+        uuid orgao_id FK
+        uuid licitacao_id FK
+        string numero "numero/ano proprio"
+        string objeto
+        date data_assinatura
+        date data_vigencia "vencida gera alerta"
+        decimal valor_total
+    }
+    ATA_ITEM {
+        uuid id PK
+        uuid ata_id FK
+        string produto
+        string descricao
+        string unidade_medida
+        string marca
+        decimal quantidade
+        decimal valor_unitario
+        decimal valor_total
+    }
+    CONTRATO {
+        uuid id PK
+        uuid orgao_id FK
+        uuid processo_id FK "gerado no cadastro"
+        string numero "numero/ano"
+        uuid fornecedor_id FK "cadastro global"
+        uuid licitacao_id FK "origem - um dos dois"
+        uuid ata_id FK "origem - um dos dois"
+        date data_inicio
+        date data_fim "vencido alerta sem bloqueio"
+        decimal valor_total
+        string fiscal_nome_matricula "texto livre"
+    }
+    DOTACAO_ORCAMENTARIA {
+        uuid id PK
+        uuid contrato_id FK
+        string orgao_codigo
+        string unidade_orcamentaria
+        string funcao_programatica
+        string natureza_despesa
+        string fonte_recurso
+        decimal valor
+    }
+    ITEM {
+        uuid id PK
+        uuid contrato_id FK
+        uuid origem_ata_item_id FK "rastro da ata"
+        string produto
+        string descricao
+        string unidade_medida
+        string marca
+        decimal quantidade_total
+        decimal saldo_disponivel "reserva libera so por acao explicita"
+        enum modo_medicao "UNIDADE | PERCENTUAL | VALOR - fixo por item"
+        decimal valor_unitario
+        decimal valor_total
+    }
+    CONTRATO_CAMPO_EXTRA {
+        uuid id PK
+        uuid contrato_id FK
+        string nome "ex cronograma_entrega"
+        enum tipo_dado "TEXTO | NUMERO | DATA"
+    }
+    ITEM_VALOR_EXTRA {
+        uuid id PK
+        uuid item_id FK
+        uuid campo_extra_id FK
+        string valor
+    }
+
+    %% ============ TRAMITACAO ============
+    ORGAO ||--o{ PROCESSO : possui
+    REQUERENTE ||--o{ PROCESSO : abre
+    PROCESSO ||--o{ DESPACHO : registra
+    PROCESSO ||--o{ ANEXO : recebe
+    DESPACHO ||--o{ ANEXO : acompanha
+    SETOR ||--o{ DESPACHO : emite
+    USUARIO ||--o{ DESPACHO : autora
+    LOTACAO ||--o{ DESPACHO : contexto
+    ORGAO ||--o{ FLUXO_CONFIGURACAO : configura
+    FLUXO_CONFIGURACAO ||--o{ FLUXO_ETAPA : ordena
+    SETOR ||--o{ FLUXO_ETAPA : destino
+    DEPARTAMENTO ||--o{ FLUXO_ETAPA : destino_granular
+
+    PROCESSO {
+        uuid id PK
+        uuid orgao_id FK
+        string numero_protocolo UK "sequencial/ano por orgao"
+        string numero_processo_adm UK "sequencial/ano separado"
+        enum tipo_processo "SOLICITACAO_ITENS | PEDIDO_INFORMACAO | ATENDIMENTO_EXTERNO | CONTRATO | OUTRO"
+        uuid requerente_id FK "opcional"
+        uuid setor_atual_id FK
+        uuid departamento_atual_id FK "opcional"
+        enum status "ABERTO | TRAMITANDO | ENCERRADO | CANCELADO"
+        datetime data_abertura
+        datetime data_encerramento
+    }
+    DESPACHO {
+        uuid id PK "historico imutavel"
+        uuid processo_id FK
+        uuid setor_id FK
+        uuid departamento_id FK "opcional"
+        uuid usuario_id FK
+        uuid lotacao_id FK "em nome de qual lotacao agiu"
+        enum tipo "ANALISE | ENCAMINHAMENTO | PARECER | ORDEM_FORNECIMENTO | CANCELAMENTO"
+        string texto
+        datetime data
+    }
+    ANEXO {
+        uuid id PK
+        uuid processo_id FK
+        uuid despacho_id FK "opcional"
+        string tipo_documento
+        string arquivo "nome do objeto no storage"
+        uuid enviado_por_usuario_id FK "interno OU externo"
+        uuid enviado_por_requerente_id FK "interno OU externo"
+        datetime data
+    }
+    FLUXO_CONFIGURACAO {
+        uuid id PK
+        uuid orgao_id FK
+        enum tipo_processo
+        bool permite_override_usuario "se liberado escolhe destino"
+    }
+    FLUXO_ETAPA {
+        uuid id PK
+        uuid fluxo_id FK
+        int ordem
+        uuid setor_id FK
+        uuid departamento_id FK "opcional - destino granular"
+        int prazo_dias "configuravel"
+        bool prazo_ativo "liga/desliga expiracao"
+        bool visibilidade_estendida "ve processos fora da etapa"
+    }
+
+    %% ============ SOLICITACAO ============
+    PROCESSO ||--|| SOLICITACAO : especializa
+    UNIDADE ||--o{ SOLICITACAO : solicita
+    SOLICITACAO ||--o{ SOLICITACAO_ITEM : contem
+    ITEM ||--o{ SOLICITACAO_ITEM : consome
+    PROCESSO ||--o{ PARECER : recebe
+    USUARIO ||--o{ PARECER : emite
+    PROCESSO ||--o{ ORDEM_FORNECIMENTO : gera
+    CONTRATO ||--o{ ORDEM_FORNECIMENTO : referencia
+    ORGAO ||--o{ AUDITORIA_LOG : registra
+    PROCESSO ||--o{ AUDITORIA_LOG : rastreia
+
+    SOLICITACAO {
+        uuid processo_id PK "1:1 com processo"
+        uuid unidade_solicitante_id FK
+        enum situacao "RASCUNHO | ENVIADA - rascunho sem reserva nem numeros"
+    }
+    SOLICITACAO_ITEM {
+        uuid id PK
+        uuid solicitacao_id FK
+        uuid item_id FK "rastreia contrato via item"
+        decimal quantidade_solicitada
+        decimal valor_calculado
+    }
+    PARECER {
+        uuid id PK "por processo inteiro"
+        uuid processo_id FK
+        bool favoravel
+        string justificativa
+        uuid usuario_id FK
+        datetime data
+    }
+    ORDEM_FORNECIMENTO {
+        uuid id PK "uma por contrato/fornecedor"
+        uuid processo_id FK
+        uuid contrato_id FK
+        string numero
+        json dados_contratante "nome cnpj endereco inscricoes"
+        string numero_empenho
+        string numero_requisicao
+        string projeto_atividade
+        string elemento_despesa
+        string fonte_recurso
+        decimal valor
+        int numero_parcelas
+        string numero_nota_fiscal "unico por fornecedor na prefeitura"
+        datetime data
+    }
+    AUDITORIA_LOG {
+        uuid id PK "so eventos de negocio"
+        uuid orgao_id FK
+        uuid processo_id FK "opcional"
+        uuid usuario_id FK
+        string tipo_evento "despacho parecer cancelamento aprovacao mudanca_setor"
+        json detalhes
+        datetime data
+    }

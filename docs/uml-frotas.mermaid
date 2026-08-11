@@ -1,0 +1,87 @@
+erDiagram
+    %% ============ MODULO CONTROLE DE FROTAS ============
+    %% Fluxo proprio simples: solicitada -> aprovada/recusada/remarcada -> retirada -> finalizada
+    %% Compartilhamento de veiculos entre secretarias: configuravel por prefeitura
+    %% Conflito de agenda: sistema avisa, gestor decide
+    %% Nota de combustivel: registro independente (sem vinculo com contratos nesta fase)
+
+    ORGAO ||--o{ VEICULO : possui
+    ORGAO ||--o{ MOTORISTA : possui
+    ORGAO ||--|| FROTA_CONFIG : configura
+    UNIDADE ||--o{ VEICULO : dona "nulo = frota central"
+    UNIDADE ||--o{ VIAGEM : solicita
+    VEICULO ||--o{ VIAGEM : usado_em
+    VEICULO ||--o{ MANUTENCAO : passa_por
+    MOTORISTA ||--o{ VIAGEM : designado
+    USUARIO ||--o{ MOTORISTA : vinculo_opcional
+    VIAGEM ||--o| RETIRADA : registra
+    VIAGEM ||--o{ ABASTECIMENTO : ocorre
+    VIAGEM ||--o| FINALIZACAO : encerra
+
+    FROTA_CONFIG {
+        uuid orgao_id PK
+        bool compartilha_entre_secretarias "veiculo de uma secretaria solicitavel por outra"
+    }
+    VEICULO {
+        uuid id PK
+        uuid orgao_id FK
+        uuid unidade_id FK "nulo = frota central da prefeitura"
+        string placa UK
+        int ano
+        string modelo
+        string tipo
+        decimal quilometragem_atual "atualizada na finalizacao"
+        bool ativo
+    }
+    MOTORISTA {
+        uuid id PK
+        uuid orgao_id FK
+        uuid usuario_id FK "opcional"
+        string nome
+        string cnh
+        string categoria_cnh
+        date validade_cnh "alerta de vencimento"
+    }
+    VIAGEM {
+        uuid id PK
+        uuid orgao_id FK
+        uuid unidade_solicitante_id FK
+        uuid veiculo_id FK
+        uuid motorista_id FK
+        datetime data_hora_desejada
+        datetime data_hora_remarcada "proposta pelo gestor"
+        string motivo
+        string responsavel
+        enum status "SOLICITADA | APROVADA | RECUSADA | REMARCADA | RETIRADA | FINALIZADA | CANCELADA"
+    }
+    RETIRADA {
+        uuid viagem_id PK "1:1 com viagem"
+        decimal km_inicial
+        datetime data_hora
+        uuid motorista_id FK "confirmado na retirada"
+        enum nota_combustivel_tipo "LITRO | VALOR - opcional"
+        decimal nota_combustivel_quantidade
+    }
+    ABASTECIMENTO {
+        uuid id PK
+        uuid viagem_id FK
+        datetime data
+        decimal litros
+        decimal valor
+    }
+    FINALIZACAO {
+        uuid viagem_id PK "1:1 com viagem"
+        datetime data_hora
+        decimal km_final
+        string sinistro "texto livre - opcional"
+    }
+    MANUTENCAO {
+        uuid id PK "aberta = veiculo indisponivel"
+        uuid veiculo_id FK
+        enum tipo "PREVENTIVA | CORRETIVA"
+        date data_inicio
+        date data_fim "nula = em andamento"
+        string descricao
+        decimal custo
+        string oficina
+    }

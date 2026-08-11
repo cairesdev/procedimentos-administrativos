@@ -1,0 +1,90 @@
+erDiagram
+    %% ============ MODULO CONTROLE DE PATRIMONIO ============
+    %% Codigo de tombamento fixo desde a origem: <codigo_local>-<sequencial_por_local> (ex 001-214)
+    %% Local atual e campo separado, com historico via transferencias
+    %% Transferencia exige aceite do local de destino
+    %% LOCAL e cadastro compartilhado (ver uml-entidades.mermaid)
+
+    ORGAO ||--o{ CATEGORIA_BEM : cadastra
+    ORGAO ||--o{ BEM : possui
+    LOCAL ||--o{ BEM : tombado_em
+    LOCAL ||--o{ BEM : localiza_atualmente
+    CATEGORIA_BEM ||--o{ BEM : classifica
+    REMESSA_PATRIMONIO ||--o{ REMESSA_LOTE : define
+    REMESSA_LOTE ||--o{ BEM : gera
+    FORNECEDOR ||--o{ REMESSA_PATRIMONIO : entrega
+    CONTRATO ||--o{ REMESSA_PATRIMONIO : origem_opcional
+    BEM ||--o{ TRANSFERENCIA_BEM : movimentado
+    BEM ||--o| BAIXA_BEM : baixado
+    LOCAL ||--o{ INVENTARIO : conferido
+    INVENTARIO ||--o{ INVENTARIO_ITEM : lista
+    BEM ||--o{ INVENTARIO_ITEM : conferido_em
+
+    CATEGORIA_BEM {
+        uuid id PK "cadastravel por prefeitura"
+        uuid orgao_id FK
+        string nome "mobiliario informatica eletrodomestico..."
+        bool ativo
+    }
+    BEM {
+        uuid id PK
+        uuid orgao_id FK
+        string codigo_tombamento UK "fixo ex 001-214 - sequencial por local"
+        uuid local_tombamento_id FK "origem do codigo - nunca muda"
+        uuid local_atual_id FK
+        uuid categoria_id FK
+        uuid remessa_lote_id FK "opcional - quando veio por remessa"
+        string nome
+        enum estado_conservacao "NOVO | BOM | DANIFICADO | EM_CONSERTO"
+        enum status "ATIVO | BAIXADO"
+    }
+    REMESSA_PATRIMONIO {
+        uuid id PK
+        uuid orgao_id FK
+        date data
+        uuid fornecedor_id FK "opcional - cadastro global"
+        string nota_fiscal
+        uuid contrato_id FK "opcional - integra com compras"
+        uuid ordem_fornecimento_id FK "opcional"
+    }
+    REMESSA_LOTE {
+        uuid id PK "lancamento em lote ex 400 cadeiras"
+        uuid remessa_id FK
+        uuid categoria_id FK
+        uuid local_destino_id FK
+        string nome_bem
+        int quantidade "gera N bens individuais"
+    }
+    TRANSFERENCIA_BEM {
+        uuid id PK
+        uuid bem_id FK
+        uuid local_origem_id FK
+        uuid local_destino_id FK
+        uuid enviado_por_usuario_id FK
+        datetime data_envio
+        uuid aceito_por_usuario_id FK "aceite do destino"
+        datetime data_aceite
+        enum status "PENDENTE | ACEITA | RECUSADA"
+    }
+    BAIXA_BEM {
+        uuid bem_id PK "1:1 - bem sai do ativo, fica no historico"
+        enum motivo "QUEBRADO | DOADO | EXTRAVIADO | LEILAO | OUTRO"
+        string observacao
+        uuid usuario_id FK
+        datetime data
+    }
+    INVENTARIO {
+        uuid id PK "conferencia fisica periodica"
+        uuid local_id FK
+        date data_inicio
+        date data_conclusao
+        enum status "ABERTO | CONCLUIDO"
+    }
+    INVENTARIO_ITEM {
+        uuid id PK
+        uuid inventario_id FK
+        uuid bem_id FK
+        enum situacao "ENCONTRADO | NAO_ENCONTRADO"
+        enum estado_observado "NOVO | BOM | DANIFICADO | EM_CONSERTO"
+        string observacao "divergencias para tratamento"
+    }
