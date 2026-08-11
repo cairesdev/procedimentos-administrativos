@@ -1,0 +1,154 @@
+import { pool } from "./pool";
+import type { Tx } from "../../application/ports/Transacao";
+import type {
+  DestinoEtapa, NovaOrdemFornecimento, NovoDespacho, ProcessoDetalhe, TramitacaoRepository,
+} from "../../application/ports/TramitacaoRepository";
+
+const COLUNAS_PROCESSO = `
+  id, orgao_id AS "orgaoId", numero_protocolo AS "numeroProtocolo",
+  numero_processo_adm AS "numeroProcessoAdm", tipo_processo AS "tipoProcesso",
+  setor_atual_id AS "setorAtualId", departamento_atual_id AS "departamentoAtualId", status`;
+
+const SQL = {
+  buscarProcesso: `SELECT ${COLUNAS_PROCESSO} FROM processo WHERE orgao_id = $1 AND id = $2`,
+  listarFila: `
+    SELECT ${COLUNAS_PROCESSO} FROM processo
+     WHERE orgao_id = $1
+       AND ($2::uuid IS NULL OR setor_atual_id = $2)
+       AND status IN ('ABERTO', 'TRAMITANDO')
+     ORDER BY data_abertura`,
+  listarDespachos: `
+    SELECT d.id, d.tipo, d.texto, d.data, d.setor_id AS "setorId",
+           d.departamento_id AS "departamentoId", u.nome AS "usuarioNome"
+      FROM despacho d
+      JOIN usuario u ON u.id = d.usuario_id
+     WHERE d.processo_id = $1
+     ORDER BY d.data`,
+  registrarDespacho: `
+    INSERT INTO despacho (processo_id, setor_id, departamento_id, usuario_id, lotacao_id, tipo, texto)
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+  moverProcesso: `
+    UPDATE processo
+       SET setor_atual_id = $2, departamento_atual_id = $3, status = 'TRAMITANDO'
+     WHERE id = $1`,
+  encerrarProcesso: `
+    UPDATE processo SET status = 'ENCERRADO', data_encerramento = now() WHERE id = $1`,
+  lotacaoDoUsuario: `SELECT 1 FROM lotacao WHERE id = $1 AND usuario_id = $2 AND ativo`,
+  ordemDaEtapaAtual: `
+    SELECT fe.ordem
+      FROM fluxo_etapa fe
+      JOIN fluxo_configuracao fc ON fc.id = fe.fluxo_id
+     WHERE fc.orgao_id = $1 AND fc.tipo_processo = $2 AND fe.setor_id = $3
+     ORDER BY fe.ordem LIMIT 1`,
+  etapaSeguinte: `
+    SELECT fe.setor_id AS "setorId", fe.departamento_id AS "departamentoId"
+      FROM fluxo_etapa fe
+      JOIN fluxo_configuracao fc ON fc.id = fe.fluxo_id
+     WHERE fc.orgao_id = $1 AND fc.tipo_processo = $2 AND fe.ordem > $3
+     ORDER BY fe.ordem LIMIT 1`,
+  registrarParecer: `
+    INSERT INTO parecer (processo_id, favoravel, justificativa, usuario_id)
+    VALUES ($1, $2, $3, $4) RETURNING id`,
+  fornecedorDoContrato: `
+    SELECT fornecedor_id AS "fornecedorId" FROM contrato WHERE orgao_id = $1 AND id = $2`,
+  contratoParticipa: `
+    SELECT 1
+      FROM solicitacao s
+      JOIN solicitacao_item si ON si.solicitacao_id = s.id
+      JOIN item i ON i.id = si.item_id
+     WHERE s.processo_id = $1 AND i.contrato_id = $2
+     LIMIT 1`,
+  existeNotaFiscal: `
+    SELECT 1 FROM ordem_fornecimento
+     WHERE orgao_id = $1 AND fornecedor_id = $2 AND numero_nota_fiscal = $3`,
+  criarOrdem: `
+    INSERT INTO ordem_fornecimento
+      (orgao_id, processo_id, contrato_id, fornecedor_id, numero, dados_contratante,
+       numero_empenho, numero_requisicao, projeto_atividade, elemento_despesa,
+       fonte_recurso, valor, numero_parcelas, numero_nota_fiscal)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    RETURNING id`,
+};
+
+export class PostgresTramitacaoRepository implements TramitacaoRepository {
+  buscarProcesso = async (orgaoId: string, processoId: string): Promise<ProcessoDetalhe | null> => {
+    const { rows } = await pool.query(SQL.buscarProcesso, [orgaoId, processoId]);
+    return rows[0] ?? null;
+  };
+
+  listarFila = async (orgaoId: string, setorId?: string): Promise<ProcessoDetalhe[]> => {
+    const { rows } = await pool.query(SQL.listarFila, [orgaoId, setorId ?? null]);
+    return rows;
+  };
+
+  listarDespachos = async (processoId: string): Promise<unknown[]> => {
+    const { rows } = await pool.query(SQL.listarDespachos, [processoId]);
+    return rows;
+  };
+
+  registrarDespacho = async (dados: NovoDespacho, tx: Tx): Promise<string> => {
+    const { rows } = await tx.query(SQL.registrarDespacho, [
+      dados.processoId, dados.setorId, dados.departamentoId ?? null,
+      dados.usuarioId, dados.lotacaoId, dados.tipo, dados.texto ?? null,
+    ]);
+    return rows[0].id;
+  };
+
+  moverProcesso = async (processoId: string, destino: DestinoEtapa, tx: Tx): Promise<void> => {
+    await tx.query(SQL.moverProcesso, [processoId, destino.setorId, destino.departamentoId]);
+  };
+
+  encerrarProcesso = async (processoId: string, tx: Tx): Promise<void> => {
+    await tx.query(SQL.encerrarProcesso, [processoId]);
+  };
+
+  lotacaoPertenceAoUsuario = async (lotacaoId: string, usuarioId: string): Promise<boolean> => {
+    const { rowCount } = await pool.query(SQL.lotacaoDoUsuario, [lotacaoId, usuarioId]);
+    return (rowCount ?? 0) > 0;
+  };
+
+  proximaEtapaApos = async (
+    orgaoId: string, tipoProcesso: string, setorAtualId: string,
+  ): Promise<DestinoEtapa | null> => {
+    const atual = await pool.query(SQL.ordemDaEtapaAtual, [orgaoId, tipoProcesso, setorAtualId]);
+    if (!atual.rows[0]) return null;
+    const { rows } = await pool.query(SQL.etapaSeguinte, [orgaoId, tipoProcesso, atual.rows[0].ordem]);
+    return rows[0] ?? null;
+  };
+
+  registrarParecer = async (
+    processoId: string, favoravel: boolean, justificativa: string | undefined, usuarioId: string, tx: Tx,
+  ): Promise<string> => {
+    const { rows } = await tx.query(SQL.registrarParecer, [
+      processoId, favoravel, justificativa ?? null, usuarioId,
+    ]);
+    return rows[0].id;
+  };
+
+  fornecedorDoContrato = async (orgaoId: string, contratoId: string): Promise<string | null> => {
+    const { rows } = await pool.query(SQL.fornecedorDoContrato, [orgaoId, contratoId]);
+    return rows[0]?.fornecedorId ?? null;
+  };
+
+  contratoParticipaDoProcesso = async (processoId: string, contratoId: string): Promise<boolean> => {
+    const { rowCount } = await pool.query(SQL.contratoParticipa, [processoId, contratoId]);
+    return (rowCount ?? 0) > 0;
+  };
+
+  existeNotaFiscal = async (orgaoId: string, fornecedorId: string, nf: string): Promise<boolean> => {
+    const { rowCount } = await pool.query(SQL.existeNotaFiscal, [orgaoId, fornecedorId, nf]);
+    return (rowCount ?? 0) > 0;
+  };
+
+  criarOrdem = async (dados: NovaOrdemFornecimento, tx: Tx): Promise<string> => {
+    const { rows } = await tx.query(SQL.criarOrdem, [
+      dados.orgaoId, dados.processoId, dados.contratoId, dados.fornecedorId, dados.numero,
+      dados.dadosContratante ? JSON.stringify(dados.dadosContratante) : null,
+      dados.numeroEmpenho ?? null, dados.numeroRequisicao ?? null,
+      dados.projetoAtividade ?? null, dados.elementoDespesa ?? null,
+      dados.fonteRecurso ?? null, dados.valor, dados.numeroParcelas ?? null,
+      dados.numeroNotaFiscal ?? null,
+    ]);
+    return rows[0].id;
+  };
+}
