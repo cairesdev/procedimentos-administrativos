@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { auth } from "@/auth";
 import { logout } from "@/features/auth/actions";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { AssignmentSwitcher } from "@/features/auth/components/AssignmentSwitcher";
+import { getViewer } from "@/shared/auth/guards";
+import { navigation } from "@/shared/auth/navigation";
+import { hasModule } from "@/shared/auth/permissions";
 import { Button } from "@/shared/ui/button";
 import styles from "./dashboard.module.css";
 
@@ -15,35 +17,21 @@ const initials = (name: string): string =>
     .join("")
     .toUpperCase();
 
-const menu = [
-  {
-    group: "Cadastros",
-    links: [
-      { href: "/unidades", label: "Unidades" },
-      { href: "/setores", label: "Setores" },
-      { href: "/usuarios", label: "Usuários" },
-      { href: "/fornecedores", label: "Fornecedores" },
-    ],
-  },
-  {
-    group: "Contratação",
-    links: [
-      { href: "/licitacoes", label: "Licitações" },
-      { href: "/contratos", label: "Contratos" },
-    ],
-  },
-  {
-    group: "Configuração",
-    links: [{ href: "/fluxos", label: "Fluxo de processos" }],
-  },
-];
-
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [session, profile, activeAssignmentId] = await Promise.all([
-    auth(),
+  const [viewer, profile, activeAssignmentId] = await Promise.all([
+    getViewer(),
     getProfile(),
     getActiveAssignmentId(),
   ]);
+
+  const menu = navigation
+    .map((section) => ({
+      ...section,
+      links: section.links.filter(
+        (link) => viewer.can(link.permission) && hasModule(viewer.modules, link.module),
+      ),
+    }))
+    .filter((section) => section.links.length > 0);
 
   return (
     <div className={styles.app}>
@@ -62,9 +50,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className={styles.topbar_right}>
           <AssignmentSwitcher assignments={profile.lotacoes} activeId={activeAssignmentId} />
           <span className={styles.user}>
-            <span className={styles.user_name}>{session?.user.name}</span>
+            <span className={styles.user_name}>{viewer.name}</span>
             <br />
-            <span className={styles.user_role}>{profile.papelBase}</span>
+            <span className={styles.user_role}>{viewer.role}</span>
           </span>
           <form action={logout}>
             <Button type="submit" variant="ghost">

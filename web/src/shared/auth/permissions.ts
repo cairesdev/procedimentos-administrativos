@@ -1,0 +1,74 @@
+import type { ModuleName, Role } from "@/features/auth/types";
+
+// A API continua sendo a autoridade final (papel base + overrides em usuario_permissao).
+// Esta matriz espelha o papel base para esconder o que o usuário não pode fazer.
+export type Permission =
+  | "units:read"
+  | "units:write"
+  | "sectors:read"
+  | "sectors:write"
+  | "users:read"
+  | "users:write"
+  | "suppliers:read"
+  | "suppliers:write"
+  | "bids:read"
+  | "bids:write"
+  | "contracts:read"
+  | "contracts:write"
+  | "workflows:read"
+  | "workflows:write"
+  | "requests:read"
+  | "requests:create"
+  | "processes:read"
+  | "processes:dispatch"
+  | "processes:opinion"
+  | "processes:order"
+  | "audit:read";
+
+const READ_ONLY: Permission[] = [
+  "units:read",
+  "sectors:read",
+  "suppliers:read",
+  "bids:read",
+  "contracts:read",
+  "requests:read",
+  "processes:read",
+];
+
+// Do nível mais amplo ao mais básico.
+const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  ADMIN: [
+    "units:read", "units:write",
+    "sectors:read", "sectors:write",
+    "users:read", "users:write",
+    "suppliers:read", "suppliers:write",
+    "bids:read", "bids:write",
+    "contracts:read", "contracts:write",
+    "workflows:read", "workflows:write",
+    "requests:read", "requests:create",
+    "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
+    "audit:read",
+  ],
+  GESTOR: [
+    ...READ_ONLY,
+    "users:read",
+    "suppliers:write",
+    "bids:write",
+    "contracts:write",
+    "workflows:read",
+    "requests:create",
+    "processes:dispatch",
+    "audit:read",
+  ],
+  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read"],
+  COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order"],
+  PROTOCOLO: [...READ_ONLY, "processes:dispatch"],
+  NUTRICIONISTA: [...READ_ONLY, "requests:create"],
+  SERVIDOR: [...READ_ONLY, "requests:create"],
+};
+
+export const hasPermission = (role: Role, permission: Permission): boolean =>
+  ROLE_PERMISSIONS[role].includes(permission);
+
+export const hasModule = (modules: ModuleName[], required?: ModuleName): boolean =>
+  !required || modules.includes(required);

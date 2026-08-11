@@ -43,6 +43,26 @@ psql procedimentos -f api/db/seed.sql
 Cria a Prefeitura Demo, habilita o módulo PROCESSOS e o admin `admin.demo` / `12345678`.
 Login: `POST /auth/login` `{ "identificador": "admin.demo", "senha": "12345678" }`.
 
+## Usuários de teste (um por nível)
+
+```bash
+psql procedimentos -f api/db/seed_niveis.sql
+```
+
+Cria a Secretaria Municipal de Saúde, os setores Protocolo Geral, Setor de Compras,
+Controladoria Geral e Alimentação Escolar, o fluxo padrão (Protocolo → Compras → Controladoria)
+e os usuários abaixo. Senha de todos: `12345678`.
+
+| Usuário | Papel | Lotação | Alcance no painel |
+| --- | --- | --- | --- |
+| `admin.demo` | ADMIN | Compras + unidade | Tudo, inclusive usuários e fluxo |
+| `gestor.demo` | GESTOR | Secretaria de Saúde | Cadastros e despacho; não cria usuário nem fluxo |
+| `controladoria.demo` | CONTROLADORIA | Controladoria Geral | Parecer e auditoria |
+| `compras.demo` | COMPRAS | Setor de Compras | Contratos, fornecedores e ordem de fornecimento |
+| `protocolo.demo` | PROTOCOLO | Protocolo Geral | Despacho na fila do setor |
+| `nutricao.demo` | NUTRICIONISTA | Alimentação Escolar | Leitura e solicitações |
+| `servidor.demo` | SERVIDOR | Secretaria de Saúde | Leitura e solicitações da sua unidade |
+
 ## Smoke test
 
 Com a API no ar e o seed aplicado:

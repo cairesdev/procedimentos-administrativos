@@ -39,6 +39,19 @@ src/
 Regra: `actions.ts` só exporta funções async ("use server" proíbe outros exports).
 Leituras ficam em `queries.ts`.
 
+## Níveis de acesso
+
+`shared/auth/permissions.ts` guarda a matriz papel → permissões, do mais amplo ao mais básico:
+ADMIN (tudo) · GESTOR · CONTROLADORIA · COMPRAS · PROTOCOLO · NUTRICIONISTA · SERVIDOR.
+A API continua sendo a autoridade final (papel base + `usuario_permissao`); a matriz do front
+serve para esconder o que o usuário não pode fazer.
+
+- Página: `const viewer = await requirePermission("units:read", "PROCESSOS")` — redireciona para
+  `/modulo-indisponivel` se o módulo não estiver habilitado e chama `forbidden()` sem permissão
+  (renderiza `app/forbidden.tsx`; exige `experimental.authInterrupts`).
+- Dentro da página: `viewer.can("units:write")` decide se o formulário aparece.
+- Menu: `shared/auth/navigation.ts` declara permissão e módulo de cada link; o layout filtra.
+
 ## Padrões
 
 - Autenticação: NextAuth v5 Credentials chama `POST /auth/login`, guarda o JWT da API em

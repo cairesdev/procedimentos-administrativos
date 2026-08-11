@@ -1,0 +1,72 @@
+.steps {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--borda);
+  padding-top: 14px;
+}
+
+.steps_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 12px;
+  background: var(--superficie_alt);
+}
+
+.step_order {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--acao_suave);
+  color: var(--acao_escura);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 18px;
+}
+
+.step_body {
+  display: grid;
+  gap: 10px;
+}
+
+.step_flags {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--texto_suave);
+  cursor: pointer;
+}
+
+.remove {
+  background: none;
+  border: none;
+  color: var(--perigo);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.remove:hover {
+  text-decoration: underline;
+}
