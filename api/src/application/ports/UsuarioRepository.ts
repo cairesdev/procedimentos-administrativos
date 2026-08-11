@@ -45,8 +45,10 @@ export type LotacaoDoUsuario = {
 
 export type PerfilUsuario = UsuarioResumo & {
   orgaoId: string;
+  orgaoNome: string;
   username: string;
   lotacoes: LotacaoDoUsuario[];
+  modulos: string[];
 };
 
 export interface UsuarioRepository {

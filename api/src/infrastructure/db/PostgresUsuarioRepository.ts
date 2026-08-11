@@ -22,9 +22,13 @@ const SQL = {
     SELECT id, nome, email, papel_base AS "papelBase", ativo
       FROM usuario WHERE orgao_id = $1 ORDER BY nome`,
   perfil: `
-    SELECT id, orgao_id AS "orgaoId", nome, email, username,
-           papel_base AS "papelBase", ativo
-      FROM usuario WHERE id = $1`,
+    SELECT u.id, u.orgao_id AS "orgaoId", o.nome AS "orgaoNome",
+           u.nome, u.email, u.username, u.papel_base AS "papelBase", u.ativo
+      FROM usuario u
+      JOIN orgao o ON o.id = u.orgao_id
+     WHERE u.id = $1`,
+  modulosDoOrgao: `
+    SELECT modulo FROM orgao_modulo WHERE orgao_id = $1 AND ativo ORDER BY modulo`,
   lotacoesDoUsuario: `
     SELECT l.id, l.unidade_id AS "unidadeId", l.setor_id AS "setorId",
            l.departamento_id AS "departamentoId",
@@ -86,8 +90,15 @@ export class PostgresUsuarioRepository implements UsuarioRepository, FluxoReposi
   buscarPerfil = async (usuarioId: string): Promise<PerfilUsuario | null> => {
     const { rows } = await pool.query(SQL.perfil, [usuarioId]);
     if (!rows[0]) return null;
-    const lotacoes = await pool.query(SQL.lotacoesDoUsuario, [usuarioId]);
-    return { ...rows[0], lotacoes: lotacoes.rows };
+    const [lotacoes, modulos] = await Promise.all([
+      pool.query(SQL.lotacoesDoUsuario, [usuarioId]),
+      pool.query(SQL.modulosDoOrgao, [rows[0].orgaoId]),
+    ]);
+    return {
+      ...rows[0],
+      lotacoes: lotacoes.rows,
+      modulos: modulos.rows.map((linha) => linha.modulo),
+    };
   };
 
   primeiraEtapa = async (orgaoId: string, tipoProcesso: string): Promise<FluxoEtapaDestino | null> => {

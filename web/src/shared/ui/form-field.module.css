@@ -1,0 +1,64 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--texto_suave);
+}
+
+.required {
+  color: var(--perigo);
+}
+
+.control {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font-size: 14px;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.control:hover {
+  border-color: var(--texto_apagado);
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--acao);
+  box-shadow: 0 0 0 3px var(--acao_suave);
+}
+
+.control_invalid {
+  border-color: var(--perigo);
+}
+
+.control_multiple {
+  height: auto;
+  padding: 6px;
+}
+
+.textarea {
+  height: auto;
+  min-height: 76px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--texto_apagado);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--perigo);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}

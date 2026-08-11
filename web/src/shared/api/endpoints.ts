@@ -1,0 +1,16 @@
+export const endpoints = {
+  login: "/auth/login",
+  me: "/auth/eu",
+  units: "/unidades",
+  sectors: "/setores",
+  departments: (sectorId: string) => `/setores/${sectorId}/departamentos`,
+  users: "/usuarios",
+  suppliers: "/fornecedores",
+  bids: "/licitacoes",
+  contracts: "/contratos",
+  contractItems: (contractId: string) => `/contratos/${contractId}/itens`,
+  workflows: (processType: string) => `/fluxos/${processType}`,
+  requests: "/solicitacoes",
+  processes: "/processos",
+  audit: "/auditoria",
+} as const;

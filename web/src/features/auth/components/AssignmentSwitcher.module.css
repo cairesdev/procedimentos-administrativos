@@ -1,0 +1,44 @@
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--texto_suave);
+  white-space: nowrap;
+}
+
+.control {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--lilas_borda);
+  border-radius: 999px;
+  background: var(--lilas_suave);
+  color: #4b3fa8;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color var(--transicao);
+}
+
+.control:hover {
+  border-color: var(--lilas);
+}
+
+.fixed {
+  background: var(--lilas_suave);
+  border: 1px solid var(--lilas_borda);
+  color: #4b3fa8;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.missing {
+  font-size: 12px;
+  color: var(--alerta);
+  background: var(--alerta_suave);
+  padding: 5px 10px;
+  border-radius: 999px;
+}
