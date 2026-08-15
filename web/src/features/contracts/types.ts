@@ -7,7 +7,8 @@ export type Contract = {
   numero: string;
   fornecedorId: string;
   dataInicio: string;
-  dataFim: string;
+  /** Nulo = vigência indeterminada. */
+  dataFim: string | null;
   valorTotal: number;
 };
 
@@ -24,8 +25,4 @@ export type ContractItem = {
   valorTotal: number;
 };
 
-export type CreatedContract = {
-  id: string;
-  numeroProtocolo: string;
-  numeroProcessoAdm: string;
-};
+export type CreatedContract = { id: string };

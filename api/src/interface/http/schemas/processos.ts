@@ -35,7 +35,7 @@ export const criarContratoSchema = z.object({
   licitacaoId: z.string().uuid().optional(),
   ataId: z.string().uuid().optional(),
   dataInicio: z.string().date(),
-  dataFim: z.string().date(),
+  dataFim: z.string().date().optional(),
   valorTotal: z.number().positive(),
   fiscalNomeMatricula: z.string().max(200).optional(),
   unidadesDestinadas: z.array(z.string().uuid()).min(1),
@@ -73,7 +73,7 @@ export const editarLicitacaoSchema = z.object({
 
 export const editarContratoSchema = z.object({
   dataInicio: z.string().date().optional(),
-  dataFim: z.string().date().optional(),
+  dataFim: z.string().date().nullable().optional(),
   fiscalNomeMatricula: z.string().max(200).nullable().optional(),
   unidadesDestinadas: z.array(z.string().uuid()).min(1).optional(),
 });

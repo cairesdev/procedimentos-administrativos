@@ -22,6 +22,8 @@ psql procedimentos -f api/db/migrations/0005_almoxarifado.sql
 psql procedimentos -f api/db/migrations/0006_solicitacao_rascunho.sql
 psql procedimentos -f api/db/migrations/0007_login_identificador.sql
 psql procedimentos -f api/db/migrations/0008_admin_sistema.sql
+psql procedimentos -f api/db/migrations/0009_contrato_sem_processo.sql
+psql procedimentos -f api/db/migrations/0010_contrato_vigencia_aberta.sql
 
 # 2. MinIO (dev)
 docker run -d -p 9000:9000 minio/minio server /data
@@ -43,6 +45,16 @@ psql procedimentos -f api/db/seed.sql
 
 Cria a Prefeitura Demo, habilita o módulo PROCESSOS e o admin `admin.demo` / `12345678`.
 Login: `POST /auth/login` `{ "identificador": "admin.demo", "senha": "12345678" }`.
+
+## Zerar a base
+
+```bash
+psql procedimentos -f api/db/reset.sql
+```
+
+Apaga todos os dados de todas as prefeituras e preserva apenas o administrador master
+(`suporte@procedimentos.app` / `12345678`). A estrutura das tabelas permanece — não é preciso
+rodar as migrations de novo. A partir daí, cadastre a primeira prefeitura por `/admin`.
 
 ## Administração do sistema
 

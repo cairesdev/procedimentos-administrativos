@@ -7,7 +7,8 @@ import { deleteContract } from "../actions";
 import { ContractEditForm } from "./ContractEditForm";
 import type { Contract } from "../types";
 
-const validityTone = (endDate: string) => {
+const validityTone = (endDate: string | null) => {
+  if (!endDate) return { tone: "success" as const, label: "sem prazo" };
   const remainingDays = (new Date(endDate).getTime() - Date.now()) / 86_400_000;
   if (remainingDays < 0) return { tone: "warning" as const, label: "vencido" };
   if (remainingDays <= 30) return { tone: "warning" as const, label: "vence em 30d" };
@@ -45,7 +46,8 @@ export const ContractTable = ({
             <td>{contract.numero}</td>
             <td>{supplierName(contract.fornecedorId)}</td>
             <td>
-              {toDate(contract.dataInicio)} a {toDate(contract.dataFim)}
+              {toDate(contract.dataInicio)}
+              {contract.dataFim ? ` a ${toDate(contract.dataFim)}` : " · indeterminada"}
             </td>
             <td className={numericCell}>{toCurrency(contract.valorTotal)}</td>
             <td>

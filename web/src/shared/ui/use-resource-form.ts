@@ -6,7 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import type { ZodType } from "zod";
 
-export type ActionResult = { error?: string; success?: string };
+export type ActionResult = {
+  error?: string;
+  success?: string;
+  /** Id do registro criado, usado por assistentes que emendam etapas. */
+  id?: string;
+};
 
 type Params<T extends FieldValues> = {
   schema: ZodType<T, T>;
@@ -17,6 +22,8 @@ type Params<T extends FieldValues> = {
   resetOnSuccess?: boolean;
   /** Chamado após salvar — usado para fechar o modal. */
   onDone?: () => void;
+  /** Recebe o registro criado, para o assistente seguir para o próximo passo. */
+  onCreated?: (result: ActionResult) => void;
 };
 
 // Valida no cliente (feedback imediato) e envia para a server action,
@@ -28,6 +35,7 @@ export const useResourceForm = <T extends FieldValues>({
   redirectTo,
   resetOnSuccess = true,
   onDone,
+  onCreated,
 }: Params<T>) => {
   const router = useRouter();
 
@@ -48,6 +56,7 @@ export const useResourceForm = <T extends FieldValues>({
     toast.success(result.success ?? "Registro salvo");
     if (resetOnSuccess) form.reset(defaultValues);
     onDone?.();
+    onCreated?.(result);
     if (redirectTo) router.push(redirectTo);
     router.refresh();
   });

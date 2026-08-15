@@ -10,7 +10,14 @@ import type { Bid } from "@/features/bids/types";
 import { createPriceRecord } from "../actions";
 import { priceRecordSchema, type PriceRecordInput } from "../schemas";
 
-export const PriceRecordForm = ({ bids }: { bids: Bid[] }) => {
+export const PriceRecordForm = ({
+  bids,
+  onCreated,
+}: {
+  bids: Bid[];
+  /** Usado pelo assistente: segue para o passo seguinte em vez de redirecionar. */
+  onCreated?: (record: { id: string; numero: string }) => void;
+}) => {
   const { form, onSubmit, isSubmitting } = useResourceForm<PriceRecordInput>({
     schema: priceRecordSchema as never,
     defaultValues: {
@@ -23,8 +30,10 @@ export const PriceRecordForm = ({ bids }: { bids: Bid[] }) => {
       itens: [emptyItem],
     },
     action: createPriceRecord,
-    redirectTo: "/atas",
+    redirectTo: onCreated ? undefined : "/atas",
     resetOnSuccess: false,
+    onCreated: (result) =>
+      result.id && onCreated?.({ id: result.id, numero: form.getValues("numero") }),
   });
 
   const { errors } = form.formState;

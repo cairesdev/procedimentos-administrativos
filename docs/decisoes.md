@@ -51,9 +51,15 @@ Alterar qualquer um exige nova aprovação do usuário.
   números e sem reserva — ambos só no envio. **Sem edição pós-envio**: cancelar e refazer.
 - **Uma ordem de fornecimento por contrato/fornecedor** do processo. **NF única por
   fornecedor dentro da prefeitura** (orgao_id + fornecedor_id + numero_nota_fiscal).
-- **Contrato nasce com processo do sistema** (números gerados no cadastro). Origem obrigatória:
-  licitação OU ata. Vigência vencida **alerta, não bloqueia**. Fiscal = texto livre nome/matrícula.
-  Dotação orçamentária: N linhas opcionais, dados complementares.
+- **Protocolo e processo administrativo nascem apenas na solicitação.** Licitação, ata e contrato
+  são cadastros de base, sem numeração de processo (revisto em 2026-08-13; a regra anterior, de o
+  contrato abrir processo, foi desfeita pela migration 0009).
+- **Contrato**: origem obrigatória licitação OU ata. **Fim de vigência é opcional** — em branco
+  significa prazo indeterminado (migration 0010). Vigência vencida **alerta, não bloqueia**.
+  Fiscal = texto livre nome/matrícula. Dotação orçamentária: N linhas opcionais.
+- **Assistente "Iniciar procedimento"** é o caminho principal: escolhe a origem, cadastra
+  licitação ou ata e pergunta se o contrato entra agora; cadastro avulso continua disponível nas
+  listagens.
 - **Licitação**: número/ano + campos da reunião; modalidade em lista fixa do sistema.
 - **Ata**: número/ano próprio, vigência (vencida não origina contratos — alerta), itens copiáveis
   ao contrato, **sem fornecedor** (fornecedor só no contrato).

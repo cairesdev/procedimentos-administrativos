@@ -15,10 +15,12 @@ const limparItens = (itens: PriceRecordInput["itens"]) =>
     marca: vazioParaIndefinido(item.marca),
   }));
 
-export const createPriceRecord = async (input: PriceRecordInput) =>
-  runAction(async () => {
+export const createPriceRecord = async (input: PriceRecordInput) => {
+  let created: { id: string } | undefined;
+
+  const result = await runAction(async () => {
     const body = priceRecordSchema.parse(input);
-    await apiRequest(endpoints.priceRecords, {
+    created = await apiRequest<{ id: string }>(endpoints.priceRecords, {
       method: "POST",
       body: {
         ...body,
@@ -28,6 +30,9 @@ export const createPriceRecord = async (input: PriceRecordInput) =>
     });
     revalidatePath("/atas");
   }, "Ata de registro de preços cadastrada");
+
+  return created ? { ...result, id: created.id } : result;
+};
 
 export const updatePriceRecord = async (id: string, input: PriceRecordInput) =>
   runAction(async () => {

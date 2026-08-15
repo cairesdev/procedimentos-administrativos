@@ -6,15 +6,20 @@ import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import { bidSchema, type BidInput } from "./schemas";
 
-export const createBid = async (input: BidInput) =>
-  runAction(async () => {
+export const createBid = async (input: BidInput) => {
+  let created: { id: string } | undefined;
+
+  const result = await runAction(async () => {
     const { resumo, ...body } = bidSchema.parse(input);
-    await apiRequest(endpoints.bids, {
+    created = await apiRequest<{ id: string }>(endpoints.bids, {
       method: "POST",
       body: { ...body, resumo: resumo?.trim() || undefined },
     });
     revalidatePath("/licitacoes");
   }, "Licitação cadastrada");
+
+  return created ? { ...result, id: created.id } : result;
+};
 
 // Depois que a licitação origina contrato ou ata, a API só aceita resumo e objeto.
 export const updateBid = async (id: string, input: BidInput) =>

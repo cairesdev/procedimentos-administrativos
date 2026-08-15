@@ -26,7 +26,7 @@ export const ContractEditForm = ({
     schema: contractEditSchema as never,
     defaultValues: {
       dataInicio: contract.dataInicio.slice(0, 10),
-      dataFim: contract.dataFim.slice(0, 10),
+      dataFim: contract.dataFim?.slice(0, 10) ?? "",
       fiscalNomeMatricula: "",
       unidadesDestinadas: selectedUnits,
     },
@@ -54,7 +54,7 @@ export const ContractEditForm = ({
         <InputField
           label="Fim da vigência"
           type="date"
-          required
+          hint="Em branco: vigência indeterminada."
           error={errors.dataFim?.message}
           {...form.register("dataFim")}
         />

@@ -6,8 +6,15 @@ import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
 
-export default async function NewContractPage() {
+type NewContractPageProps = {
+  searchParams: Promise<{ origem?: string; origemId?: string }>;
+};
+
+export default async function NewContractPage({
+  searchParams,
+}: NewContractPageProps) {
   await requirePermission("contracts:write", "PROCESSOS");
+  const { origem, origemId } = await searchParams;
   const [units, suppliers, bids, priceRecords] = await Promise.all([
     listUnits(),
     listSuppliers(),
@@ -26,6 +33,11 @@ export default async function NewContractPage() {
         suppliers={suppliers}
         bids={bids}
         priceRecords={priceRecords}
+        presetOrigin={
+          origemId && (origem === "ATA" || origem === "LICITACAO")
+            ? { origem, id: origemId }
+            : undefined
+        }
       />
     </>
   );

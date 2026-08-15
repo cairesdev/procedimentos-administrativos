@@ -28,23 +28,26 @@ export const ContractWizard = ({
   suppliers,
   bids,
   priceRecords,
+  presetOrigin,
 }: {
   units: Unit[];
   suppliers: Supplier[];
   bids: Bid[];
   priceRecords: PriceRecord[];
+  /** Vem do assistente: origem já escolhida no passo anterior. */
+  presetOrigin?: { origem: "LICITACAO" | "ATA"; id: string };
 }) => {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(presetOrigin ? 1 : 0);
 
   const { form, onSubmit, isSubmitting } = useResourceForm<ContractInput>({
     schema: contractSchema as never,
     defaultValues: {
-      origem: "LICITACAO",
+      origem: presetOrigin?.origem ?? "LICITACAO",
       numero: "",
       fornecedorId: "",
-      licitacaoId: "",
-      ataId: "",
+      licitacaoId: presetOrigin?.origem === "LICITACAO" ? presetOrigin.id : "",
+      ataId: presetOrigin?.origem === "ATA" ? presetOrigin.id : "",
       dataInicio: "",
       dataFim: "",
       valorTotal: 0,
@@ -134,7 +137,7 @@ export const ContractWizard = ({
               <InputField
                 label="Fim da vigência"
                 type="date"
-                required
+                hint="Em branco: vigência indeterminada."
                 error={errors.dataFim?.message}
                 {...form.register("dataFim")}
               />
@@ -184,9 +187,9 @@ export const ContractWizard = ({
         <Card title="Revisão">
           <div style={{ display: "grid", gap: "14px" }}>
             <Alert tone="info">
-              Ao confirmar, o sistema gera o número de protocolo e o processo
-              administrativo, e cada item nasce com saldo igual à quantidade
-              contratada.
+              Ao confirmar, cada item nasce com saldo igual à quantidade contratada. O número de
+              protocolo e o processo administrativo só são gerados quando uma unidade envia a
+              primeira solicitação.
             </Alert>
 
             <SummaryGrid
@@ -205,10 +208,11 @@ export const ContractWizard = ({
                 },
                 {
                   label: "Vigência",
-                  value:
-                    values.dataInicio && values.dataFim
-                      ? `${toDate(values.dataInicio)} a ${toDate(values.dataFim)}`
-                      : "—",
+                  value: values.dataInicio
+                    ? `${toDate(values.dataInicio)} ${
+                        values.dataFim ? `a ${toDate(values.dataFim)}` : "· sem prazo definido"
+                      }`
+                    : "—",
                 },
                 {
                   label: "Valor total",

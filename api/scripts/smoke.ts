@@ -234,8 +234,8 @@ const executar = async () => {
     admin,
   );
   conferir(
-    !!contrato.numeroProtocolo && !!contrato.numeroProcessoAdm,
-    `contrato nasce com processo (${contrato.numeroProtocolo} / ${contrato.numeroProcessoAdm})`,
+    !!contrato.id && !("numeroProtocolo" in contrato),
+    "contrato é cadastro de base: não abre processo administrativo",
   );
 
   const itens = await chamar(

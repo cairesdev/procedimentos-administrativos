@@ -15,7 +15,9 @@ export default async function NewRequestPage() {
   ]);
 
   // Só contratos vigentes entram na montagem do pedido.
-  const active = contracts.filter((contract) => new Date(contract.dataFim) >= new Date());
+  const active = contracts.filter(
+    (contract) => !contract.dataFim || new Date(contract.dataFim) >= new Date(),
+  );
 
   const withItems: ContractWithItems[] = await Promise.all(
     active.map(async (contract) => ({

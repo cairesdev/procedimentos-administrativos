@@ -17,10 +17,13 @@ export const BidForm = ({
   units,
   bid,
   selectedUnits = [],
+  onCreated,
 }: {
   units: Unit[];
   bid?: Bid;
   selectedUnits?: string[];
+  /** Usado pelo assistente: segue para o passo seguinte em vez de redirecionar. */
+  onCreated?: (record: { id: string; numero: string }) => void;
 }) => {
   const isEditing = Boolean(bid);
   const closeModal = useModalClose();
@@ -36,9 +39,11 @@ export const BidForm = ({
       unidadesDestinadas: selectedUnits,
     },
     action: (values) => (bid ? updateBid(bid.id, values) : createBid(values)),
-    redirectTo: isEditing ? undefined : "/licitacoes",
+    redirectTo: isEditing || onCreated ? undefined : "/licitacoes",
     resetOnSuccess: false,
     onDone: closeModal,
+    onCreated: (result) =>
+      result.id && onCreated?.({ id: result.id, numero: form.getValues("numero") }),
   });
 
   const { errors } = form.formState;

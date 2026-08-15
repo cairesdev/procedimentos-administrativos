@@ -18,13 +18,14 @@ export const createContract = async (input: ContractInput) => {
   let created: CreatedContract | undefined;
 
   const result = await runAction(async () => {
-    const { origem, licitacaoId, ataId, itens, fiscalNomeMatricula, ...contract } =
+    const { origem, licitacaoId, ataId, itens, fiscalNomeMatricula, dataFim, ...contract } =
       contractSchema.parse(input);
 
     created = await apiRequest<CreatedContract>(endpoints.contracts, {
       method: "POST",
       body: {
         ...contract,
+        dataFim: vazioParaIndefinido(dataFim),
         fiscalNomeMatricula: vazioParaIndefinido(fiscalNomeMatricula),
         licitacaoId: origem === "LICITACAO" ? licitacaoId : undefined,
         ataId: origem === "ATA" ? ataId : undefined,
@@ -40,18 +41,20 @@ export const createContract = async (input: ContractInput) => {
     revalidatePath("/contratos");
   }, "Contrato cadastrado");
 
-  return created
-    ? { success: `Contrato cadastrado — protocolo ${created.numeroProtocolo}` }
-    : result;
+  return created ? { success: "Contrato cadastrado" } : result;
 };
 
 // Valor, número e itens ficam de fora: solicitações emitidas dependem deles.
 export const updateContract = async (id: string, input: ContractEditInput) =>
   runAction(async () => {
-    const { fiscalNomeMatricula, ...body } = contractEditSchema.parse(input);
+    const { fiscalNomeMatricula, dataFim, ...body } = contractEditSchema.parse(input);
     await apiRequest(`${endpoints.contracts}/${id}`, {
       method: "PATCH",
-      body: { ...body, fiscalNomeMatricula: vazioParaIndefinido(fiscalNomeMatricula) },
+      body: {
+        ...body,
+        dataFim: vazioParaIndefinido(dataFim) ?? null,
+        fiscalNomeMatricula: vazioParaIndefinido(fiscalNomeMatricula) ?? null,
+      },
     });
     revalidatePath("/contratos");
   }, "Contrato atualizado");

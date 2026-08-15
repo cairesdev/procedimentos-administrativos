@@ -31,6 +31,7 @@ export const navigation: NavSection[] = [
     group: "Contratação",
     icon: "fileSignature",
     links: [
+      { href: "/iniciar", label: "Iniciar procedimento", permission: "bids:write", module: "PROCESSOS" },
       { href: "/licitacoes", label: "Licitações", permission: "bids:read", module: "PROCESSOS" },
       { href: "/atas", label: "Atas de registro", permission: "bids:read", module: "PROCESSOS" },
       { href: "/contratos", label: "Contratos", permission: "contracts:read", module: "PROCESSOS" },

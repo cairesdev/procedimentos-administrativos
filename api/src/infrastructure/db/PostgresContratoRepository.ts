@@ -12,9 +12,9 @@ import type {
 const SQL = {
   existeNumero: `SELECT 1 FROM contrato WHERE orgao_id = $1 AND numero = $2`,
   criar: `
-    INSERT INTO contrato (orgao_id, processo_id, numero, fornecedor_id, licitacao_id, ata_id,
+    INSERT INTO contrato (orgao_id, numero, fornecedor_id, licitacao_id, ata_id,
                           data_inicio, data_fim, valor_total, fiscal_nome_matricula)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id`,
   vincularUnidade: `INSERT INTO contrato_unidade (contrato_id, unidade_id) VALUES ($1, $2)`,
   criarItem: `
@@ -35,8 +35,8 @@ const SQL = {
   atualizar: `
     UPDATE contrato
        SET data_inicio = COALESCE($3, data_inicio),
-           data_fim = COALESCE($4, data_fim),
-           fiscal_nome_matricula = CASE WHEN $5::boolean THEN $6 ELSE fiscal_nome_matricula END
+           data_fim = CASE WHEN $4::boolean THEN $5 ELSE data_fim END,
+           fiscal_nome_matricula = CASE WHEN $6::boolean THEN $7 ELSE fiscal_nome_matricula END
      WHERE orgao_id = $1 AND id = $2`,
   limparUnidades: `DELETE FROM contrato_unidade WHERE contrato_id = $1`,
   vinculos: `
@@ -72,13 +72,12 @@ export class PostgresContratoRepository implements ContratoRepository {
   criar = async (dados: NovoContrato, tx: Tx): Promise<string> => {
     const { rows } = await tx.query(SQL.criar, [
       dados.orgaoId,
-      dados.processoId,
       dados.numero,
       dados.fornecedorId,
       dados.licitacaoId ?? null,
       dados.ataId ?? null,
       dados.dataInicio,
-      dados.dataFim,
+      dados.dataFim ?? null,
       dados.valorTotal,
       dados.fiscalNomeMatricula ?? null,
     ]);
@@ -121,7 +120,8 @@ export class PostgresContratoRepository implements ContratoRepository {
 
   atualizar = async (orgaoId: string, id: string, dados: EdicaoContrato): Promise<void> => {
     await pool.query(SQL.atualizar, [
-      orgaoId, id, dados.dataInicio ?? null, dados.dataFim ?? null,
+      orgaoId, id, dados.dataInicio ?? null,
+      dados.dataFim !== undefined, dados.dataFim ?? null,
       dados.fiscalNomeMatricula !== undefined, dados.fiscalNomeMatricula ?? null,
     ]);
 

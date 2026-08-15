@@ -13,13 +13,12 @@ export type NovoItemContrato = {
 
 export type NovoContrato = {
   orgaoId: string;
-  processoId: string;
   numero: string;
   fornecedorId: string;
   licitacaoId?: string;
   ataId?: string;
   dataInicio: string;
-  dataFim: string;
+  dataFim?: string;
   valorTotal: number;
   fiscalNomeMatricula?: string;
   unidadesDestinadas: string[];
@@ -31,7 +30,8 @@ export type ContratoResumo = {
   numero: string;
   fornecedorId: string;
   dataInicio: string;
-  dataFim: string;
+  /** Nulo = vigência indeterminada. */
+  dataFim: string | null;
   valorTotal: number;
 };
 
@@ -52,12 +52,12 @@ export type ItemComSaldo = {
 // porque solicitações já emitidas dependem deles.
 export type EdicaoContrato = {
   dataInicio?: string;
-  dataFim?: string;
+  dataFim?: string | null;
   fiscalNomeMatricula?: string | null;
   unidadesDestinadas?: string[];
 };
 
-export type ContratoDetalhe = ContratoResumo & { processoId: string };
+export type ContratoDetalhe = ContratoResumo & { processoId: string | null };
 
 export interface ContratoRepository {
   existeNumero(orgaoId: string, numero: string): Promise<boolean>;

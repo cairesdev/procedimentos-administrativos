@@ -21,7 +21,7 @@ export const contractSchema = z
     licitacaoId: z.string().optional(),
     ataId: z.string().optional(),
     dataInicio: z.string().min(1, "Informe a data de início"),
-    dataFim: z.string().min(1, "Informe a data de fim"),
+    dataFim: z.string().optional(),
     valorTotal: z.coerce.number<number>().positive("Informe o valor do contrato"),
     fiscalNomeMatricula: z.string().max(200).optional(),
     unidadesDestinadas: z.array(z.uuid()).min(1, "Selecione ao menos uma unidade"),
@@ -31,7 +31,7 @@ export const contractSchema = z
     message: "Selecione a licitação ou a ata de origem",
     path: ["licitacaoId"],
   })
-  .refine((data) => new Date(data.dataFim) >= new Date(data.dataInicio), {
+  .refine((data) => !data.dataFim || new Date(data.dataFim) >= new Date(data.dataInicio), {
     message: "Fim da vigência não pode ser anterior ao início",
     path: ["dataFim"],
   });
@@ -42,11 +42,11 @@ export type ContractItemInput = z.input<typeof itemSchema>;
 export const contractEditSchema = z
   .object({
     dataInicio: z.string().min(1, "Informe a data de início"),
-    dataFim: z.string().min(1, "Informe a data de fim"),
+    dataFim: z.string().optional(),
     fiscalNomeMatricula: z.string().max(200).optional(),
     unidadesDestinadas: z.array(z.uuid()).min(1, "Selecione ao menos uma unidade"),
   })
-  .refine((data) => new Date(data.dataFim) >= new Date(data.dataInicio), {
+  .refine((data) => !data.dataFim || new Date(data.dataFim) >= new Date(data.dataInicio), {
     message: "Fim da vigência não pode ser anterior ao início",
     path: ["dataFim"],
   });
