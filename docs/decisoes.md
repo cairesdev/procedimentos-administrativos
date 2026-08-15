@@ -74,7 +74,15 @@ cadastro próprio (CNH, categoria, validade, alerta). Manutenção como históri
 indisponível). Nota de combustível por LITRO ou VALOR, registro independente de contratos. Conflito
 de agenda só avisa — gestor decide. Sinistro texto livre. Extras: agenda visual + relatórios de uso.
 
-## Módulo Patrimônio (modelado, não implementado)
+## Navegação: um sistema por módulo (implementado)
+
+Cada módulo é um **sistema à parte**, com URL, navegação e cor próprias — nenhuma tela cita
+tela de outro módulo. A raiz `/` é um hub que lista só os sistemas liberados para o papel e para
+a prefeitura. Prefixos: `/processos`, `/patrimonio`, `/administracao` (unidades, setores e
+usuários, que servem a todos os sistemas). O `WorkspaceShell` injeta a cor de destaque do módulo
+e redireciona para `/modulo-indisponivel` se a prefeitura não tiver o módulo.
+
+## Módulo Patrimônio (API + telas implementadas na 1ª fatia)
 
 Código de tombamento **fixo desde a origem**: `<código do local>-<sequencial por local>` (001-214);
 local atual é campo separado. Categorias de bem por prefeitura. Estados de conservação + baixa
@@ -82,6 +90,18 @@ formal com motivo. Remessa com origem opcional (fornecedor/contrato/ordem). Lote
 individuais. **Transferência exige aceite do destino** (PENDENTE→ACEITA/RECUSADA). Inventário
 periódico por local com divergências. Fora desta fase: valor de aquisição, fotos/QR físico, termo
 de responsável.
+
+**Exclusão deixa buraco na numeração**: apagar uma entrada apaga os bens dela, mas o contador do
+local **não é estornado** — tombamento não se reaproveita, porque a etiqueta pode já estar colada no
+bem. Excluir entrada ou bem é bloqueado (422) se algum deles já foi conferido em inventário.
+**Editar bem** alcança só nome e categoria: código é definitivo e local muda por transferência.
+**Editar entrada** alcança só os dados da nota (data, fornecedor, NF) — lotes não, os bens já
+nasceram tombados.
+
+**1ª fatia entregue**: locais, categorias, entrada em lote com tombamento sequencial por local e
+inventário periódico com folha de conferência. **Transferência entre locais e baixa formal ficaram
+para a fatia seguinte** — a tela de bens é somente leitura por enquanto. O código do local não pode
+ser editado depois de criado, porque já compõe o tombamento dos bens.
 
 ## Módulo Almoxarifado / Alimentação Escolar (modelado, não implementado)
 

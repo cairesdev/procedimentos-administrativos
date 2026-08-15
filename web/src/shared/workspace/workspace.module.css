@@ -1,0 +1,137 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borda);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.switcher {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid var(--borda);
+  display: grid;
+  place-items: center;
+  color: var(--texto_suave);
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.switcher:hover {
+  background: var(--acao_suave);
+  color: var(--acao);
+}
+
+.workspace_name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.org_mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--acao_suave);
+  color: var(--acao_escura);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.org_name {
+  font-size: 12px;
+  color: var(--texto_apagado);
+}
+
+.topbar_right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user {
+  text-align: right;
+  line-height: 1.25;
+}
+
+.user_name {
+  font-size: 13px;
+}
+
+.user_role {
+  font-size: 11px;
+  color: var(--texto_apagado);
+  text-transform: lowercase;
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+}
+
+.sidebar {
+  background: var(--superficie);
+  border-right: 1px solid var(--borda);
+  padding: 14px 10px;
+}
+
+.sidebar_group {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--texto_apagado);
+  padding: 10px 10px 5px;
+}
+
+.sidebar_link {
+  display: block;
+  font-size: 13.5px;
+  color: var(--texto_suave);
+  padding: 8px 10px;
+  border-radius: var(--raio);
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.sidebar_link:hover {
+  background: var(--superficie_alt);
+  color: var(--texto);
+}
+
+.content {
+  padding: 22px 24px;
+  max-width: 1180px;
+}
+
+@media (max-width: 800px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--borda);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .sidebar_group {
+    display: none;
+  }
+}

@@ -1,0 +1,104 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.search {
+  flex: 1 1 220px;
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font: inherit;
+  background: var(--superficie);
+}
+
+.state_select {
+  padding: 6px 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font: inherit;
+  background: var(--superficie);
+}
+
+.choice {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.choice button {
+  padding: 5px 10px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--texto_suave);
+}
+
+.choice_found[data-selected="true"] {
+  border-color: var(--sucesso);
+  background: var(--sucesso_suave);
+  color: var(--sucesso);
+  font-weight: 600;
+}
+
+.choice_missing[data-selected="true"] {
+  border-color: var(--perigo);
+  background: var(--perigo_suave);
+  color: var(--perigo);
+  font-weight: 600;
+}
+
+.note {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font: inherit;
+  font-size: 13px;
+  background: var(--superficie);
+}
+
+.page_size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--texto_suave);
+}
+
+.page_size select {
+  padding: 6px 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font: inherit;
+  background: var(--superficie);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid var(--borda);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.counter {
+  font-size: 13px;
+  color: var(--texto_suave);
+}

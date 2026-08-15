@@ -24,6 +24,7 @@ psql procedimentos -f api/db/migrations/0007_login_identificador.sql
 psql procedimentos -f api/db/migrations/0008_admin_sistema.sql
 psql procedimentos -f api/db/migrations/0009_contrato_sem_processo.sql
 psql procedimentos -f api/db/migrations/0010_contrato_vigencia_aberta.sql
+psql procedimentos -f api/db/migrations/0011_papel_patrimonio.sql
 
 # 2. MinIO (dev)
 docker run -d -p 9000:9000 minio/minio server /data

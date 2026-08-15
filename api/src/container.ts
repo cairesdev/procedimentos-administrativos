@@ -32,6 +32,8 @@ import { EditarUsuario } from "./application/usuario/EditarUsuario";
 import { ManterFornecedor } from "./application/fornecedor/ManterFornecedor";
 import { PostgresAdminSistemaRepository } from "./infrastructure/db/PostgresAdminSistemaRepository";
 import { AdministrarSistema } from "./application/admin/AdministrarSistema";
+import { PostgresPatrimonioRepository } from "./infrastructure/db/PostgresPatrimonioRepository";
+import { GerenciarPatrimonio } from "./application/patrimonio/GerenciarPatrimonio";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -45,9 +47,12 @@ const tramitacao = new PostgresTramitacaoRepository();
 const auditoria = new PostgresAuditoriaRepository();
 const atas = new PostgresAtaRepository();
 const adminSistema = new PostgresAdminSistemaRepository();
+const patrimonio = new PostgresPatrimonioRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 
 export const container = {
+  patrimonio,
+  gerenciarPatrimonio: new GerenciarPatrimonio(patrimonio, auditoria, executarEmTransacao),
   adminSistema,
   administrarSistema: new AdministrarSistema(adminSistema, usuarios),
   licitacoes,

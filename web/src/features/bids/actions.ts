@@ -15,7 +15,7 @@ export const createBid = async (input: BidInput) => {
       method: "POST",
       body: { ...body, resumo: resumo?.trim() || undefined },
     });
-    revalidatePath("/licitacoes");
+    revalidatePath("/processos/licitacoes");
   }, "Licitação cadastrada");
 
   return created ? { ...result, id: created.id } : result;
@@ -29,11 +29,11 @@ export const updateBid = async (id: string, input: BidInput) =>
       method: "PATCH",
       body: { ...body, resumo: resumo?.trim() || null },
     });
-    revalidatePath("/licitacoes");
+    revalidatePath("/processos/licitacoes");
   }, "Licitação atualizada");
 
 export const deleteBid = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.bids}/${id}`, { method: "DELETE" });
-    revalidatePath("/licitacoes");
+    revalidatePath("/processos/licitacoes");
   }, "Licitação excluída");

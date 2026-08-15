@@ -10,7 +10,11 @@ export type TipoEvento =
   | "PARECER_EMITIDO"
   | "ORDEM_EMITIDA"
   | "ANEXO_ADICIONADO"
-  | "ANEXO_REMOVIDO";
+  | "ANEXO_REMOVIDO"
+  | "BENS_TOMBADOS"
+  | "ENTRADA_PATRIMONIO_EXCLUIDA"
+  | "BEM_EXCLUIDO"
+  | "INVENTARIO_CONCLUIDO";
 
 export type EventoAuditoria = {
   orgaoId: string;

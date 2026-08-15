@@ -18,7 +18,7 @@ export default async function BidsPage() {
         subtitle="Uma das origens possíveis para atas e contratos"
         action={
           viewer.can("bids:write") ? (
-            <Link href="/licitacoes/nova">
+            <Link href="/processos/licitacoes/nova">
               <Button type="button">
                 <Plus size={15} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "6px" }} />
                 Nova licitação

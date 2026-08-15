@@ -56,7 +56,7 @@ export const ContractWizard = ({
       itens: [emptyItem],
     },
     action: createContract,
-    redirectTo: "/contratos",
+    redirectTo: "/processos/contratos",
     resetOnSuccess: false,
   });
 
@@ -234,7 +234,7 @@ export const ContractWizard = ({
           type="button"
           variant="secondary"
           onClick={() =>
-            step === 0 ? router.push("/contratos") : setStep(step - 1)
+            step === 0 ? router.push("/processos/contratos") : setStep(step - 1)
           }
         >
           {step === 0 ? "Cancelar" : "Voltar"}

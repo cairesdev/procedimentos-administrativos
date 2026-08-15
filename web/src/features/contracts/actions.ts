@@ -38,7 +38,7 @@ export const createContract = async (input: ContractInput) => {
         })),
       },
     });
-    revalidatePath("/contratos");
+    revalidatePath("/processos/contratos");
   }, "Contrato cadastrado");
 
   return created ? { success: "Contrato cadastrado" } : result;
@@ -56,11 +56,11 @@ export const updateContract = async (id: string, input: ContractEditInput) =>
         fiscalNomeMatricula: vazioParaIndefinido(fiscalNomeMatricula) ?? null,
       },
     });
-    revalidatePath("/contratos");
+    revalidatePath("/processos/contratos");
   }, "Contrato atualizado");
 
 export const deleteContract = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.contracts}/${id}`, { method: "DELETE" });
-    revalidatePath("/contratos");
+    revalidatePath("/processos/contratos");
   }, "Contrato excluído e processo cancelado");

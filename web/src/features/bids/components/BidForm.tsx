@@ -39,7 +39,7 @@ export const BidForm = ({
       unidadesDestinadas: selectedUnits,
     },
     action: (values) => (bid ? updateBid(bid.id, values) : createBid(values)),
-    redirectTo: isEditing || onCreated ? undefined : "/licitacoes",
+    redirectTo: isEditing || onCreated ? undefined : "/processos/licitacoes",
     resetOnSuccess: false,
     onDone: closeModal,
     onCreated: (result) =>

@@ -20,5 +20,5 @@ export const saveWorkflow = async (input: WorkflowInput) =>
         })),
       },
     });
-    revalidatePath("/fluxos");
+    revalidatePath("/processos/fluxos");
   }, "Fluxo salvo");

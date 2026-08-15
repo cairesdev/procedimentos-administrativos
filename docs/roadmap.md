@@ -1,6 +1,6 @@
 # Roadmap / estado do projeto
 
-Atualizado: 2026-08-11 (handoff para novo agente).
+Atualizado: 2026-08-14.
 
 ## Pronto
 
@@ -45,6 +45,27 @@ importação de itens colando planilha, fila do setor, montagem de solicitação
 despacho, parecer e ordem de fornecimento. Painel `/admin` para a equipe do produto: prefeituras,
 módulos, timbre e primeiro administrador.
 
+**API módulo Patrimônio** — `/patrimonio/*` (papel PATRIMONIO na migration 0011):
+
+| Rota | Regra central |
+| --- | --- |
+| CRUD /patrimonio/locais | código só números, imutável após criar (prefixo do tombamento); exclusão travada por bens/inventários |
+| CRUD /patrimonio/categorias | exclusão travada por bens |
+| GET/POST /patrimonio/remessas | lote gera N bens; sequencial por local com UPSERT `contador + quantidade`; audita BENS_TOMBADOS |
+| PATCH/DELETE /patrimonio/remessas/:id | edita só a nota; exclusão apaga os bens sem estornar o contador, travada por conferência (422); audita ENTRADA_PATRIMONIO_EXCLUIDA |
+| GET /patrimonio/bens | filtros local e status |
+| PATCH/DELETE /patrimonio/bens/:id | edita nome e categoria; exclusão travada por conferência; audita BEM_EXCLUIDO |
+| GET/POST /patrimonio/inventarios | um aberto por local; lista montada dos bens ATIVOS do local |
+| POST /:id/conferencias | upsert por (inventário, bem); `situacao` nula = ainda não conferido |
+| POST /:id/concluir | audita INVENTARIO_CONCLUIDO |
+
+**Web dividido em sistemas** — hub em `/` + `/processos`, `/patrimonio` e `/administracao`, cada um
+com navegação e cor próprias (`shared/auth/modules.ts`, `shared/workspace/WorkspaceShell`).
+Telas do patrimônio: locais, categorias, entradas (assistente origem → lotes → revisão, com prévia
+do tombamento e cadastro de categoria sem sair do passo) e inventários (folha de conferência
+paginada, marcação em lote sobre o filtro e conclusão travada enquanto houver bem não gravado).
+Entradas e bens têm editar/excluir com o aviso de que o tombamento não volta.
+
 ## Pendente (ordem sugerida)
 
 1. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos
@@ -56,11 +77,13 @@ módulos, timbre e primeiro administrador.
 4. **Documentos emitidos** — comprovantes/declarações com timbre da prefeitura + QR do código
    (`documento_emitido`, `orgao_documento_config`).
 5. **Prazos de etapa** — sinalizar processos vencidos na fila (prazo_dias/prazo_ativo já existem).
-6. **Painel web** (`web/`, Next.js, vazio) — admin + rotas públicas no mesmo app (decisão tomada).
-7. **Testes automatizados** — nada escrito ainda.
-8. **Módulos Frotas, Patrimônio, Almoxarifado** — schema pronto, API não iniciada. Seguir
-    levantamento em `docs/decisoes.md` + UML de cada um.
-9. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
+6. **Patrimônio — 2ª fatia**: transferência entre locais com aceite do destino e baixa formal com
+   motivo (modelados em `decisoes.md`, ainda sem API nem tela).
+7. **Tela de auditoria** — API pronta (`GET /auditoria`), sem tela; link tirado do menu até existir.
+8. **Testes automatizados** — só o smoke test do módulo Processos.
+9. **Módulos Frotas e Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
+   `docs/decisoes.md` + UML de cada um.
+10. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Dívidas conhecidas
 
@@ -68,3 +91,4 @@ módulos, timbre e primeiro administrador.
 - `listarFila` não filtra por departamento (só setor).
 - Sem paginação nas listagens.
 - Sem rate-limit/refresh-token no auth.
+- Filtro de bens é `<form method="get">` (recarrega a página); sem paginação em nenhuma listagem.

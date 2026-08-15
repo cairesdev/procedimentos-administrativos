@@ -113,7 +113,7 @@ export const ProcessStarter = ({
                 type="button"
                 onClick={() =>
                   router.push(
-                    `/contratos/novo?origem=${origin}&origemId=${created.id}`,
+                    `/processos/contratos/novo?origem=${origin}&origemId=${created.id}`,
                   )
                 }
               >

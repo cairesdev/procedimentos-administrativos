@@ -23,7 +23,9 @@ export type Permission =
   | "processes:dispatch"
   | "processes:opinion"
   | "processes:order"
-  | "audit:read";
+  | "audit:read"
+  | "assets:read"
+  | "assets:write";
 
 const READ_ONLY: Permission[] = [
   "units:read",
@@ -38,6 +40,7 @@ const READ_ONLY: Permission[] = [
 // Do nível mais amplo ao mais básico.
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
+    "assets:read", "assets:write",
     "units:read", "units:write",
     "sectors:read", "sectors:write",
     "users:read", "users:write",
@@ -51,6 +54,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   GESTOR: [
     ...READ_ONLY,
+    "assets:read", "assets:write",
     "users:read",
     "suppliers:write",
     "bids:write",
@@ -60,11 +64,12 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:dispatch",
     "audit:read",
   ],
-  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read"],
+  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read", "assets:read"],
   COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order"],
   PROTOCOLO: [...READ_ONLY, "processes:dispatch"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
+  PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],
 };
 
 export const hasPermission = (role: Role, permission: Permission): boolean =>

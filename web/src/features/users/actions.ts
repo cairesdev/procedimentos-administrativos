@@ -18,7 +18,7 @@ export const createUser = async (input: UserInput) =>
         lotacoes: id ? [kind === "unidade" ? { unidadeId: id } : { setorId: id }] : [],
       },
     });
-    revalidatePath("/usuarios");
+    revalidatePath("/administracao/usuarios");
   }, "Usuário cadastrado");
 
 export const updateUser = async (id: string, input: UserInput) =>
@@ -29,17 +29,17 @@ export const updateUser = async (id: string, input: UserInput) =>
       method: "PATCH",
       body: senha ? { ...user, senha } : user,
     });
-    revalidatePath("/usuarios");
+    revalidatePath("/administracao/usuarios");
   }, "Usuário atualizado");
 
 export const setUserActive = async (id: string, active: boolean) =>
   runAction(async () => {
     await apiRequest(`${endpoints.users}/${id}`, { method: "PATCH", body: { ativo: active } });
-    revalidatePath("/usuarios");
+    revalidatePath("/administracao/usuarios");
   }, active ? "Usuário reativado" : "Usuário inativado");
 
 export const deleteUser = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.users}/${id}`, { method: "DELETE" });
-    revalidatePath("/usuarios");
+    revalidatePath("/administracao/usuarios");
   }, "Usuário excluído");

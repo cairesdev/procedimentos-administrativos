@@ -55,7 +55,7 @@ export const criarUsuarioSchema = z.object({
   senha: z.string().min(8, "Senha precisa de ao menos 8 caracteres"),
   papelBase: z.enum([
     "ADMIN", "GESTOR", "SERVIDOR", "PROTOCOLO",
-    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA",
+    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA", "PATRIMONIO",
   ]),
   lotacoes: z.array(lotacaoSchema).default([]),
 });
@@ -86,7 +86,7 @@ export const editarUsuarioSchema = z.object({
   email: z.string().email().optional(),
   papelBase: z.enum([
     "ADMIN", "GESTOR", "SERVIDOR", "PROTOCOLO",
-    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA",
+    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA", "PATRIMONIO",
   ]).optional(),
   senha: z.string().min(8).optional(),
   ativo: z.boolean().optional(),

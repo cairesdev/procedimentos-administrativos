@@ -46,6 +46,15 @@ export type RemessaResumo = {
   bens: number;
 };
 
+/** `conferencias` trava a exclusão: bem já conferido em inventário não some. */
+export type RemessaDetalhe = RemessaResumo & { conferencias: number };
+
+export type EdicaoRemessa = {
+  data?: string;
+  fornecedorId?: string | null;
+  notaFiscal?: string | null;
+};
+
 export type BemResumo = {
   id: string;
   codigoTombamento: string;
@@ -57,6 +66,10 @@ export type BemResumo = {
   estadoConservacao: string;
   status: string;
 };
+
+export type BemDetalhe = BemResumo & { conferencias: number };
+
+export type EdicaoBem = { nome?: string; categoriaId?: string };
 
 export type NovoInventario = { localId: string; dataInicio: string };
 
@@ -79,11 +92,16 @@ export type ConferenciaDeItem = {
   observacao?: string;
 };
 
-export type ItemDeInventario = ConferenciaDeItem & {
+// situacao nula = bem ainda não conferido nesta rodada.
+export type ItemDeInventario = {
   id: string | null;
+  bemId: string;
   codigoTombamento: string;
   nome: string;
   estadoRegistrado: string;
+  situacao: "ENCONTRADO" | "NAO_ENCONTRADO" | null;
+  estadoObservado: string | null;
+  observacao: string | null;
 };
 
 export interface PatrimonioRepository {
@@ -101,9 +119,15 @@ export interface PatrimonioRepository {
   removerCategoria(orgaoId: string, id: string): Promise<void>;
 
   listarRemessas(orgaoId: string): Promise<RemessaResumo[]>;
+  buscarRemessa(orgaoId: string, id: string): Promise<RemessaDetalhe | null>;
   criarRemessa(dados: NovaRemessa, tx: Tx): Promise<{ id: string; tombamentos: string[] }>;
+  atualizarRemessa(orgaoId: string, id: string, dados: EdicaoRemessa): Promise<void>;
+  removerRemessa(orgaoId: string, id: string, tx: Tx): Promise<void>;
 
   listarBens(orgaoId: string, filtros: { localId?: string; status?: string }): Promise<BemResumo[]>;
+  buscarBem(orgaoId: string, id: string): Promise<BemDetalhe | null>;
+  atualizarBem(orgaoId: string, id: string, dados: EdicaoBem): Promise<void>;
+  removerBem(orgaoId: string, id: string): Promise<void>;
 
   listarInventarios(orgaoId: string): Promise<InventarioResumo[]>;
   buscarInventario(orgaoId: string, id: string): Promise<InventarioResumo | null>;

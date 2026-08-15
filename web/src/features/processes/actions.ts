@@ -16,8 +16,8 @@ export const dispatchProcess = async (processId: string, input: DispatchInput) =
       method: "POST",
       body: { ...body, destinoSetorId: destinoSetorId || undefined },
     });
-    revalidatePath(`/processos/${processId}`);
-    revalidatePath("/processos");
+    revalidatePath(`/processos/fila/${processId}`);
+    revalidatePath("/processos/fila");
   }, "Despacho registrado");
 
 export const emitOpinion = async (processId: string, input: OpinionInput) =>
@@ -27,13 +27,13 @@ export const emitOpinion = async (processId: string, input: OpinionInput) =>
       method: "POST",
       body: { ...body, favoravel: favoravel === "sim" },
     });
-    revalidatePath(`/processos/${processId}`);
-    revalidatePath("/processos");
+    revalidatePath(`/processos/fila/${processId}`);
+    revalidatePath("/processos/fila");
   }, "Parecer registrado e processo encerrado");
 
 export const emitSupplyOrder = async (processId: string, input: SupplyOrderInput) =>
   runAction(async () => {
     const body = supplyOrderSchema.parse(input);
     await apiRequest(`${endpoints.processes}/${processId}/ordens`, { method: "POST", body });
-    revalidatePath(`/processos/${processId}`);
+    revalidatePath(`/processos/fila/${processId}`);
   }, "Ordem de fornecimento emitida");

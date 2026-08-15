@@ -4,13 +4,9 @@ import type { ModuleName } from "@/features/auth/types";
 
 // Rotas que só existem quando o módulo está habilitado para a prefeitura.
 const moduleRoutes: Record<string, ModuleName> = {
-  "/licitacoes": "PROCESSOS",
-  "/contratos": "PROCESSOS",
-  "/solicitacoes": "PROCESSOS",
   "/processos": "PROCESSOS",
-  "/fluxos": "PROCESSOS",
-  "/frotas": "FROTAS",
   "/patrimonio": "PATRIMONIO",
+  "/frotas": "FROTAS",
   "/almoxarifado": "ALMOXARIFADO",
 };
 

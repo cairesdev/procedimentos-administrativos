@@ -8,6 +8,7 @@ export const ROLES = [
   "COMPRAS",
   "CONTROLADORIA",
   "NUTRICIONISTA",
+  "PATRIMONIO",
 ] as const;
 
 export type User = {

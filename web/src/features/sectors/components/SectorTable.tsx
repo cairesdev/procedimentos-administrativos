@@ -15,7 +15,7 @@ export const SectorTable = ({ sectors, canWrite }: { sectors: Sector[]; canWrite
     {sectors.map((sector) => (
       <tr key={sector.id}>
         <td>
-          <Link href={`/setores/${sector.id}`} style={{ color: "var(--acao)" }}>
+          <Link href={`/administracao/setores/${sector.id}`} style={{ color: "var(--acao)" }}>
             {sector.nome}
           </Link>
         </td>

@@ -21,8 +21,8 @@ export const createAndSendRequest = async (input: RequestDraftInput) => {
       method: "POST",
       body: {},
     });
-    revalidatePath("/solicitacoes");
-    revalidatePath("/processos");
+    revalidatePath("/processos/solicitacoes");
+    revalidatePath("/processos/fila");
   }, "Solicitação enviada");
 
   return sent ? { success: `Solicitação enviada — protocolo ${sent.protocolo}` } : result;
@@ -34,7 +34,7 @@ export const saveDraft = async (input: RequestDraftInput) => {
   const result = await runAction(async () => {
     const body = requestDraftSchema.parse(input);
     draft = await apiRequest<CreatedRequest>(endpoints.requests, { method: "POST", body });
-    revalidatePath("/solicitacoes");
+    revalidatePath("/processos/solicitacoes");
   }, "Rascunho salvo");
 
   return draft ? { success: "Rascunho salvo — saldo ainda não reservado" } : result;
@@ -46,6 +46,6 @@ export const cancelRequest = async (id: string, motivo?: string) =>
       method: "POST",
       body: { motivo },
     });
-    revalidatePath("/solicitacoes");
-    revalidatePath("/processos");
+    revalidatePath("/processos/solicitacoes");
+    revalidatePath("/processos/fila");
   }, "Solicitação cancelada e saldo devolvido");

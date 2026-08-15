@@ -30,7 +30,7 @@ export const PriceRecordForm = ({
       itens: [emptyItem],
     },
     action: createPriceRecord,
-    redirectTo: onCreated ? undefined : "/atas",
+    redirectTo: onCreated ? undefined : "/processos/atas",
     resetOnSuccess: false,
     onCreated: (result) =>
       result.id && onCreated?.({ id: result.id, numero: form.getValues("numero") }),

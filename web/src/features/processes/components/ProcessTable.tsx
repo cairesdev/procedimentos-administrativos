@@ -26,7 +26,7 @@ export const ProcessTable = ({
     {processes.map((process) => (
       <tr key={process.id}>
         <td>
-          <Link href={`/processos/${process.id}`} style={{ color: "var(--acao)" }}>
+          <Link href={`/processos/fila/${process.id}`} style={{ color: "var(--acao)" }}>
             {process.numeroProtocolo}
           </Link>
         </td>

@@ -15,4 +15,11 @@ export const endpoints = {
   requests: "/solicitacoes",
   processes: "/processos",
   audit: "/auditoria",
+  assetLocations: "/patrimonio/locais",
+  assetCategories: "/patrimonio/categorias",
+  assetIntakes: "/patrimonio/remessas",
+  assets: "/patrimonio/bens",
+  inventories: "/patrimonio/inventarios",
+  inventoryChecks: (inventoryId: string) => `/patrimonio/inventarios/${inventoryId}/conferencias`,
+  closeInventory: (inventoryId: string) => `/patrimonio/inventarios/${inventoryId}/concluir`,
 } as const;

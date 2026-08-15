@@ -28,7 +28,7 @@ export const createPriceRecord = async (input: PriceRecordInput) => {
         itens: limparItens(body.itens),
       },
     });
-    revalidatePath("/atas");
+    revalidatePath("/processos/atas");
   }, "Ata de registro de preços cadastrada");
 
   return created ? { ...result, id: created.id } : result;
@@ -45,11 +45,11 @@ export const updatePriceRecord = async (id: string, input: PriceRecordInput) =>
         itens: limparItens(body.itens),
       },
     });
-    revalidatePath("/atas");
+    revalidatePath("/processos/atas");
   }, "Ata atualizada");
 
 export const deletePriceRecord = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.priceRecords}/${id}`, { method: "DELETE" });
-    revalidatePath("/atas");
+    revalidatePath("/processos/atas");
   }, "Ata excluída");

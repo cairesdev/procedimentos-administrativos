@@ -10,25 +10,25 @@ export const createUnit = async (input: UnitInput) =>
   runAction(async () => {
     const body = unitSchema.parse(input);
     await apiRequest(endpoints.units, { method: "POST", body });
-    revalidatePath("/unidades");
+    revalidatePath("/administracao/unidades");
   }, "Unidade cadastrada");
 
 export const updateUnit = async (id: string, input: UnitInput) =>
   runAction(async () => {
     const body = unitSchema.parse(input);
     await apiRequest(`${endpoints.units}/${id}`, { method: "PATCH", body });
-    revalidatePath("/unidades");
+    revalidatePath("/administracao/unidades");
   }, "Unidade atualizada");
 
 // Ligadas por .bind na tabela — server actions são serializáveis, funções comuns não.
 export const setUnitActive = async (id: string, active: boolean) =>
   runAction(async () => {
     await apiRequest(`${endpoints.units}/${id}`, { method: "PATCH", body: { ativo: active } });
-    revalidatePath("/unidades");
+    revalidatePath("/administracao/unidades");
   }, active ? "Unidade reativada" : "Unidade inativada");
 
 export const deleteUnit = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.units}/${id}`, { method: "DELETE" });
-    revalidatePath("/unidades");
+    revalidatePath("/administracao/unidades");
   }, "Unidade excluída");

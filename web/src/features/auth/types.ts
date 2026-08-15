@@ -26,7 +26,8 @@ export type Role =
   | "PROTOCOLO"
   | "COMPRAS"
   | "CONTROLADORIA"
-  | "NUTRICIONISTA";
+  | "NUTRICIONISTA"
+  | "PATRIMONIO";
 
 export type ModuleName = "PROCESSOS" | "FROTAS" | "PATRIMONIO" | "ALMOXARIFADO";
 
