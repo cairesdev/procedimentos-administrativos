@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { app } from "@/shared/config/app";
 import { Toaster } from "@/shared/ui/toaster";
 import "./globals.css";
 
+// next/font baixa a fonte no build: o Docker build precisa de rede.
 const inter = Inter({
   variable: "--fonte_inter",
   subsets: ["latin"],
@@ -10,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Procedimentos administrativos",
-  description: "Gestão de processos administrativos municipais",
+  title: app.name,
+  description: app.description,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

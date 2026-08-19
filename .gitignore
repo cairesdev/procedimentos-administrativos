@@ -1,5 +1,13 @@
 .env
+.env.local
+.env.*.local
+
+# Volumes dos containers (o data/.gitignore já cobre, isto é cinto e suspensório)
+data/postgres/
+data/minio/
 
 node_modules
 dist
-scripts
+.next
+*.tsbuildinfo
+*.log

@@ -74,3 +74,10 @@
   font-size: 13px;
   color: var(--texto_suave);
 }
+
+.footer {
+  margin-top: 28px;
+  font-size: 12px;
+  color: var(--texto_apagado);
+  text-align: center;
+}

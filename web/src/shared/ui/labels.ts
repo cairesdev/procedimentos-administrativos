@@ -1,3 +1,13 @@
+/** Monograma para o selo de marca: "Procedimentos administrativos" → "PA". */
+export const initials = (name: string): string =>
+  name
+    .split(" ")
+    .filter((part) => part.length > 2)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
 export const humanize = (value: string): string =>
   value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, " ");
 

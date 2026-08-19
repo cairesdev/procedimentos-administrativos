@@ -7,18 +7,11 @@ import { AssignmentSwitcher } from "@/features/auth/components/AssignmentSwitche
 import { getViewer } from "@/shared/auth/guards";
 import { findWorkspace, type WorkspaceId } from "@/shared/auth/modules";
 import { hasModule } from "@/shared/auth/permissions";
+import { app } from "@/shared/config/app";
 import { Button } from "@/shared/ui/button";
+import { initials } from "@/shared/ui/labels";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import styles from "./workspace.module.css";
-
-const initials = (name: string): string =>
-  name
-    .split(" ")
-    .filter((part) => part.length > 2)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
 
 // Casca de um sistema: só mostra a navegação dele, nunca a dos outros.
 export const WorkspaceShell = async ({
@@ -56,7 +49,11 @@ export const WorkspaceShell = async ({
     >
       <header className={styles.topbar}>
         <div className={styles.identity}>
-          <Link href="/" className={styles.switcher} title="Trocar de sistema">
+          <Link
+            href="/"
+            className={styles.switcher}
+            title={`Trocar de sistema — ${app.name}`}
+          >
             <Grid2x2 size={17} aria-hidden="true" />
           </Link>
 
@@ -87,7 +84,12 @@ export const WorkspaceShell = async ({
 
       <div className={styles.body}>
         <WorkspaceSidebar sections={sections} />
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          {children}
+          <p className={styles.footer}>
+            {app.name} · versão {app.version}
+          </p>
+        </main>
       </div>
     </div>
   );

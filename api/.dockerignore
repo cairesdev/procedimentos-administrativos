@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+db/seed*.sql
+db/reset.sql
+scripts/smoke.ts
+Dockerfile
+.dockerignore

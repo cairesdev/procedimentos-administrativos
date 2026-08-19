@@ -1,4 +1,6 @@
 import { LoginForm } from "@/features/auth/components/LoginForm";
+import { app } from "@/shared/config/app";
+import { initials } from "@/shared/ui/labels";
 import styles from "./login.module.css";
 
 type LoginPageProps = {
@@ -14,10 +16,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className={styles.box}>
         <div className={styles.brand}>
           <span className={styles.brand_mark} aria-hidden="true">
-            PA
+            {initials(app.name)}
           </span>
           <span>
-            <span className={styles.brand_title}>Procedimentos administrativos</span>
+            <span className={styles.brand_title}>{app.name}</span>
             <br />
             <span className={styles.brand_subtitle}>Acesso do servidor</span>
           </span>
@@ -26,6 +28,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <p className={styles.intro}>Entre com seu nome de usuário ou e-mail institucional.</p>
 
         <LoginForm callbackUrl={callbackUrl} />
+
+        <p className={styles.version}>
+          {app.shortName} {app.version}
+        </p>
       </div>
     </main>
   );

@@ -7,33 +7,107 @@ Módulo implementado: **Processos** (licitação → contrato → solicitação 
 Contexto completo para agentes/devs: `CLAUDE.md`, `docs/decisoes.md`, `docs/roadmap.md`,
 `docs/uml-*.mermaid`.
 
-## Subir o ambiente
+## Rodar com Docker (caminho recomendado para teste)
+
+```bash
+cp .env.example .env
+# preencha JWT_SECRET, AUTH_SECRET e ADMIN_SENHA — o compose recusa vazios
+# openssl rand -base64 32
+
+docker compose up --build
+```
+
+Sobe Postgres 18, MinIO (com o bucket criado), API em `localhost:8004` e web em `localhost:3000`.
+Console do MinIO em `localhost:9001`.
+Com `RUN_MIGRATIONS=true` o container da API aplica as migrations pendentes e cria/atualiza o
+administrador master a partir de `ADMIN_EMAIL`/`ADMIN_SENHA` — entre em `/admin/login` e cadastre
+a primeira prefeitura.
+
+O controle de migrations vive na tabela `schema_migrations`: cada arquivo roda uma vez, dentro de
+uma transação, protegido por advisory lock (duas réplicas subindo juntas não colidem).
+
+### Onde os dados ficam
+
+| Serviço | Pasta no host | Observação |
+| --- | --- | --- |
+| Postgres | `./data/postgres` | montada em `/var/lib/postgresql` |
+| MinIO | `./data/minio` | anexos |
+
+São bind mounts, não volumes do Docker: `docker compose down -v` **não** apaga nada. Para zerar de
+verdade, pare os containers e apague a pasta. Backup é cópia de arquivo — com o banco parado, ou
+via `pg_dump` com ele no ar:
+
+```bash
+docker compose exec db pg_dump -U postgres procedimentos > backup.sql
+```
+
+### Postgres 18: duas armadilhas
+
+1. **PGDATA mudou de lugar.** No 18 é `/var/lib/postgresql/18/docker` e o `VOLUME` declarado virou
+   `/var/lib/postgresql`. Montar em `/var/lib/postgresql/data`, como se fazia até o 17, faz o banco
+   gravar num volume anônimo e **perder tudo** quando o container é recriado. O compose já monta no
+   lugar certo.
+2. **`config_file` fora do PGDATA muda onde o `pg_hba.conf` é procurado.** Por isso
+   `docker/postgres/postgresql.conf` traz `data_directory`, `hba_file` e `ident_file` explícitos.
+   Ao subir para o PG19, troque o `18` nesses três caminhos **e** no `PGDATA` do compose.
+
+O banco nasce com collation ICU `pt-BR` (ORDER BY respeita acento e cedilha), encoding UTF8,
+checksums de página e fuso `America/Sao_Paulo`. Isso vale **só no primeiro `up`**: trocar collation
+depois exige recriar o banco. Ajustes de memória, WAL e log ficam em
+`docker/postgres/postgresql.conf` — os números são para máquina de desenvolvimento.
+
+### Imagens
+
+Um repositório, um prefixo por serviço:
+
+| Tag | Conteúdo |
+| --- | --- |
+| `workcenterma/br-consultoria:api-<versao>` | API Express compilada, Node 22 alpine, usuário não-root |
+| `workcenterma/br-consultoria:web-<versao>` | Next standalone |
+
+Build local sem compose:
+
+```bash
+docker build -t workcenterma/br-consultoria:api-local ./api
+docker build -t workcenterma/br-consultoria:web-local \
+  --build-arg NEXT_PUBLIC_APP_NAME="BR Consultoria" ./web
+```
+
+O build do web precisa de rede: `next/font/google` baixa a fonte Inter no build.
+
+### Nome do aplicativo
+
+`APP_NAME` e `APP_SHORT_NAME` no `.env` viram `NEXT_PUBLIC_APP_*` no build do web e aparecem no
+título da aba, no login, no hub, na topbar e no rodapé de versão. Como entram no bundle, mudar
+exige `docker compose build web` — reiniciar o container não basta. Sem definir, o default é
+"Procedimentos administrativos". A versão do rodapé vem de `IMAGE_TAG` (compose) ou da tag/SHA
+do commit (CI).
+
+### CI
+
+`.github/workflows/ci.yml`: PR roda typecheck (api e web) e lint; push na `main` publica
+`api-main`/`web-main` e `api-<sha>`/`web-<sha>`; tag `v1.2.0` publica `1.2.0`, `1.2` e `latest`
+com os mesmos prefixos. Segredos necessários no repositório: `DOCKERHUB_USERNAME`,
+`DOCKERHUB_TOKEN`. Variáveis opcionais: `APP_NAME`, `APP_SHORT_NAME`.
+
+## Subir o ambiente sem Docker
 
 Requisitos: Node 20+, PostgreSQL 15+, MinIO (para anexos).
 
 ```bash
-# 1. Banco
 createdb procedimentos
-psql procedimentos -f api/db/migrations/0001_nucleo.sql
-psql procedimentos -f api/db/migrations/0002_processos.sql
-psql procedimentos -f api/db/migrations/0003_frotas.sql
-psql procedimentos -f api/db/migrations/0004_patrimonio.sql
-psql procedimentos -f api/db/migrations/0005_almoxarifado.sql
-psql procedimentos -f api/db/migrations/0006_solicitacao_rascunho.sql
-psql procedimentos -f api/db/migrations/0007_login_identificador.sql
-psql procedimentos -f api/db/migrations/0008_admin_sistema.sql
-psql procedimentos -f api/db/migrations/0009_contrato_sem_processo.sql
-psql procedimentos -f api/db/migrations/0010_contrato_vigencia_aberta.sql
-psql procedimentos -f api/db/migrations/0011_papel_patrimonio.sql
 
-# 2. MinIO (dev)
-docker run -d -p 9000:9000 minio/minio server /data
-
-# 3. API
 cd api
 cp .env.example .env   # ajustar DATABASE_URL e JWT_SECRET
 npm install
-npm run dev            # porta 3333
+npm run migrate           # aplica as migrations pendentes, em ordem
+npm run bootstrap:admin   # cria o admin master a partir do .env
+npm run dev               # porta 3333
+
+cd ../web
+cp .env.example .env      # ajustar API_URL e AUTH_SECRET
+npm install
+npm run dev               # porta 3000
 ```
 
 ## Bootstrap do primeiro acesso
@@ -53,14 +127,15 @@ Login: `POST /auth/login` `{ "identificador": "admin.demo", "senha": "12345678" 
 psql procedimentos -f api/db/reset.sql
 ```
 
-Apaga todos os dados de todas as prefeituras e preserva apenas o administrador master
-(`suporte@procedimentos.app` / `12345678`). A estrutura das tabelas permanece — não é preciso
-rodar as migrations de novo. A partir daí, cadastre a primeira prefeitura por `/admin`.
+Apaga todos os dados de todas as prefeituras e preserva `admin_sistema` e `schema_migrations`.
+A estrutura das tabelas permanece — não é preciso rodar as migrations de novo. A partir daí,
+cadastre a primeira prefeitura por `/admin`.
 
 ## Administração do sistema
 
-A migration `0008_admin_sistema.sql` cria a tabela própria da equipe do produto e um acesso
-inicial: `suporte@procedimentos.app` / `12345678`, em `/admin/login`.
+A migration `0008_admin_sistema.sql` cria a tabela própria da equipe do produto. O acesso nasce de
+`npm run bootstrap:admin` (ou do entrypoint do container), a partir de `ADMIN_EMAIL`/`ADMIN_SENHA`
+— rodar de novo com senha diferente troca a senha. Login em `/admin/login`.
 
 Pelo painel `/admin` dá para cadastrar prefeituras, ligar e desligar módulos, configurar timbre
 dos documentos e criar o primeiro usuário ADMIN de cada prefeitura — o que antes só era possível
@@ -68,11 +143,10 @@ por SQL.
 
 ## Usuários de teste (um por nível)
 
-```bash
-psql procedimentos -f api/db/seed_niveis.sql
-```
+> **Faltando no repositório.** `api/db/seed_niveis.sql` sumiu do disco e nunca foi commitado —
+> precisa ser regerado. Enquanto isso, crie os usuários pelo painel `/admin` + tela de usuários.
 
-Cria a Secretaria Municipal de Saúde, os setores Protocolo Geral, Setor de Compras,
+Quando existia, criava a Secretaria Municipal de Saúde, os setores Protocolo Geral, Setor de Compras,
 Controladoria Geral e Alimentação Escolar, o fluxo padrão (Protocolo → Compras → Controladoria)
 e os usuários abaixo. Senha de todos: `12345678`.
 
@@ -102,8 +176,11 @@ pode rodar quantas vezes quiser.
 ## Scripts
 
 ```
-npm run dev         # tsx watch
-npm run typecheck   # tsc --noEmit
-npm run build       # compila para dist/
-npm start           # roda dist/
+npm run dev              # tsx watch
+npm run typecheck        # tsc --noEmit (src + scripts)
+npm run build            # compila src e os scripts de boot para dist/
+npm start                # roda dist/
+npm run migrate          # aplica migrations pendentes
+npm run bootstrap:admin  # cria/atualiza o admin master pelo .env
+npm run smoke            # ciclo completo contra a API no ar
 ```

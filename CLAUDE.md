@@ -18,15 +18,21 @@ Escolar** (levantados e modelados, não implementados).
 
 ```
 api/               Express + TypeScript, Clean Architecture (implementado)
-  db/migrations/   0001..0007 SQL puro, numeradas, aplicadas manualmente em ordem
+  db/migrations/   0001..0011 SQL puro, numeradas; `npm run migrate` aplica as pendentes
+  scripts/         migrate, bootstrap-admin, smoke
+  Dockerfile       multi-stage → workcenterma/br-consultoria:api-*
   src/
     domain/        regras puras, sem I/O (ErroDeNegocio, CalculadoraValorItem)
     application/   casos de uso + ports (interfaces)
     infrastructure/db, storage — implementações Postgres (SQL puro) e MinIO
     interface/http/ rotas finas, middlewares, schemas Zod
     container.ts   composição manual de dependências
-web/               Next.js (painel admin + rotas públicas) — VAZIO, não iniciado
+web/               Next.js — hub + /processos, /patrimonio, /administracao, /admin
+  Dockerfile       Next standalone → workcenterma/br-consultoria:web-*
 docs/              decisões, roadmap, UML
+docker-compose.yml Postgres 18 + MinIO + api + web; dados em ./data (bind mount)
+docker/postgres/   postgresql.conf — PGDATA versionado, ICU pt-BR, tuning de dev
+.github/workflows/ CI: typecheck/lint em PR, push das imagens em main e tag v*
 ```
 
 ## Comandos
@@ -35,9 +41,16 @@ docs/              decisões, roadmap, UML
 cd api
 npm install
 npm run typecheck    # tsc --noEmit — rodar sempre antes de entregar
+npm run migrate      # migrations pendentes (tabela schema_migrations)
 npm run dev          # tsx watch
 npm run build
+
+# ou tudo de uma vez:
+cp .env.example .env && docker compose up --build
 ```
+
+Nome do produto: `APP_NAME`/`APP_SHORT_NAME` no `.env` da raiz viram `NEXT_PUBLIC_APP_*` no build
+do web (`web/src/shared/config/app.ts`). Entram no bundle — trocar exige rebuild da imagem.
 
 Postgres: aplicar `db/migrations/*.sql` em ordem. `.env` a partir de `.env.example`
 (DATABASE_URL, JWT_SECRET, PORT + MINIO_* com defaults dev).

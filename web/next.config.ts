@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Imagem enxuta: o build já embute o servidor e só as dependências usadas.
+  output: "standalone",
   reactCompiler: true,
   experimental: {
     authInterrupts: true,

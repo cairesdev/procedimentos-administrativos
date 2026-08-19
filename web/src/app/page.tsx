@@ -5,6 +5,7 @@ import { getProfile } from "@/features/auth/queries";
 import { getViewer } from "@/shared/auth/guards";
 import { workspaces, type NavIcon } from "@/shared/auth/modules";
 import { hasModule } from "@/shared/auth/permissions";
+import { app } from "@/shared/config/app";
 import { Button } from "@/shared/ui/button";
 import { Alert } from "@/shared/ui/layout";
 import styles from "./hub.module.css";
@@ -32,7 +33,9 @@ export default async function HubPage() {
     <main className={styles.screen}>
       <header className={styles.header}>
         <div>
-          <p className={styles.org}>{profile.orgaoNome}</p>
+          <p className={styles.org}>
+            {app.name} · {profile.orgaoNome}
+          </p>
           <h1 className={styles.title}>Olá, {viewer.name.split(" ")[0]}</h1>
           <p className={styles.subtitle}>Escolha o sistema que você quer usar agora</p>
         </div>
@@ -71,6 +74,10 @@ export default async function HubPage() {
           })}
         </div>
       )}
+
+      <p className={styles.footer}>
+        {app.shortName} · versão {app.version}
+      </p>
     </main>
   );
 }

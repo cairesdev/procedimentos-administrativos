@@ -3,8 +3,13 @@ import type { ArmazenamentoArquivos } from "../../application/ports/Armazenament
 
 const bucket = process.env.MINIO_BUCKET ?? "procedimentos";
 
+// Sem MINIO_PORT o client assume 80/443 — errado para o MinIO do compose,
+// que escuta em 9000. Em bucket gerenciado (com domínio e SSL), deixe vazio.
+const porta = process.env.MINIO_PORT ? Number(process.env.MINIO_PORT) : undefined;
+
 const cliente = new Client({
   endPoint: process.env.MINIO_ENDPOINT ?? "localhost",
+  ...(porta ? { port: porta } : {}),
   region: process.env.MINIO_REGIAO,
   useSSL: process.env.MINIO_USE_SSL === "true",
   accessKey: process.env.MINIO_ACCESS_KEY ?? "minioadmin",

@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.scripts.build.json",
     "start": "node dist/server.js",
     "smoke": "tsx scripts/smoke.ts",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json",
+    "migrate": "tsx scripts/migrate.ts",
+    "bootstrap:admin": "tsx scripts/bootstrap-admin.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,0 +1,127 @@
+name: procedimentos-administrativos
+
+services:
+  db:
+    image: postgres:18-alpine
+    # Postgres 18 mudou o PGDATA para /var/lib/postgresql/<major>/docker e o
+    # VOLUME declarado para /var/lib/postgresql. Montar em .../data como nas
+    # versões antigas faz o banco gravar num volume anônimo e perder tudo na
+    # recriação do container.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-procedimentos}
+      # Explícito para o docker/postgres/postgresql.conf poder referenciar o
+      # mesmo caminho em data_directory/hba_file.
+      PGDATA: /var/lib/postgresql/18/docker
+      # Vale só no primeiro `up`, quando o initdb roda. Collation ICU pt-BR
+      # ordena acento e cedilha direito; trocar depois exige recriar o banco.
+      # checksums já são padrão no 18 — explícito para não depender disso.
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale-provider=icu
+        --icu-locale=pt-BR
+        --data-checksums
+      TZ: ${TZ:-America/Sao_Paulo}
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    # O padrão de 64MB do Docker estoura em ORDER BY e hash join grandes.
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-procedimentos}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: ${TZ:-America/Sao_Paulo}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - ./data/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # Cria o bucket dos anexos e sai. Sem ele o primeiro upload falha.
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET:-procedimentos} &&
+      echo 'Bucket ${MINIO_BUCKET:-procedimentos} pronto.'
+      "
+
+  api:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:api-${IMAGE_TAG:-local}
+    build:
+      context: ./api
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-procedimentos}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      PORT: 3333
+      TZ: ${TZ:-America/Sao_Paulo}
+      # Em teste o container aplica as migrations e cria o admin master.
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      ADMIN_NOME: ${ADMIN_NOME:-Administrador do sistema}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@local}
+      ADMIN_SENHA: ${ADMIN_SENHA:?defina ADMIN_SENHA no .env}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-procedimentos}
+      MINIO_REGIAO: ${MINIO_REGIAO:-us-east-1}
+    ports:
+      - "${API_PORT:-8004}:3333"
+    restart: unless-stopped
+
+  web:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:web-${IMAGE_TAG:-local}
+    build:
+      context: ./web
+      args:
+        # O nome entra no bundle: mudar exige rebuild, não só reiniciar.
+        NEXT_PUBLIC_APP_NAME: ${APP_NAME:-Procedimentos administrativos}
+        NEXT_PUBLIC_APP_SHORT_NAME: ${APP_SHORT_NAME:-Procedimentos}
+        NEXT_PUBLIC_APP_VERSION: ${IMAGE_TAG:-local}
+    depends_on:
+      - api
+    environment:
+      # Comunicação entre containers, não pelo host.
+      API_URL: http://api:3333
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      PORT: 3000
+      TZ: ${TZ:-America/Sao_Paulo}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    restart: unless-stopped

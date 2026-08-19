@@ -1,0 +1,3 @@
+# Dados dos containers ficam aqui (Postgres e MinIO). Nada disto vai para o git.
+*
+!.gitignore
