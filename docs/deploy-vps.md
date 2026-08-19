@@ -28,6 +28,12 @@ dig +short procedimentos.suaprefeitura.gov.br   # tem que devolver o IP da VPS
 
 Libere 80 e 443 no firewall. **Não** abra 5432 nem 9000.
 
+> **Se o DNS está na Cloudflare**, deixe o registro como *DNS only* (nuvem
+> cinza), não *Proxied* (nuvem laranja). Com o proxy ligado, o desafio HTTP-01
+> não chega ao Caddy e a emissão do certificado falha. Depois que o Caddy
+> emitir e você quiser o proxy da Cloudflare, ligue e mude o modo SSL para
+> *Full (strict)* — nunca *Flexible*, que causa laço de redirecionamento.
+
 ## 2. Preparar a VPS
 
 ```bash
@@ -47,9 +53,17 @@ openssl rand -base64 24   # POSTGRES_PASSWORD
 openssl rand -base64 24   # MINIO_SECRET_KEY
 ```
 
-`IMAGE_TAG` deve ser uma versão publicada (ex.: `1.0.0`). O compose recusa subir
+`IMAGE_TAG` deve ser uma versão **já publicada** no Docker Hub — confira em
+`hub.docker.com/r/workcenterma/br-consultoria/tags`. Se ainda não existe tag de
+versão, use `main`, que o CI publica a cada push. O compose recusa subir
 se `DOMINIO`, `IMAGE_TAG` ou qualquer segredo obrigatório estiver vazio — é de
 propósito, para não existir produção com senha em branco.
+
+> **O nome do produto é compilado na imagem.** `APP_NAME`/`APP_SHORT_NAME` no
+> `.env.prod` não mudam nada em runtime: quem os aplica é o build. Para a
+> imagem do CI nascer com o nome certo, defina as *variables* do repositório no
+> GitHub (Settings → Secrets and variables → Actions → Variables):
+> `APP_NAME` e `APP_SHORT_NAME`. Sem isso a interface mostra o nome padrão.
 
 ## 3. Subir
 

@@ -69,7 +69,10 @@ jobs:
             prefix=${{ matrix.projeto }}-,onlatest=true
           tags: |
             type=ref,event=branch
-            type=sha,format=short
+            # type=sha traz prefixo próprio ("sha-") que SUBSTITUI o do flavor.
+            # Sem repetir o prefixo do serviço aqui, api e web geram a mesma
+            # tag e uma sobrescreve a outra no registry.
+            type=sha,format=short,prefix=${{ matrix.projeto }}-sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
