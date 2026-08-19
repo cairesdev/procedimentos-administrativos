@@ -1,5 +1,7 @@
 import { Client } from "minio";
-import type { ArmazenamentoArquivos } from "../../application/ports/ArmazenamentoArquivos";
+import type {
+  ArmazenamentoArquivos, ArquivoParaLeitura,
+} from "../../application/ports/ArmazenamentoArquivos";
 
 const bucket = process.env.MINIO_BUCKET ?? "procedimentos";
 
@@ -33,9 +35,13 @@ export class MinioArmazenamento implements ArmazenamentoArquivos {
     await cliente.removeObject(bucket, caminho);
   };
 
-  urlTemporaria = (
-    caminho: string,
-    expiraEmSegundos: number,
-  ): Promise<string> =>
-    cliente.presignedGetObject(bucket, caminho, expiraEmSegundos);
+  abrir = async (caminho: string): Promise<ArquivoParaLeitura> => {
+    const info = await cliente.statObject(bucket, caminho);
+    const fluxo = await cliente.getObject(bucket, caminho);
+    return {
+      fluxo,
+      tamanho: info.size,
+      mimeType: info.metaData?.["content-type"] ?? "application/octet-stream",
+    };
+  };
 }

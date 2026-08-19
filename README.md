@@ -83,6 +83,20 @@ exige `docker compose build web` — reiniciar o container não basta. Sem defin
 "Procedimentos administrativos". A versão do rodapé vem de `IMAGE_TAG` (compose) ou da tag/SHA
 do commit (CI).
 
+### Produção (VPS)
+
+`docker-compose.prod.yml` + `docs/deploy-vps.md`. Consome as imagens do Docker Hub, põe o Caddy na
+frente com HTTPS automático e não publica mais nada: Postgres, MinIO e a API Express só existem na
+rede interna. Inclui `pg_dump` diário com retenção.
+
+```bash
+cp .env.prod.example .env.prod && chmod 600 .env.prod   # preencher
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+O download de anexo desce em streaming pela API — o MinIO fica privado, sem domínio nem
+certificado próprio.
+
 ### CI
 
 `.github/workflows/ci.yml`: PR roda typecheck (api e web) e lint; push na `main` publica

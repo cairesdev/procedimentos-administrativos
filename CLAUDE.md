@@ -11,7 +11,8 @@ Escolar** (levantados e modelados, não implementados).
    pode ser alterada sem aval do usuário.** O método de trabalho deste projeto é: cada decisão é
    discutida e aprovada antes de virar código — não gere schema/código de features não discutidas.
 2. `docs/roadmap.md` — o que está pronto e o que está pendente.
-3. `docs/uml-entidades.mermaid` (+ `uml-frotas`, `uml-patrimonio`, `uml-almoxarifado`) — modelo de dados.
+3. `docs/deploy-vps.md` — roteiro de produção.
+4. `docs/uml-entidades.mermaid` (+ `uml-frotas`, `uml-patrimonio`, `uml-almoxarifado`) — modelo de dados.
 4. Skill `procedimentos-backend` — convenções de código (instalada no ambiente).
 
 ## Estrutura
@@ -31,6 +32,7 @@ web/               Next.js — hub + /processos, /patrimonio, /administracao, /a
   Dockerfile       Next standalone → workcenterma/br-consultoria:web-*
 docs/              decisões, roadmap, UML
 docker-compose.yml Postgres 18 + MinIO + api + web; dados em ./data (bind mount)
+docker-compose.prod.yml  VPS: Caddy + HTTPS, nada exposto além do 443, backup diário
 docker/postgres/   postgresql.conf — PGDATA versionado, ICU pt-BR, tuning de dev
 .github/workflows/ CI: typecheck/lint em PR, push das imagens em main e tag v*
 ```

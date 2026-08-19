@@ -1,10 +1,14 @@
-.env
-.env.local
-.env.*.local
+# Segredos. Só os *.example entram no git.
+.env*
+!.env.example
+!.env.prod.example
 
-# Volumes dos containers (o data/.gitignore já cobre, isto é cinto e suspensório)
-data/postgres/
-data/minio/
+# Dados dos containers e dumps. O padrão precisa ser `pasta/*` e não `pasta/`:
+# com `pasta/` o git nem entra no diretório e a negação abaixo não vale.
+data/*
+!data/.gitignore
+backups/*
+!backups/.gitignore
 
 node_modules
 dist

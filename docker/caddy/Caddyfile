@@ -1,0 +1,36 @@
+# Caddy resolve o certificado Let's Encrypt sozinho na primeira subida e
+# renova sem intervenção. Requisitos: DNS do domínio já apontando para a VPS
+# e portas 80/443 abertas — o desafio ACME usa a 80.
+
+{
+	email {$EMAIL_ACME}
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	# Tudo vai para o Next — inclusive /api/*, que aqui é dele (NextAuth em
+	# /api/auth e a ponte autenticada em /api/proxy). A API Express NÃO é
+	# publicada: o navegador nunca fala com ela direto, só o Next fala, pela
+	# rede interna. Rotear /api para o Express quebraria o login.
+	reverse_proxy web:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# O servidor não precisa se anunciar.
+		-Server
+	}
+
+	# Upload de anexo pode passar do padrão do Caddy.
+	request_body {
+		max_size 25MB
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

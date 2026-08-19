@@ -1,0 +1,176 @@
+name: procedimentos-administrativos
+
+# Compose de VPS. Diferenças para o de desenvolvimento:
+#  - consome imagens do Docker Hub em vez de buildar
+#  - Caddy na frente, com HTTPS automático; nada mais escuta na internet
+#  - Postgres e MinIO sem porta publicada (só a rede interna alcança)
+#  - pg_dump diário com retenção
+#
+# Uso: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+x-logging: &logging
+  driver: json-file
+  options:
+    # Sem isto o log cresce até encher o disco da VPS.
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    depends_on:
+      - web
+      - api
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no .env.prod}
+      EMAIL_ACME: ${EMAIL_ACME:?defina EMAIL_ACME no .env.prod}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    restart: unless-stopped
+    logging: *logging
+
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-procedimentos}
+      PGDATA: /var/lib/postgresql/18/docker
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale-provider=icu
+        --icu-locale=pt-BR
+        --data-checksums
+      TZ: ${TZ:-America/Sao_Paulo}
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+    # Sem `ports`: o banco só existe dentro da rede do compose.
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    shm_size: ${POSTGRES_SHM:-512mb}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-procedimentos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging: *logging
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?defina MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?defina MINIO_SECRET_KEY}
+      TZ: ${TZ:-America/Sao_Paulo}
+    # Console e API do MinIO ficam fora da internet. Para abrir o console,
+    # use um túnel SSH: ssh -L 9001:localhost:9001 usuario@vps
+    ports:
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - ./data/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging: *logging
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET:-procedimentos} &&
+      echo 'Bucket ${MINIO_BUCKET:-procedimentos} pronto.'
+      "
+    logging: *logging
+
+  api:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:api-${IMAGE_TAG:?defina IMAGE_TAG no .env.prod}
+    pull_policy: always
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-procedimentos}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET}
+      PORT: 3333
+      TZ: ${TZ:-America/Sao_Paulo}
+      # Deixe true para o deploy aplicar as migrations sozinho. Se preferir
+      # aplicar à mão antes de trocar a imagem, ponha false e rode:
+      #   docker compose -f docker-compose.prod.yml run --rm api node dist/scripts/migrate.js
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      ADMIN_NOME: ${ADMIN_NOME:-Administrador do sistema}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?defina ADMIN_EMAIL}
+      ADMIN_SENHA: ${ADMIN_SENHA:?defina ADMIN_SENHA}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-procedimentos}
+      MINIO_REGIAO: ${MINIO_REGIAO:-us-east-1}
+    # Sem `ports`: quem fala com a API é o Caddy, pela rede interna.
+    restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEM:-512M}
+
+  web:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:web-${IMAGE_TAG:?defina IMAGE_TAG no .env.prod}
+    pull_policy: always
+    depends_on:
+      - api
+    environment:
+      API_URL: http://api:3333
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      # Precisa bater com o domínio público, senão o callback do login quebra.
+      AUTH_URL: https://${DOMINIO}
+      PORT: 3000
+      TZ: ${TZ:-America/Sao_Paulo}
+    restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEM:-512M}
+
+  # pg_dump diário comprimido em ./backups, com retenção por dias.
+  backup:
+    image: postgres:18-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-procedimentos}
+      RETENCAO_DIAS: ${BACKUP_RETENCAO_DIAS:-14}
+      HORA_BACKUP: ${BACKUP_HORA:-03}
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - ./backups:/backups
+      - ./docker/backup/rodar.sh:/rodar.sh:ro
+    entrypoint: ["/bin/sh", "/rodar.sh"]
+    restart: unless-stopped
+    logging: *logging

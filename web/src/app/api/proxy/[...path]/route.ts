@@ -25,11 +25,16 @@ const forward = async (request: Request, path: string[]) => {
     cache: "no-store",
   });
 
-  const raw = await response.text();
-  return new NextResponse(raw, {
-    status: response.status,
-    headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" },
-  });
+  // Repassa o corpo como stream: ler com .text() corromperia download de
+  // anexo (PDF, imagem) e carregaria o arquivo inteiro na memória.
+  const headers = new Headers();
+  for (const cabecalho of ["content-type", "content-length", "content-disposition"]) {
+    const valor = response.headers.get(cabecalho);
+    if (valor) headers.set(cabecalho, valor);
+  }
+  if (!headers.has("content-type")) headers.set("content-type", "application/json");
+
+  return new NextResponse(response.body, { status: response.status, headers });
 };
 
 type Contexto = { params: Promise<{ path: string[] }> };

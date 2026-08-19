@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
-import type { AnexoDetalhe, AnexoRepository, ArmazenamentoArquivos } from "../ports/ArmazenamentoArquivos";
+import type {
+  AnexoDetalhe, AnexoRepository, ArmazenamentoArquivos, ArquivoParaLeitura,
+} from "../ports/ArmazenamentoArquivos";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { TramitacaoRepository } from "../ports/TramitacaoRepository";
 
@@ -67,11 +69,19 @@ export class AnexosDeProcesso {
     return this.anexos.listarPorProcesso(processoId);
   };
 
-  linkDownload = async (orgaoId: string, anexoId: string): Promise<{ url: string }> => {
+  // O arquivo desce pela própria API: o armazenamento não precisa de host
+  // público e o token da sessão continua sendo a única porta de entrada.
+  baixar = async (
+    orgaoId: string,
+    anexoId: string,
+  ): Promise<ArquivoParaLeitura & { nomeArquivo: string }> => {
     const anexo = await this.anexos.buscar(orgaoId, anexoId);
     if (!anexo) throw new NaoEncontrado("Anexo não encontrado");
-    const url = await this.storage.urlTemporaria(anexo.arquivo, 600);
-    return { url };
+
+    const arquivo = await this.storage.abrir(anexo.arquivo);
+    // O caminho guarda "<uuid>-<nome original sanitizado>"; devolve o nome.
+    const ultimo = anexo.arquivo.split("/").pop() ?? "anexo";
+    return { ...arquivo, nomeArquivo: ultimo.replace(/^[0-9a-f-]{36}-/i, "") };
   };
 
   remover = async (orgaoId: string, anexoId: string, usuarioId?: string): Promise<void> => {

@@ -85,10 +85,23 @@ Entradas e bens têm editar/excluir com o aviso de que o tombamento não volta.
    `docs/decisoes.md` + UML de cada um.
 10. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
+## Infraestrutura
+
+Imagens `workcenterma/br-consultoria:api-*` e `:web-*` (Dockerfiles multi-stage, Node 22 alpine,
+usuário não-root). `docker-compose.yml` para teste local e `docker-compose.prod.yml` para VPS
+(Caddy com HTTPS automático, Postgres 18 e MinIO sem porta pública, `pg_dump` diário com retenção).
+Migrations aplicadas pelo entrypoint via `schema_migrations` + advisory lock. Roteiro completo em
+`docs/deploy-vps.md`.
+
+**Anexo agora desce em streaming pela API** — a URL pré-assinada do MinIO era inalcançável pelo
+navegador (apontava para o host interno `minio`), então o download estava quebrado. Com isso o
+MinIO deixou de precisar de domínio público.
+
 ## Dívidas conhecidas
 
 - Usernames do backfill da migration 0007 são placeholders (`prefixo-email.4chars`).
 - `listarFila` não filtra por departamento (só setor).
 - Sem paginação nas listagens.
 - Sem rate-limit/refresh-token no auth.
+- Backup cobre só o banco; `./data/minio` (anexos) precisa de cópia à parte.
 - Filtro de bens é `<form method="get">` (recarrega a página); sem paginação em nenhuma listagem.

@@ -1,7 +1,19 @@
+import type { Readable } from "node:stream";
+
+export type ArquivoParaLeitura = {
+  fluxo: Readable;
+  tamanho: number;
+  mimeType: string;
+};
+
 export interface ArmazenamentoArquivos {
   salvar(caminho: string, conteudo: Buffer, mimeType: string): Promise<void>;
   remover(caminho: string): Promise<void>;
-  urlTemporaria(caminho: string, expiraEmSegundos: number): Promise<string>;
+  /**
+   * Fluxo de leitura do objeto. O download passa pela API em vez de URL
+   * pré-assinada: o armazenamento fica privado, sem precisar de host público.
+   */
+  abrir(caminho: string): Promise<ArquivoParaLeitura>;
 }
 
 export type NovoAnexo = {
