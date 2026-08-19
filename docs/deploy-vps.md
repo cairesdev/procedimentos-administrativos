@@ -28,11 +28,32 @@ dig +short procedimentos.suaprefeitura.gov.br   # tem que devolver o IP da VPS
 
 Libere 80 e 443 no firewall. **Não** abra 5432 nem 9000.
 
-> **Se o DNS está na Cloudflare**, deixe o registro como *DNS only* (nuvem
-> cinza), não *Proxied* (nuvem laranja). Com o proxy ligado, o desafio HTTP-01
-> não chega ao Caddy e a emissão do certificado falha. Depois que o Caddy
-> emitir e você quiser o proxy da Cloudflare, ligue e mude o modo SSL para
-> *Full (strict)* — nunca *Flexible*, que causa laço de redirecionamento.
+### Se o DNS está na Cloudflare
+
+O modo **SSL/TLS precisa ser _Full (strict)_**. Em *Flexible*, a Cloudflare
+recebe HTTPS do navegador mas fala HTTP puro com a origem; o Caddy responde com
+o redirect automático para HTTPS e o navegador entra em **laço infinito de
+308**. O sintoma no log do Caddy é uma enxurrada de:
+
+```
+"proto":"HTTP/1.1"  "X-Forwarded-Proto":["https"]  ...  "status":308
+```
+
+Duas configurações que funcionam:
+
+| Proxy | Modo SSL/TLS | Observação |
+| --- | --- | --- |
+| DNS only (cinza) | irrelevante | o Caddy termina o TLS; HTTP-01 emite direto |
+| Proxied (laranja) | **Full (strict)** | exige certificado válido na origem — o Caddy já providencia |
+
+Se o primeiro `up` acontecer com o proxy ligado, o desafio HTTP-01 do Let's
+Encrypt pode falhar com 502 e o Caddy cai no emissor alternativo (ZeroSSL).
+Funciona, mas se quiser Let's Encrypt, emita com o proxy desligado e só depois
+ligue em *Full (strict)*.
+
+Um registro **AAAA** apontando para um IPv6 que a VPS não atende também gera
+502: a Cloudflare prefere IPv6 ao buscar a origem. Se `ip -6 addr show scope
+global` não mostrar endereço na VPS, apague o AAAA.
 
 ## 2. Preparar a VPS
 
