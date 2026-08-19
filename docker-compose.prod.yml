@@ -24,12 +24,16 @@ services:
     environment:
       DOMINIO: ${DOMINIO:?defina DOMINIO no .env.prod}
       EMAIL_ACME: ${EMAIL_ACME:?defina EMAIL_ACME no .env.prod}
+    # Com Cloudflare Tunnel, BIND=127.0.0.1: o cloudflared alcança pelo
+    # loopback e a VPS não precisa de porta nenhuma aberta na internet.
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${CADDY_BIND:-0.0.0.0}:80:80"
+      - "${CADDY_BIND:-0.0.0.0}:443:443"
+      - "${CADDY_BIND:-0.0.0.0}:443:443/udp"
     volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Caddyfile        = acesso direto, Caddy emite o certificado
+      # Caddyfile.tunnel = atrás de Cloudflare Tunnel, HTTP puro na origem
+      - ./docker/caddy/${CADDY_FILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
     restart: unless-stopped

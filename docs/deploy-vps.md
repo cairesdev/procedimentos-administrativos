@@ -55,6 +55,29 @@ Um registro **AAAA** apontando para um IPv6 que a VPS não atende também gera
 502: a Cloudflare prefere IPv6 ao buscar a origem. Se `ip -6 addr show scope
 global` não mostrar endereço na VPS, apague o AAAA.
 
+### Se usa Cloudflare Tunnel
+
+Outra montagem, e a mais segura: o `cloudflared` roda na VPS e a Cloudflare
+alcança a aplicação pelo túnel — **nenhuma porta precisa ficar aberta na
+internet**. Regra no painel do túnel:
+
+```
+gestaobr.com.br   *   ->   http://localhost
+```
+
+Aqui quem termina o TLS é a Cloudflare e o túnel entrega **HTTP puro** na
+origem. O Caddy precisa parar de gerenciar HTTPS, senão responde 308 para
+`https://` e o navegador entra em laço. No `.env.prod`:
+
+```
+CADDY_FILE=Caddyfile.tunnel
+CADDY_BIND=127.0.0.1
+```
+
+`Caddyfile.tunnel` escuta em `:80` com `auto_https off`. Nesta montagem o modo
+SSL/TLS do painel é irrelevante — não existe conexão da Cloudflare para um IP
+público seu.
+
 ## 2. Preparar a VPS
 
 ```bash
