@@ -5,17 +5,17 @@ import { InputField } from "@/shared/ui/form-field";
 import { Alert, FieldGrid } from "@/shared/ui/layout";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { createFirstAdmin } from "../actions";
+import { createEntityAdmin } from "../actions";
 import { firstAdminSchema, type FirstAdminInput } from "../schemas";
 import type { Tenant } from "../types";
 
-export const FirstAdminForm = ({ tenant }: { tenant: Tenant }) => {
+export const EntityAdminForm = ({ tenant }: { tenant: Tenant }) => {
   const closeModal = useModalClose();
 
   const { form, onSubmit, isSubmitting } = useResourceForm<FirstAdminInput>({
     schema: firstAdminSchema as never,
     defaultValues: { nome: "", email: "", username: "", senha: "" },
-    action: (values) => createFirstAdmin(tenant.id, values),
+    action: (values) => createEntityAdmin(tenant.id, values),
     onDone: closeModal,
   });
 
@@ -24,7 +24,8 @@ export const FirstAdminForm = ({ tenant }: { tenant: Tenant }) => {
   return (
     <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
       <Alert tone="info">
-        Este usuário nasce com papel ADMIN e passa a criar os demais servidores de {tenant.nome}.
+        Nasce com papel ADMIN e passa a cadastrar os demais servidores de {tenant.nome}. Combine a
+        senha provisória por um canal seguro e peça a troca no primeiro acesso.
       </Alert>
 
       <InputField

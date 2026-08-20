@@ -43,6 +43,9 @@ const primeiroAdminSchema = z.object({
   senha: z.string().min(8),
 });
 
+const redefinicaoSenhaSchema = z.object({ senha: z.string().min(8) });
+const situacaoAdminSchema = z.object({ ativo: z.boolean() });
+
 export const adminRouter = Router();
 
 adminRouter.post("/login", async (req, res, next) => {
@@ -50,7 +53,12 @@ adminRouter.post("/login", async (req, res, next) => {
     const { email, senha } = loginSchema.parse(req.body);
     const sessao = await container.administrarSistema.autenticar(email, senha);
     res.json({
-      token: emitirTokenAdmin({ adminId: sessao.adminId, escopo: "SISTEMA" }),
+      token: emitirTokenAdmin({
+        adminId: sessao.adminId,
+        nome: sessao.nome,
+        email: sessao.email,
+        escopo: "SISTEMA",
+      }),
       admin: { nome: sessao.nome, email: sessao.email },
     });
   } catch (error) {
@@ -121,12 +129,69 @@ adminRouter.put("/orgaos/:id/timbre", async (req, res, next) => {
   }
 });
 
+// ---- Administradores da prefeitura -----------------------------------------
+
+const autor = (req: { admin?: { nome: string; email: string } }) =>
+  req.admin ? { nome: req.admin.nome, email: req.admin.email } : undefined;
+
+adminRouter.get("/orgaos/:id/administradores", async (req, res, next) => {
+  try {
+    res.json(await container.administrarSistema.listarAdministradores(req.params.id!));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Servidores que ainda não são ADMIN, para promover sem duplicar cadastro. */
+adminRouter.get("/orgaos/:id/promoviveis", async (req, res, next) => {
+  try {
+    res.json(await container.administrarSistema.listarPromoviveis(req.params.id!));
+  } catch (error) {
+    next(error);
+  }
+});
+
 adminRouter.post("/orgaos/:id/administrador", async (req, res, next) => {
   try {
     const dados = primeiroAdminSchema.parse(req.body);
     res.status(201).json(
-      await container.administrarSistema.criarPrimeiroAdmin(req.params.id!, dados),
+      await container.administrarSistema.criarAdministrador(req.params.id!, dados, autor(req)),
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/orgaos/:id/administradores/:usuarioId/promover", async (req, res, next) => {
+  try {
+    await container.administrarSistema.promoverAdministrador(
+      req.params.id!, req.params.usuarioId!, autor(req),
+    );
+    res.json({ message: "Usuário promovido a administrador" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/orgaos/:id/administradores/:usuarioId/senha", async (req, res, next) => {
+  try {
+    const { senha } = redefinicaoSenhaSchema.parse(req.body);
+    await container.administrarSistema.redefinirSenhaDeAdministrador(
+      req.params.id!, req.params.usuarioId!, senha, autor(req),
+    );
+    res.json({ message: "Senha redefinida" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.patch("/orgaos/:id/administradores/:usuarioId", async (req, res, next) => {
+  try {
+    const { ativo } = situacaoAdminSchema.parse(req.body);
+    await container.administrarSistema.definirSituacaoDeAdministrador(
+      req.params.id!, req.params.usuarioId!, ativo, autor(req),
+    );
+    res.json({ message: ativo ? "Administrador reativado" : "Administrador inativado" });
   } catch (error) {
     next(error);
   }

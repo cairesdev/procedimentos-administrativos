@@ -1,6 +1,6 @@
 import { pool } from "./pool";
 import type {
-  AdminAutenticavel, AdminSistemaRepository, EdicaoOrgao, NovoOrgao,
+  AdminAutenticavel, AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, NovoOrgao,
   OrgaoResumo, TimbreDoOrgao,
 } from "../../application/ports/AdminSistemaRepository";
 
@@ -8,6 +8,16 @@ const SQL = {
   adminPorEmail: `
     SELECT id, nome, email, senha_hash AS "senhaHash", ativo
       FROM admin_sistema WHERE email = $1`,
+  listarAdministradores: `
+    SELECT id, nome, email, username, ativo, created_at AS "criadoEm"
+      FROM usuario
+     WHERE orgao_id = $1 AND papel_base = 'ADMIN'
+     ORDER BY ativo DESC, nome`,
+  contarAdministradoresAtivos: `
+    SELECT count(*) AS total
+      FROM usuario
+     WHERE orgao_id = $1 AND papel_base = 'ADMIN' AND ativo
+       AND ($2::uuid IS NULL OR id <> $2)`,
   listarOrgaos: `
     SELECT o.id, o.cnpj, o.nome, o.uf, o.municipio, o.endereco, o.ativo,
            coalesce(
@@ -67,6 +77,21 @@ export class PostgresAdminSistemaRepository implements AdminSistemaRepository {
   buscarPorEmail = async (email: string): Promise<AdminAutenticavel | null> => {
     const { rows } = await pool.query(SQL.adminPorEmail, [email]);
     return rows[0] ?? null;
+  };
+
+  listarAdministradores = async (orgaoId: string): Promise<AdministradorDaEntidade[]> => {
+    const { rows } = await pool.query(SQL.listarAdministradores, [orgaoId]);
+    return rows;
+  };
+
+  contarAdministradoresAtivos = async (
+    orgaoId: string,
+    ignorarId?: string,
+  ): Promise<number> => {
+    const { rows } = await pool.query(SQL.contarAdministradoresAtivos, [
+      orgaoId, ignorarId ?? null,
+    ]);
+    return Number(rows[0].total);
   };
 
   listarOrgaos = async (): Promise<OrgaoResumo[]> => {

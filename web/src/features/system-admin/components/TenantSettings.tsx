@@ -1,5 +1,6 @@
-import { getLetterhead } from "../queries";
-import { FirstAdminForm } from "./FirstAdminForm";
+import { getLetterhead, listEntityAdmins, listPromotableUsers } from "../queries";
+import { EntityAdminForm } from "./EntityAdminForm";
+import { EntityAdminsPanel } from "./EntityAdminsPanel";
 import { LetterheadForm } from "./LetterheadForm";
 import { ModulesForm } from "./ModulesForm";
 import { Card } from "@/shared/ui/layout";
@@ -8,7 +9,13 @@ import type { Tenant } from "../types";
 import styles from "./TenantSettings.module.css";
 
 export const TenantSettings = async ({ tenant }: { tenant: Tenant }) => {
-  const letterhead = await getLetterhead(tenant.id);
+  const [letterhead, admins, promotable] = await Promise.all([
+    getLetterhead(tenant.id),
+    listEntityAdmins(tenant.id),
+    listPromotableUsers(tenant.id),
+  ]);
+
+  const semAdminAtivo = admins.every((admin) => !admin.ativo);
 
   return (
     <Card title={tenant.nome}>
@@ -30,18 +37,28 @@ export const TenantSettings = async ({ tenant }: { tenant: Tenant }) => {
         </ModalTrigger>
 
         <ModalTrigger
-          label="Administrador"
-          title={`Administrador de ${tenant.nome}`}
-          description="Cria o primeiro usuário ADMIN, que depois cadastra os demais."
+          label="Novo administrador"
+          title={`Novo administrador de ${tenant.nome}`}
+          description="Cria um usuário com papel ADMIN."
         >
-          <FirstAdminForm tenant={tenant} />
+          <EntityAdminForm tenant={tenant} />
         </ModalTrigger>
       </div>
+
+      <EntityAdminsPanel
+        tenantId={tenant.id}
+        tenantName={tenant.nome}
+        admins={admins}
+        promotable={promotable}
+      />
 
       <p className={styles.summary}>
         {tenant.usuarios} {tenant.usuarios === 1 ? "usuário" : "usuários"} ·{" "}
         {tenant.modulos.length} {tenant.modulos.length === 1 ? "módulo" : "módulos"} ·{" "}
-        {letterhead.cabecalhoTimbre ? "timbre configurado" : "sem timbre"}
+        {letterhead.cabecalhoTimbre ? "timbre configurado" : "sem timbre"} ·{" "}
+        {semAdminAtivo
+          ? "sem administrador ativo"
+          : `${admins.filter((admin) => admin.ativo).length} admin(s)`}
       </p>
     </Card>
   );

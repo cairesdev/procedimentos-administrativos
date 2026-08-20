@@ -22,7 +22,13 @@ export type TipoEvento =
   | "VIAGEM_RETIRADA"
   | "VIAGEM_FINALIZADA"
   | "MANUTENCAO_ABERTA"
-  | "MANUTENCAO_ENCERRADA";
+  | "MANUTENCAO_ENCERRADA"
+  // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.
+  | "ADMIN_ENTIDADE_CRIADO"
+  | "ADMIN_ENTIDADE_PROMOVIDO"
+  | "ADMIN_ENTIDADE_SENHA_REDEFINIDA"
+  | "ADMIN_ENTIDADE_INATIVADO"
+  | "ADMIN_ENTIDADE_REATIVADO";
 
 export type EventoAuditoria = {
   orgaoId: string;

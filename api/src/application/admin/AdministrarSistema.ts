@@ -2,11 +2,15 @@ import { compare, hash } from "bcryptjs";
 import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste } from "../shared/ExclusaoSegura";
 import type {
-  AdminSistemaRepository, EdicaoOrgao, NovoOrgao, TimbreDoOrgao,
+  AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, NovoOrgao, TimbreDoOrgao,
 } from "../ports/AdminSistemaRepository";
+import type { AuditoriaRepository, TipoEvento } from "../ports/AuditoriaRepository";
 import type { UsuarioRepository } from "../ports/UsuarioRepository";
 
 export type SessaoAdmin = { adminId: string; nome: string; email: string };
+
+/** Quem, do lado do produto, executou a ação sobre a prefeitura. */
+export type AutorDaAcao = { nome: string; email: string };
 
 export type PrimeiroAdmin = {
   nome: string;
@@ -19,6 +23,7 @@ export class AdministrarSistema {
   constructor(
     private readonly admins: AdminSistemaRepository,
     private readonly usuarios: UsuarioRepository,
+    private readonly auditoria: AuditoriaRepository,
   ) {}
 
   autenticar = async (email: string, senha: string): Promise<SessaoAdmin> => {
@@ -58,8 +63,25 @@ export class AdministrarSistema {
     await this.admins.salvarTimbre(id, dados);
   };
 
-  // O primeiro ADMIN da prefeitura, que antes só nascia por SQL.
-  criarPrimeiroAdmin = async (orgaoId: string, dados: PrimeiroAdmin): Promise<{ id: string }> => {
+  // ---- Administradores da prefeitura --------------------------------------
+
+  listarAdministradores = async (orgaoId: string): Promise<AdministradorDaEntidade[]> => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    return this.admins.listarAdministradores(orgaoId);
+  };
+
+  /** Servidores que ainda não são ADMIN, para promover sem duplicar cadastro. */
+  listarPromoviveis = async (orgaoId: string) => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    const usuarios = await this.usuarios.listar(orgaoId);
+    return usuarios.filter((usuario) => usuario.papelBase !== "ADMIN" && usuario.ativo);
+  };
+
+  criarAdministrador = async (
+    orgaoId: string,
+    dados: PrimeiroAdmin,
+    autor?: AutorDaAcao,
+  ): Promise<{ id: string }> => {
     garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
 
     if (await this.usuarios.existeEmail(dados.email)) {
@@ -77,6 +99,120 @@ export class AdministrarSistema {
       senhaHash: await hash(dados.senha, 10),
       papelBase: "ADMIN",
     });
+
+    await this.registrar(orgaoId, "ADMIN_ENTIDADE_CRIADO", id, autor, {
+      nome: dados.nome,
+      email: dados.email,
+    });
     return { id };
+  };
+
+  promoverAdministrador = async (
+    orgaoId: string,
+    usuarioId: string,
+    autor?: AutorDaAcao,
+  ): Promise<void> => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    const usuario = garantirExiste(
+      await this.usuarios.buscarPorId(orgaoId, usuarioId),
+      "Usuário",
+    );
+    if (usuario.papelBase === "ADMIN") {
+      throw new ErroDeNegocio(`${usuario.nome} já é administrador`);
+    }
+
+    await this.usuarios.atualizar(orgaoId, usuarioId, { papelBase: "ADMIN" });
+    await this.registrar(orgaoId, "ADMIN_ENTIDADE_PROMOVIDO", usuarioId, autor, {
+      nome: usuario.nome,
+      papelAnterior: usuario.papelBase,
+    });
+  };
+
+  /**
+   * Redefinição pelo fornecedor: o caminho quando o administrador da prefeitura
+   * perde o acesso e não há mais ninguém lá dentro para socorrê-lo. Fica na
+   * auditoria da prefeitura, que é quem precisa enxergar isso.
+   */
+  redefinirSenhaDeAdministrador = async (
+    orgaoId: string,
+    usuarioId: string,
+    novaSenha: string,
+    autor?: AutorDaAcao,
+  ): Promise<void> => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    const usuario = garantirExiste(
+      await this.usuarios.buscarPorId(orgaoId, usuarioId),
+      "Usuário",
+    );
+    if (usuario.papelBase !== "ADMIN") {
+      throw new ErroDeNegocio("Só a senha de administrador é redefinida por aqui");
+    }
+
+    await this.usuarios.atualizar(orgaoId, usuarioId, {
+      senhaHash: await hash(novaSenha, 10),
+    });
+    await this.registrar(orgaoId, "ADMIN_ENTIDADE_SENHA_REDEFINIDA", usuarioId, autor, {
+      nome: usuario.nome,
+    });
+  };
+
+  definirSituacaoDeAdministrador = async (
+    orgaoId: string,
+    usuarioId: string,
+    ativo: boolean,
+    autor?: AutorDaAcao,
+  ): Promise<void> => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    const usuario = garantirExiste(
+      await this.usuarios.buscarPorId(orgaoId, usuarioId),
+      "Usuário",
+    );
+    if (usuario.papelBase !== "ADMIN") {
+      throw new ErroDeNegocio("Este usuário não é administrador");
+    }
+
+    // Sem nenhum ADMIN ativo, ninguém na prefeitura cadastra usuário nem
+    // configura nada — e só o fornecedor consegue destravar.
+    if (!ativo) {
+      const restantes = await this.admins.contarAdministradoresAtivos(orgaoId, usuarioId);
+      if (restantes === 0) {
+        throw new ErroDeNegocio(
+          "Este é o único administrador ativo da prefeitura. Cadastre ou promova outro antes de inativar.",
+          422,
+          { administradoresAtivosRestantes: 0 },
+        );
+      }
+    }
+
+    await this.usuarios.atualizar(orgaoId, usuarioId, { ativo });
+    await this.registrar(
+      orgaoId,
+      ativo ? "ADMIN_ENTIDADE_REATIVADO" : "ADMIN_ENTIDADE_INATIVADO",
+      usuarioId,
+      autor,
+      { nome: usuario.nome },
+    );
+  };
+
+  /**
+   * O autor é um admin do produto, que não existe na tabela `usuario` — por
+   * isso vai em `detalhes` em vez de `usuarioId`.
+   */
+  private registrar = async (
+    orgaoId: string,
+    tipoEvento: TipoEvento,
+    referenciaId: string,
+    autor?: AutorDaAcao,
+    detalhes: Record<string, unknown> = {},
+  ) => {
+    await this.auditoria.registrar({
+      orgaoId,
+      tipoEvento,
+      referenciaId,
+      detalhes: {
+        ...detalhes,
+        porAdminDoSistema: autor ? { nome: autor.nome, email: autor.email } : "desconhecido",
+      },
+    });
   };
 }

@@ -101,6 +101,21 @@ tomadas na implementação, todas reversíveis:
   com manutenção, por veículo e no total, com consumo médio em km/L. Km e viagens contam pela data
   de **finalização**; manutenção pela data de **abertura**.
 
+## Painel do produto: administradores da prefeitura (implementado)
+
+O `/admin` deixou de só **criar** o primeiro ADMIN e passou a **gerir** os administradores de cada
+prefeitura: listar com situação, criar outro, promover servidor existente (sem duplicar cadastro),
+redefinir senha e ativar/inativar.
+
+- **A prefeitura nunca fica sem administrador ativo**: inativar o último devolve 422 pedindo que se
+  crie ou promova outro antes. Sem isso, ninguém lá dentro cadastra usuário nem configura nada, e
+  só o fornecedor destrava.
+- **Redefinição de senha pelo fornecedor** existe para o caso em que o administrador da prefeitura
+  perde o acesso e não há mais ninguém para socorrê-lo — antes só se resolvia por SQL.
+- **Tudo fica na auditoria da prefeitura**, com o nome e e-mail do admin do produto que executou.
+  O autor vai em `detalhes`, não em `usuario_id`: o admin do sistema não existe na tabela `usuario`.
+  O token do painel passou a carregar nome e e-mail para isso.
+
 ## Navegação: um sistema por módulo (implementado)
 
 Cada módulo é um **sistema à parte**, com URL, navegação e cor próprias — nenhuma tela cita

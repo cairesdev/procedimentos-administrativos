@@ -30,6 +30,8 @@ Verificação estática: FKs resolvem, ordem válida, isolamento por orgao confi
 | POST /processos/:id/ordens | COMPRAS/ADMIN; 1 por contrato; NF única por fornecedor |
 | /processos/:id/anexos (POST/GET/download/DELETE) | MinIO, compensação, URL pré-assinada |
 | GET /auditoria | ADMIN/GESTOR/CONTROLADORIA; filtros referência, tipo, período, paginação |
+| GET /admin/orgaos/:id/administradores, /promoviveis | painel do produto: quem é ADMIN da prefeitura e quem pode ser promovido |
+| POST /admin/orgaos/:id/administrador, .../promover, .../senha; PATCH .../:usuarioId | criar, promover, redefinir senha e ativar/inativar; 422 ao inativar o último ativo; tudo auditado no órgão |
 
 **Auditoria** — `auditoria_log` gravado dentro das transações dos use cases (contrato criado,
 solicitação enviada/cancelada, processo despachado/movido, parecer, ordem, anexo adicionado/removido),

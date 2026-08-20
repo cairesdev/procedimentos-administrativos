@@ -2,7 +2,14 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../../config/env";
 
-export type AdminTokenPayload = { adminId: string; escopo: "SISTEMA" };
+// nome e email viajam no token para a auditoria registrar quem, do lado do
+// produto, mexeu na prefeitura — sem uma consulta a cada ação.
+export type AdminTokenPayload = {
+  adminId: string;
+  nome: string;
+  email: string;
+  escopo: "SISTEMA";
+};
 
 declare module "express-serve-static-core" {
   interface Request {

@@ -38,8 +38,21 @@ export type TimbreDoOrgao = {
   rodapeTimbre: string | null;
 };
 
+/** Usuário com papel ADMIN dentro de uma prefeitura. */
+export type AdministradorDaEntidade = {
+  id: string;
+  nome: string;
+  email: string;
+  username: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
 export interface AdminSistemaRepository {
   buscarPorEmail(email: string): Promise<AdminAutenticavel | null>;
+  listarAdministradores(orgaoId: string): Promise<AdministradorDaEntidade[]>;
+  /** Quantos ADMIN ativos a prefeitura tem, para não deixá-la sem nenhum. */
+  contarAdministradoresAtivos(orgaoId: string, ignorarId?: string): Promise<number>;
   listarOrgaos(): Promise<OrgaoResumo[]>;
   buscarOrgao(id: string): Promise<OrgaoResumo | null>;
   existeCnpj(cnpj: string, ignorarId?: string): Promise<boolean>;

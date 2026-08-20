@@ -18,4 +18,22 @@ export type Letterhead = {
   rodapeTimbre: string | null;
 };
 
+export type EntityAdmin = {
+  id: string;
+  nome: string;
+  email: string;
+  username: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+/** Servidor que ainda não é ADMIN e pode ser promovido. */
+export type PromotableUser = {
+  id: string;
+  nome: string;
+  email: string;
+  papelBase: string;
+  ativo: boolean;
+};
+
 export const MODULES: ModuleName[] = ["PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO"];

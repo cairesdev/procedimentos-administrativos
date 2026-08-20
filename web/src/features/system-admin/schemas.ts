@@ -26,6 +26,14 @@ export const firstAdminSchema = z.object({
   senha: z.string().min(8, "Mínimo de 8 caracteres"),
 });
 
+export const resetPasswordSchema = z.object({
+  senha: z.string().min(8, "Mínimo de 8 caracteres"),
+});
+
+export const promoteSchema = z.object({
+  usuarioId: z.uuid("Escolha o servidor"),
+});
+
 export const adminLoginSchema = z.object({
   email: z.email("E-mail inválido"),
   senha: z.string().min(1, "Informe a senha"),
@@ -34,4 +42,6 @@ export const adminLoginSchema = z.object({
 export type TenantInput = z.input<typeof tenantSchema>;
 export type LetterheadInput = z.input<typeof letterheadSchema>;
 export type FirstAdminInput = z.input<typeof firstAdminSchema>;
+export type ResetPasswordInput = z.input<typeof resetPasswordSchema>;
+export type PromoteInput = z.input<typeof promoteSchema>;
 export type AdminLoginInput = z.input<typeof adminLoginSchema>;

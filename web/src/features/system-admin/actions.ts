@@ -6,8 +6,10 @@ import { apiRequest, ApiError } from "@/shared/api/http-client";
 import { runAction } from "@/shared/api/action-result";
 import { clearAdminToken, readAdminToken, writeAdminToken } from "./session";
 import {
-  adminLoginSchema, firstAdminSchema, letterheadSchema, tenantSchema,
-  type AdminLoginInput, type FirstAdminInput, type LetterheadInput, type TenantInput,
+  adminLoginSchema, firstAdminSchema, letterheadSchema, promoteSchema, resetPasswordSchema,
+  tenantSchema,
+  type AdminLoginInput, type FirstAdminInput, type LetterheadInput, type PromoteInput,
+  type ResetPasswordInput, type TenantInput,
 } from "./schemas";
 
 const withAdminToken = async <T>(
@@ -79,9 +81,41 @@ export const saveLetterhead = async (id: string, input: LetterheadInput) =>
     revalidatePath("/admin");
   }, "Timbre salvo");
 
-export const createFirstAdmin = async (id: string, input: FirstAdminInput) =>
+export const createEntityAdmin = async (id: string, input: FirstAdminInput) =>
   runAction(async () => {
     const body = firstAdminSchema.parse(input);
     await withAdminToken(`/admin/orgaos/${id}/administrador`, "POST", body);
     revalidatePath("/admin");
-  }, "Administrador da prefeitura criado");
+  }, "Administrador criado");
+
+export const promoteEntityAdmin = async (id: string, input: PromoteInput) =>
+  runAction(async () => {
+    const { usuarioId } = promoteSchema.parse(input);
+    await withAdminToken(
+      `/admin/orgaos/${id}/administradores/${usuarioId}/promover`, "POST", {},
+    );
+    revalidatePath("/admin");
+  }, "Usuário promovido a administrador");
+
+// Socorro ao cliente que ficou sem acesso: a senha nova vai para quem pediu,
+// por fora do sistema, e a ação fica registrada na auditoria da prefeitura.
+export const resetEntityAdminPassword = async (
+  id: string,
+  usuarioId: string,
+  input: ResetPasswordInput,
+) =>
+  runAction(async () => {
+    const body = resetPasswordSchema.parse(input);
+    await withAdminToken(
+      `/admin/orgaos/${id}/administradores/${usuarioId}/senha`, "POST", body,
+    );
+    revalidatePath("/admin");
+  }, "Senha redefinida");
+
+export const setEntityAdminActive = async (id: string, usuarioId: string, ativo: boolean) =>
+  runAction(async () => {
+    await withAdminToken(
+      `/admin/orgaos/${id}/administradores/${usuarioId}`, "PATCH", { ativo },
+    );
+    revalidatePath("/admin");
+  }, ativo ? "Administrador reativado" : "Administrador inativado");
