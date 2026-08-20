@@ -8,7 +8,10 @@ export type NavIcon =
   | "shieldCheck"
   | "mapPin"
   | "package"
-  | "clipboardCheck";
+  | "clipboardCheck"
+  | "truck"
+  | "route"
+  | "wrench";
 
 export type NavLink = {
   href: string;
@@ -22,7 +25,7 @@ export type NavSection = {
   links: NavLink[];
 };
 
-export type WorkspaceId = "processos" | "patrimonio" | "administracao";
+export type WorkspaceId = "processos" | "patrimonio" | "frotas" | "administracao";
 
 export type Workspace = {
   id: WorkspaceId;
@@ -114,6 +117,43 @@ export const workspaces: Workspace[] = [
         links: [
           { href: "/patrimonio/locais", label: "Locais", permission: "assets:read" },
           { href: "/patrimonio/categorias", label: "Categorias", permission: "assets:read" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "frotas",
+    name: "Frotas",
+    description: "Veículos, motoristas, viagens e manutenção",
+    basePath: "/frotas",
+    icon: "truck",
+    accent: "#a76a00",
+    accentSoft: "#fdf3e2",
+    module: "FROTAS",
+    permission: "fleet:read",
+    sections: [
+      {
+        group: "Movimento",
+        icon: "route",
+        links: [
+          { href: "/frotas/agenda", label: "Agenda", permission: "fleet:read" },
+          { href: "/frotas/viagens", label: "Viagens", permission: "fleet:read" },
+          { href: "/frotas/manutencoes", label: "Manutenções", permission: "fleet:read" },
+        ],
+      },
+      {
+        group: "Análise",
+        icon: "wrench",
+        links: [
+          { href: "/frotas/relatorios", label: "Relatório de uso", permission: "fleet:read" },
+        ],
+      },
+      {
+        group: "Cadastros",
+        icon: "truck",
+        links: [
+          { href: "/frotas/veiculos", label: "Veículos", permission: "fleet:read" },
+          { href: "/frotas/motoristas", label: "Motoristas", permission: "fleet:read" },
         ],
       },
     ],

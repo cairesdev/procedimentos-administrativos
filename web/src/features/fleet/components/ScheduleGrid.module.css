@@ -1,0 +1,132 @@
+.wrapper {
+  overflow-x: auto;
+}
+
+.grid {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.grid th,
+.grid td {
+  border: 1px solid var(--borda);
+  vertical-align: top;
+  padding: 8px;
+}
+
+.grid thead th {
+  background: var(--superficie_alt);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.today {
+  background: var(--acao_suave);
+}
+
+.vehicle {
+  width: 170px;
+  background: var(--superficie_alt);
+}
+
+.plate {
+  font-weight: 600;
+}
+
+.model {
+  color: var(--texto_suave);
+  font-size: 12px;
+}
+
+.day {
+  min-width: 110px;
+}
+
+.trip {
+  display: block;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--borda_forte);
+  border-radius: 4px;
+  background: var(--superficie_alt);
+  color: inherit;
+  text-decoration: none;
+}
+
+.trip:hover {
+  background: var(--acao_suave);
+}
+
+.trip:last-child {
+  margin-bottom: 0;
+}
+
+.trip_time {
+  font-weight: 600;
+}
+
+.trip_who {
+  display: block;
+  color: var(--texto_suave);
+  font-size: 12px;
+}
+
+/* Cores por situação, iguais às badges da listagem. */
+.status_SOLICITADA { border-left-color: var(--acao); }
+.status_REMARCADA { border-left-color: var(--alerta); }
+.status_APROVADA { border-left-color: var(--sucesso); }
+.status_RETIRADA { border-left-color: var(--lilas); }
+.status_FINALIZADA { border-left-color: var(--borda_forte); }
+
+.maintenance {
+  color: var(--alerta);
+  font-size: 12px;
+}
+
+.empty_day {
+  color: var(--texto_apagado);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--texto_suave);
+}
+
+.legend_item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend_dot {
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* A grade colore a borda esquerda; a legenda precisa do mesmo tom no fundo. */
+.dot_SOLICITADA { background: var(--acao); }
+.dot_REMARCADA { background: var(--alerta); }
+.dot_APROVADA { background: var(--sucesso); }
+.dot_RETIRADA { background: var(--lilas); }
+.dot_FINALIZADA { background: var(--borda_forte); }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.week {
+  font-weight: 600;
+}

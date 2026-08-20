@@ -66,6 +66,26 @@ do tombamento e cadastro de categoria sem sair do passo) e inventários (folha d
 paginada, marcação em lote sobre o filtro e conclusão travada enquanto houver bem não gravado).
 Entradas e bens têm editar/excluir com o aviso de que o tombamento não volta.
 
+**API módulo Frotas** — `/frotas/*` (papel FROTAS na migration 0012):
+
+| Rota | Regra central |
+| --- | --- |
+| CRUD /frotas/veiculos | placa única por órgão, imutável na edição; exclusão travada por viagens |
+| CRUD /frotas/motoristas | validade da CNH com contagem de dias; exclusão travada por viagens |
+| GET/POST /frotas/viagens | valida veículo disponível, CNH válida e compartilhamento; devolve conflitos de agenda como aviso |
+| POST /viagens/:id/aprovar\|recusar\|remarcar\|cancelar | máquina de estados explícita; 422 lista as transições possíveis |
+| POST /viagens/:id/retirada | só de APROVADA; km ≥ hodômetro do veículo; nota de combustível opcional |
+| POST /viagens/:id/finalizar | só de RETIRADA; km final ≥ km da retirada; grava km no veículo em transação |
+| GET/POST /viagens/:id/abastecimentos, DELETE /abastecimentos/:id | só de viagem RETIRADA ou FINALIZADA; exige litros ou valor |
+| GET /frotas/agenda?de=&ate= | uma linha por veículo, viagens da janela agrupadas; veículo sem viagem também vem |
+| GET /frotas/relatorios/uso?de=&ate= | km, litros, combustível e manutenção por veículo, em subconsultas para não multiplicar somas |
+| GET/POST /frotas/manutencoes | uma aberta por veículo; aberta bloqueia solicitação |
+| POST /manutencoes/:id/encerrar | libera o veículo; data de fim ≥ início |
+
+**Web sistema /frotas** — quarto workspace no hub (cor âmbar): agenda semanal, viagens, manutenções,
+relatório de uso, veículos e motoristas. Ciclo da viagem operado na tela de detalhe, que só oferece
+as ações que o estado aceita; abastecimentos lançados na mesma tela a partir da retirada.
+
 ## Pendente (ordem sugerida)
 
 1. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos
@@ -81,8 +101,8 @@ Entradas e bens têm editar/excluir com o aviso de que o tombamento não volta.
    motivo (modelados em `decisoes.md`, ainda sem API nem tela).
 7. **Tela de auditoria** — API pronta (`GET /auditoria`), sem tela; link tirado do menu até existir.
 8. **Testes automatizados** — só o smoke test do módulo Processos.
-9. **Módulos Frotas e Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
-   `docs/decisoes.md` + UML de cada um.
+9. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
+   `docs/decisoes.md` + UML.
 10. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura

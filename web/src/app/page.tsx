@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { Building2, ClipboardCheck, FileSignature, Inbox, MapPin, Package, ShieldCheck } from "lucide-react";
+import {
+  Building2, ClipboardCheck, FileSignature, Inbox, MapPin, Package, Route, ShieldCheck,
+  Truck, Wrench,
+} from "lucide-react";
 import { logout } from "@/features/auth/actions";
 import { getProfile } from "@/features/auth/queries";
 import { getViewer } from "@/shared/auth/guards";
@@ -18,6 +21,9 @@ const icons: Record<NavIcon, typeof Inbox> = {
   mapPin: MapPin,
   package: Package,
   clipboardCheck: ClipboardCheck,
+  truck: Truck,
+  route: Route,
+  wrench: Wrench,
 };
 
 // Porta de entrada: cada sistema é um mundo à parte daqui para dentro.

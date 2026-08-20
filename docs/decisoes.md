@@ -66,13 +66,40 @@ Alterar qualquer um exige nova aprovação do usuário.
 - **Protocolo é a porta de entrada genérica** (interno + atendimento externo de balcão para
   qualquer parte: fornecedor, cidadão, outro órgão). Atendimento externo ainda não implementado.
 
-## Módulo Frotas (modelado, não implementado)
+## Módulo Frotas (implementado)
 
 Fluxo próprio simples (SOLICITADA→APROVADA/RECUSADA/REMARCADA→RETIRADA→FINALIZADA), sem motor de
 processos. Compartilhamento de veículo entre secretarias configurável por prefeitura. Motorista com
 cadastro próprio (CNH, categoria, validade, alerta). Manutenção como histórico (aberta = veículo
 indisponível). Nota de combustível por LITRO ou VALOR, registro independente de contratos. Conflito
 de agenda só avisa — gestor decide. Sinistro texto livre. Extras: agenda visual + relatórios de uso.
+
+**1ª fatia entregue**: veículos, motoristas e o ciclo completo da viagem
+(SOLICITADA → APROVADA/RECUSADA/REMARCADA → RETIRADA → FINALIZADA), mais manutenção. Decisões
+tomadas na implementação, todas reversíveis:
+
+- **Motorista continua obrigatório na solicitação**, como o schema previa; `retirada.motorista_id`
+  registra quem de fato levou o veículo, que pode ser outro. Se a prefeitura preferir que o gestor
+  escale o motorista só na aprovação, é migration para tornar `viagem.motorista_id` opcional.
+- **Barreiras na solicitação**: veículo inativo ou em manutenção não é ofertado; motorista com CNH
+  vencida também não. Vencendo em até 30 dias só alerta.
+- **Hodômetro não anda para trás**: km da retirada ≥ km do veículo, km final ≥ km da retirada. A
+  finalização grava finalização + status + km do veículo na mesma transação.
+- **Compartilhamento entre secretarias** respeitado na solicitação: veículo com unidade dona só é
+  pedido por ela, salvo com `frota_config.compartilha_entre_secretarias` ligado.
+- **Conflito de agenda só avisa** (janela de 4h para frente e para trás), como decidido — a API
+  devolve os conflitos junto com a viagem criada e a tela mostra no toast.
+**2ª fatia entregue** — o módulo está completo:
+
+- **Abastecimento durante a viagem**: litros, valor, ou os dois; só aceito de viagem RETIRADA ou
+  FINALIZADA (antes da retirada não há o que abastecer). É coisa distinta da nota de combustível
+  entregue na retirada, que continua no registro da retirada.
+- **Agenda semanal**: grade veículo × dia, com navegação de semana, viagem clicável, cor por
+  situação e veículo em manutenção ou inativo sinalizado. Veículo sem viagem na semana continua na
+  grade — a ociosidade é a informação mais útil ali.
+- **Relatório de uso** por período: viagens finalizadas, km rodado, litros, gasto com combustível e
+  com manutenção, por veículo e no total, com consumo médio em km/L. Km e viagens contam pela data
+  de **finalização**; manutenção pela data de **abertura**.
 
 ## Navegação: um sistema por módulo (implementado)
 

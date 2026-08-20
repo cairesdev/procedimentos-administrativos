@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2, ChevronRight, ClipboardCheck, FileSignature, Inbox, MapPin, Package, ShieldCheck,
+  Building2, ChevronRight, ClipboardCheck, FileSignature, Inbox, MapPin, Package, Route,
+  ShieldCheck, Truck, Wrench,
 } from "lucide-react";
 import type { NavIcon, NavSection } from "@/shared/auth/modules";
 import styles from "./WorkspaceSidebar.module.css";
@@ -17,6 +18,9 @@ const icons: Record<NavIcon, typeof Inbox> = {
   mapPin: MapPin,
   package: Package,
   clipboardCheck: ClipboardCheck,
+  truck: Truck,
+  route: Route,
+  wrench: Wrench,
 };
 
 export const WorkspaceSidebar = ({ sections }: { sections: NavSection[] }) => {

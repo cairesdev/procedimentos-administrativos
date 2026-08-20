@@ -2,6 +2,7 @@ import express from "express";
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
 import { patrimonioRouter } from "./routes/patrimonio";
+import { frotasRouter } from "./routes/frotas";
 import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
 import { atasRouter } from "./routes/atas";
@@ -45,6 +46,7 @@ export const criarApp = () => {
 
   // Módulo de patrimônio: independente do módulo de processos.
   app.use("/patrimonio", authenticate, resolveTenant("PATRIMONIO"), patrimonioRouter);
+  app.use("/frotas", authenticate, resolveTenant("FROTAS"), frotasRouter);
 
   app.use(errorHandler);
   return app;

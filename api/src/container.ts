@@ -34,6 +34,8 @@ import { PostgresAdminSistemaRepository } from "./infrastructure/db/PostgresAdmi
 import { AdministrarSistema } from "./application/admin/AdministrarSistema";
 import { PostgresPatrimonioRepository } from "./infrastructure/db/PostgresPatrimonioRepository";
 import { GerenciarPatrimonio } from "./application/patrimonio/GerenciarPatrimonio";
+import { PostgresFrotaRepository } from "./infrastructure/db/PostgresFrotaRepository";
+import { GerenciarFrota } from "./application/frota/GerenciarFrota";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -48,9 +50,12 @@ const auditoria = new PostgresAuditoriaRepository();
 const atas = new PostgresAtaRepository();
 const adminSistema = new PostgresAdminSistemaRepository();
 const patrimonio = new PostgresPatrimonioRepository();
+const frota = new PostgresFrotaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 
 export const container = {
+  frota,
+  gerenciarFrota: new GerenciarFrota(frota, auditoria),
   patrimonio,
   gerenciarPatrimonio: new GerenciarPatrimonio(patrimonio, auditoria, executarEmTransacao),
   adminSistema,

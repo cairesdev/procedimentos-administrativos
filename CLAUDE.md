@@ -1,9 +1,9 @@
 # Procedimentos Administrativos — contexto do projeto
 
 Sistema multi-tenant de gestão de processos administrativos para prefeituras municipais.
-Uma base de dados atende várias prefeituras. Módulos: **Processos** (licitação → contrato →
-solicitação → tramitação, implementado), **Frotas**, **Patrimônio**, **Almoxarifado/Alimentação
-Escolar** (levantados e modelados, não implementados).
+Uma base de dados atende várias prefeituras. Módulos implementados: **Processos** (licitação →
+contrato → solicitação → tramitação), **Patrimônio** e **Frotas** (1ª fatia de cada um).
+**Almoxarifado/Alimentação Escolar** está levantado e modelado, mas não implementado.
 
 ## Leitura obrigatória antes de codar
 
@@ -19,7 +19,7 @@ Escolar** (levantados e modelados, não implementados).
 
 ```
 api/               Express + TypeScript, Clean Architecture (implementado)
-  db/migrations/   0001..0011 SQL puro, numeradas; `npm run migrate` aplica as pendentes
+  db/migrations/   0001..0012 SQL puro, numeradas; `npm run migrate` aplica as pendentes
   scripts/         migrate, bootstrap-admin, smoke
   Dockerfile       multi-stage → workcenterma/br-consultoria:api-*
   src/
@@ -28,7 +28,7 @@ api/               Express + TypeScript, Clean Architecture (implementado)
     infrastructure/db, storage — implementações Postgres (SQL puro) e MinIO
     interface/http/ rotas finas, middlewares, schemas Zod
     container.ts   composição manual de dependências
-web/               Next.js — hub + /processos, /patrimonio, /administracao, /admin
+web/               Next.js — hub + /processos, /patrimonio, /frotas, /administracao, /admin
   Dockerfile       Next standalone → workcenterma/br-consultoria:web-*
 docs/              decisões, roadmap, UML
 docker-compose.yml Postgres 18 + MinIO + api + web; dados em ./data (bind mount)

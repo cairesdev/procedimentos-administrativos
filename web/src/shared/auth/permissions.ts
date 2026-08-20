@@ -25,9 +25,14 @@ export type Permission =
   | "processes:order"
   | "audit:read"
   | "assets:read"
-  | "assets:write";
+  | "assets:write"
+  | "fleet:read"
+  | "fleet:write"
+  | "trips:create";
 
 const READ_ONLY: Permission[] = [
+  "fleet:read",
+  "trips:create",
   "units:read",
   "sectors:read",
   "suppliers:read",
@@ -41,6 +46,7 @@ const READ_ONLY: Permission[] = [
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
     "assets:read", "assets:write",
+    "fleet:read", "fleet:write", "trips:create",
     "units:read", "units:write",
     "sectors:read", "sectors:write",
     "users:read", "users:write",
@@ -55,6 +61,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   GESTOR: [
     ...READ_ONLY,
     "assets:read", "assets:write",
+    "fleet:read", "fleet:write", "trips:create",
     "users:read",
     "suppliers:write",
     "bids:write",
@@ -70,6 +77,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
   PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],
+  FROTAS: ["fleet:read", "fleet:write", "trips:create", "units:read"],
 };
 
 export const hasPermission = (role: Role, permission: Permission): boolean =>

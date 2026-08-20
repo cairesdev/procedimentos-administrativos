@@ -1,0 +1,19 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.closed {
+  font-size: 13px;
+  color: var(--texto_suave);
+}
+
+.danger {
+  background: var(--perigo);
+}
+
+.danger:hover:not(:disabled) {
+  background: #9c2a22;
+}
