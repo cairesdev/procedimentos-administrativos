@@ -130,25 +130,63 @@ o primeiro usuário ADMIN dela.
 
 ## 4. Atualizar de versão
 
+### O ciclo completo
+
+**1. Na sua máquina** — publicar a versão:
+
 ```bash
-cd /opt/procedimentos
+git push                       # CI publica api-main / web-main
+git tag v1.1.0 && git push origin v1.1.0   # CI publica api-1.1.0 / web-1.1.0 / *-latest
+```
+
+Espere o workflow terminar. **Confira que os DOIS lados saíram** — já aconteceu
+de o job do web falhar e sobrar `api-1.0.0` sem `web-1.0.0`.
+
+**2. Na VPS** — um comando:
+
+```bash
+cd /opt/gestaobr
+./scripts/deploy.sh 1.1.0
+```
+
+O script recusa rodar da pasta errada ou sem `.env.prod`, confere que as duas
+imagens existem no registry antes de mexer em qualquer coisa, tira um `pg_dump`
+para `backups/pre-deploy-*.sql.gz`, dá `git pull`, troca o `IMAGE_TAG`, baixa as
+imagens, sobe e espera todo mundo ficar `healthy` — mostrando o log da API se
+não ficar. No fim imprime o comando exato de rollback.
+
+### Se preferir na mão
+
+```bash
+cd /opt/gestaobr
 git pull                                    # traz compose e migrations novas
 sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=1.1.0/' .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
 `pull_policy: always` busca a imagem nova, e o entrypoint aplica as migrations
-pendentes antes de servir. Rollback é apontar o `IMAGE_TAG` de volta e subir de
-novo — **desde que a migration nova não tenha mudado o schema de forma
-incompatível**. Migration que remove coluna não tem volta por tag; nesse caso o
-caminho é restaurar backup.
+pendentes antes de servir.
 
-Para separar as etapas, ponha `RUN_MIGRATIONS=false` e rode à mão:
+### Rollback
+
+Apontar o `IMAGE_TAG` de volta e subir de novo — **desde que a migration nova
+não tenha mudado o schema de forma incompatível**. Migration que remove coluna
+não tem volta por tag; nesse caso o caminho é restaurar o backup que o script
+tirou antes de subir.
+
+Para separar migration de deploy, ponha `RUN_MIGRATIONS=false` e rode à mão:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod \
   run --rm api node dist/scripts/migrate.js
 ```
+
+### Depois de um deploy que traz módulo novo
+
+Módulo novo não aparece sozinho: entre em `/admin`, abra a prefeitura e
+**habilite o módulo**. Sem isso o sistema fica invisível no hub, mesmo com o
+código no ar. Papel novo (`FROTAS`, `PATRIMONIO`) também precisa ser atribuído
+aos usuários que vão operar.
 
 ## 5. Backup
 

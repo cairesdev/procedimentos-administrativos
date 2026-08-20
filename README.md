@@ -97,6 +97,20 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 O download de anexo desce em streaming pela API — o MinIO fica privado, sem domínio nem
 certificado próprio.
 
+### Atualizar a produção
+
+```bash
+# na sua máquina
+git push && git tag v1.1.0 && git push origin v1.1.0
+
+# na VPS, depois que o CI terminar
+cd /opt/gestaobr && ./scripts/deploy.sh 1.1.0
+```
+
+O script confere as imagens no registry, tira backup do banco, aplica as
+migrations pelo entrypoint e espera tudo ficar `healthy`. Passo a passo e
+rollback em `docs/deploy-vps.md`.
+
 ### CI
 
 `.github/workflows/ci.yml`: PR roda typecheck (api e web) e lint; push na `main` publica
