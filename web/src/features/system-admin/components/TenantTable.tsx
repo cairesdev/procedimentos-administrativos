@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge, Table } from "@/shared/ui/layout";
 import { toDocument } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
@@ -15,7 +16,9 @@ export const TenantTable = ({ tenants }: { tenants: Tenant[] }) => (
     {tenants.map((tenant) => (
       <tr key={tenant.id}>
         <td>
-          <span className={styles.name}>{tenant.nome}</span>
+          <Link href={`/admin/prefeituras/${tenant.id}`} className={styles.name}>
+            {tenant.nome}
+          </Link>
           <span className={styles.place}>
             {tenant.municipio}/{tenant.uf}
           </span>

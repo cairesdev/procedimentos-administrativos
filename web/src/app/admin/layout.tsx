@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { adminLogout } from "@/features/system-admin/actions";
 import { Button } from "@/shared/ui/button";
 import styles from "./admin.module.css";
@@ -16,6 +17,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className={styles.brand_subtitle}>Prefeituras atendidas pela plataforma</span>
           </span>
         </div>
+
+        <nav className={styles.nav}>
+          <Link href="/admin">Prefeituras</Link>
+          <Link href="/admin/administradores">Administradores</Link>
+        </nav>
 
         <form action={adminLogout}>
           <Button type="submit" variant="ghost">

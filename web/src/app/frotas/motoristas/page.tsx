@@ -8,7 +8,14 @@ import { ModalTrigger } from "@/shared/ui/Modal";
 
 export default async function DriversPage() {
   const viewer = await requirePermission("fleet:read", "FROTAS");
-  const [drivers, users] = await Promise.all([listDrivers(), listUsers()]);
+
+  // GET /usuarios exige ADMIN/GESTOR. Quem tem papel FROTAS não pode ler a
+  // lista, e pedir mesmo assim derrubava a página inteira com 403. O vínculo
+  // com usuário é opcional no motorista, então sem a lista o cadastro segue.
+  const [drivers, users] = await Promise.all([
+    listDrivers(),
+    viewer.can("users:read") ? listUsers() : Promise.resolve([]),
+  ]);
 
   const userOptions = users.map((user) => ({ value: user.id, label: user.nome }));
   const canWrite = viewer.can("fleet:write");

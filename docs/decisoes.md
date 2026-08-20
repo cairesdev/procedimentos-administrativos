@@ -101,6 +101,18 @@ tomadas na implementação, todas reversíveis:
   com manutenção, por veículo e no total, com consumo médio em km/L. Km e viagens contam pela data
   de **finalização**; manutenção pela data de **abertura**.
 
+## Painel do produto: alcance total sobre a prefeitura (implementado)
+
+Além dos administradores, o `/admin` gere **unidades, setores e usuários** de cada prefeitura —
+as mesmas operações que o ADMIN dela tem, com o órgão vindo da URL em vez do token. Serve para o
+suporte destravar cliente sem pedir a senha de ninguém. O painel também gere os **administradores
+do próprio produto** (`admin_sistema`): listar, criar, redefinir senha e ativar/inativar, com duas
+travas — ninguém inativa o próprio acesso, e o sistema nunca fica sem nenhum admin ativo (de onde
+só se sairia por SQL).
+
+O `/admin` virou lista de prefeituras; módulos, timbre, administradores e cadastros passaram para
+`/admin/prefeituras/[id]`. Antes tudo isso carregava para **todas** as prefeituras na mesma tela.
+
 ## Painel do produto: administradores da prefeitura (implementado)
 
 O `/admin` deixou de só **criar** o primeiro ADMIN e passou a **gerir** os administradores de cada

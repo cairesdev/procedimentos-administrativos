@@ -63,6 +63,61 @@ export class AdministrarSistema {
     await this.admins.salvarTimbre(id, dados);
   };
 
+  // ---- Administradores do produto -----------------------------------------
+
+  listarAdminsDoSistema = () => this.admins.listarAdminsDoSistema();
+
+  criarAdminDoSistema = async (dados: {
+    nome: string;
+    email: string;
+    senha: string;
+  }): Promise<{ id: string }> => {
+    const email = dados.email.toLowerCase();
+    if (await this.admins.buscarPorEmail(email)) {
+      throw new Conflito(`Já existe administrador com o e-mail ${email}`);
+    }
+    return {
+      id: await this.admins.criarAdminDoSistema({
+        nome: dados.nome,
+        email,
+        senhaHash: await hash(dados.senha, 10),
+      }),
+    };
+  };
+
+  redefinirSenhaDeAdminDoSistema = async (id: string, novaSenha: string): Promise<void> => {
+    garantirExiste(await this.admins.buscarAdminPorId(id), "Administrador");
+    await this.admins.atualizarAdminDoSistema(id, { senhaHash: await hash(novaSenha, 10) });
+  };
+
+  /**
+   * Duas travas: ninguém se auto-inativa (perderia o acesso no mesmo clique) e
+   * o produto nunca fica sem nenhum administrador — daí só se sai por SQL.
+   */
+  definirSituacaoDeAdminDoSistema = async (
+    id: string,
+    ativo: boolean,
+    autorId?: string,
+  ): Promise<void> => {
+    const admin = garantirExiste(await this.admins.buscarAdminPorId(id), "Administrador");
+
+    if (!ativo) {
+      if (autorId && autorId === id) {
+        throw new ErroDeNegocio("Você não pode inativar o seu próprio acesso");
+      }
+      const restantes = await this.admins.contarAdminsDoSistemaAtivos(id);
+      if (restantes === 0) {
+        throw new ErroDeNegocio(
+          "Este é o único administrador ativo do sistema. Cadastre outro antes de inativar.",
+          422,
+          { adminsAtivosRestantes: 0 },
+        );
+      }
+    }
+
+    await this.admins.atualizarAdminDoSistema(admin.id, { ativo });
+  };
+
   // ---- Administradores da prefeitura --------------------------------------
 
   listarAdministradores = async (orgaoId: string): Promise<AdministradorDaEntidade[]> => {

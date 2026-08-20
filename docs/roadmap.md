@@ -119,6 +119,16 @@ Migrations aplicadas pelo entrypoint via `schema_migrations` + advisory lock. Ro
 navegador (apontava para o host interno `minio`), então o download estava quebrado. Com isso o
 MinIO deixou de precisar de domínio público.
 
+## Bugs corrigidos nesta rodada
+
+- **`papelBase: invalid enum value` ao cadastrar usuário.** O papel FROTAS entrou no banco
+  (migration 0012) e no front, mas ficou de fora dos enums Zod da API, que repetiam a lista de
+  papéis em dois lugares. A lista virou `domain/shared/Papeis.ts`, fonte única — o mesmo vale para
+  os tipos de setor. Ao criar papel novo: incluir lá **e** na constraint via migration.
+- **Tela de motoristas caía para quem tem papel FROTAS.** A página pedia `GET /usuarios`, que exige
+  ADMIN/GESTOR, e o 403 derrubava a renderização inteira. Agora só busca quem tem `users:read`; o
+  vínculo com usuário é opcional no motorista, então o campo simplesmente some.
+
 ## Dívidas conhecidas
 
 - Usernames do backfill da migration 0007 são placeholders (`prefixo-email.4chars`).

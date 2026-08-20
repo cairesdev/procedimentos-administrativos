@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PAPEIS, TIPOS_DE_SETOR } from "../../../domain/shared/Papeis";
 
 export const criarUnidadeSchema = z.object({
   nome: z.string().min(1).max(150),
@@ -7,10 +8,7 @@ export const criarUnidadeSchema = z.object({
 
 export const criarSetorSchema = z.object({
   nome: z.string().min(1).max(150),
-  tipo: z.enum([
-    "PROTOCOLO", "COMPRAS", "CONTROLADORIA",
-    "ALIMENTACAO_ESCOLAR", "FROTAS", "PATRIMONIO", "OPERACIONAL",
-  ]),
+  tipo: z.enum(TIPOS_DE_SETOR),
 });
 
 export const criarDepartamentoSchema = z.object({
@@ -53,10 +51,7 @@ export const criarUsuarioSchema = z.object({
   email: z.string().email(),
   username: z.string().regex(/^[a-z0-9._-]{3,40}$/, "Minúsculas, números, ponto, hífen e underline; 3 a 40 caracteres"),
   senha: z.string().min(8, "Senha precisa de ao menos 8 caracteres"),
-  papelBase: z.enum([
-    "ADMIN", "GESTOR", "SERVIDOR", "PROTOCOLO",
-    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA", "PATRIMONIO",
-  ]),
+  papelBase: z.enum(PAPEIS),
   lotacoes: z.array(lotacaoSchema).default([]),
 });
 
@@ -68,10 +63,7 @@ export const editarUnidadeSchema = z.object({
 
 export const editarSetorSchema = z.object({
   nome: z.string().min(1).max(150).optional(),
-  tipo: z.enum([
-    "PROTOCOLO", "COMPRAS", "CONTROLADORIA",
-    "ALIMENTACAO_ESCOLAR", "FROTAS", "PATRIMONIO", "OPERACIONAL",
-  ]).optional(),
+  tipo: z.enum(TIPOS_DE_SETOR).optional(),
   ativo: z.boolean().optional(),
 });
 
@@ -84,10 +76,7 @@ export const editarDepartamentoSchema = z.object({
 export const editarUsuarioSchema = z.object({
   nome: z.string().min(1).max(150).optional(),
   email: z.string().email().optional(),
-  papelBase: z.enum([
-    "ADMIN", "GESTOR", "SERVIDOR", "PROTOCOLO",
-    "COMPRAS", "CONTROLADORIA", "NUTRICIONISTA", "PATRIMONIO",
-  ]).optional(),
+  papelBase: z.enum(PAPEIS).optional(),
   senha: z.string().min(8).optional(),
   ativo: z.boolean().optional(),
 });

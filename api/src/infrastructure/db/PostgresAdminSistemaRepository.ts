@@ -1,13 +1,32 @@
 import { pool } from "./pool";
 import type {
-  AdminAutenticavel, AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, NovoOrgao,
-  OrgaoResumo, TimbreDoOrgao,
+  AdminAutenticavel, AdminDoSistema, AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao,
+  NovoAdminDoSistema, NovoOrgao, OrgaoResumo, TimbreDoOrgao,
 } from "../../application/ports/AdminSistemaRepository";
 
 const SQL = {
   adminPorEmail: `
     SELECT id, nome, email, senha_hash AS "senhaHash", ativo
       FROM admin_sistema WHERE email = $1`,
+  buscarAdminPorId: `
+    SELECT id, nome, email, ativo, created_at AS "criadoEm"
+      FROM admin_sistema WHERE id = $1`,
+  listarAdminsDoSistema: `
+    SELECT id, nome, email, ativo, created_at AS "criadoEm"
+      FROM admin_sistema
+     ORDER BY ativo DESC, nome`,
+  contarAdminsDoSistemaAtivos: `
+    SELECT count(*) AS total FROM admin_sistema
+     WHERE ativo AND ($1::uuid IS NULL OR id <> $1)`,
+  criarAdminDoSistema: `
+    INSERT INTO admin_sistema (nome, email, senha_hash) VALUES ($1, $2, $3) RETURNING id`,
+  atualizarAdminDoSistema: `
+    UPDATE admin_sistema
+       SET nome = COALESCE($2, nome),
+           senha_hash = COALESCE($3, senha_hash),
+           ativo = COALESCE($4, ativo)
+     WHERE id = $1`,
+
   listarAdministradores: `
     SELECT id, nome, email, username, ativo, created_at AS "criadoEm"
       FROM usuario
@@ -77,6 +96,37 @@ export class PostgresAdminSistemaRepository implements AdminSistemaRepository {
   buscarPorEmail = async (email: string): Promise<AdminAutenticavel | null> => {
     const { rows } = await pool.query(SQL.adminPorEmail, [email]);
     return rows[0] ?? null;
+  };
+
+  buscarAdminPorId = async (id: string): Promise<AdminDoSistema | null> => {
+    const { rows } = await pool.query(SQL.buscarAdminPorId, [id]);
+    return rows[0] ?? null;
+  };
+
+  listarAdminsDoSistema = async (): Promise<AdminDoSistema[]> => {
+    const { rows } = await pool.query(SQL.listarAdminsDoSistema);
+    return rows;
+  };
+
+  contarAdminsDoSistemaAtivos = async (ignorarId?: string): Promise<number> => {
+    const { rows } = await pool.query(SQL.contarAdminsDoSistemaAtivos, [ignorarId ?? null]);
+    return Number(rows[0].total);
+  };
+
+  criarAdminDoSistema = async (dados: NovoAdminDoSistema): Promise<string> => {
+    const { rows } = await pool.query(SQL.criarAdminDoSistema, [
+      dados.nome, dados.email, dados.senhaHash,
+    ]);
+    return rows[0].id;
+  };
+
+  atualizarAdminDoSistema = async (
+    id: string,
+    dados: { nome?: string; senhaHash?: string; ativo?: boolean },
+  ): Promise<void> => {
+    await pool.query(SQL.atualizarAdminDoSistema, [
+      id, dados.nome ?? null, dados.senhaHash ?? null, dados.ativo ?? null,
+    ]);
   };
 
   listarAdministradores = async (orgaoId: string): Promise<AdministradorDaEntidade[]> => {

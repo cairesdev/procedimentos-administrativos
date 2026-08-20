@@ -7,20 +7,29 @@ import { runAction } from "@/shared/api/action-result";
 import { clearAdminToken, readAdminToken, writeAdminToken } from "./session";
 import {
   adminLoginSchema, firstAdminSchema, letterheadSchema, promoteSchema, resetPasswordSchema,
-  tenantSchema,
+  systemAdminSchema, tenantSchema, tenantSectorSchema, tenantUnitSchema, tenantUserSchema,
   type AdminLoginInput, type FirstAdminInput, type LetterheadInput, type PromoteInput,
-  type ResetPasswordInput, type TenantInput,
+  type ResetPasswordInput, type SystemAdminInput, type TenantInput, type TenantSectorInput,
+  type TenantUnitInput, type TenantUserInput,
 } from "./schemas";
 
 const withAdminToken = async <T>(
   path: string,
-  method: "POST" | "PATCH" | "PUT",
-  body: unknown,
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  body?: unknown,
 ): Promise<T> => {
   const token = await readAdminToken();
   if (!token) redirect("/admin/login");
   return apiRequest<T>(path, { method, body, token });
 };
+
+/** Revalida a lista e o detalhe da prefeitura de uma vez. */
+const revalidarPrefeitura = (id: string) => {
+  revalidatePath("/admin");
+  revalidatePath(`/admin/prefeituras/${id}`);
+};
+
+const vazio = (valor?: string) => valor?.trim() || undefined;
 
 export const adminLogin = async (input: AdminLoginInput) => {
   const credentials = adminLoginSchema.parse(input);
@@ -119,3 +128,126 @@ export const setEntityAdminActive = async (id: string, usuarioId: string, ativo:
     );
     revalidatePath("/admin");
   }, ativo ? "Administrador reativado" : "Administrador inativado");
+
+
+// ---- Administradores do produto --------------------------------------------
+
+export const createSystemAdmin = async (input: SystemAdminInput) =>
+  runAction(async () => {
+    const body = systemAdminSchema.parse(input);
+    await withAdminToken("/admin/administradores", "POST", body);
+    revalidatePath("/admin/administradores");
+  }, "Administrador criado");
+
+export const resetSystemAdminPassword = async (id: string, input: ResetPasswordInput) =>
+  runAction(async () => {
+    const body = resetPasswordSchema.parse(input);
+    await withAdminToken(`/admin/administradores/${id}/senha`, "POST", body);
+    revalidatePath("/admin/administradores");
+  }, "Senha redefinida");
+
+export const setSystemAdminActive = async (id: string, ativo: boolean) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/administradores/${id}`, "PATCH", { ativo });
+    revalidatePath("/admin/administradores");
+  }, ativo ? "Administrador reativado" : "Administrador inativado");
+
+// ---- Cadastros da prefeitura pelo painel ------------------------------------
+
+export const createTenantUnit = async (tenantId: string, input: TenantUnitInput) =>
+  runAction(async () => {
+    const { nome, sigla } = tenantUnitSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/unidades`, "POST", {
+      nome, sigla: vazio(sigla),
+    });
+    revalidarPrefeitura(tenantId);
+  }, "Unidade cadastrada");
+
+export const updateTenantUnit = async (
+  tenantId: string,
+  unitId: string,
+  input: TenantUnitInput,
+) =>
+  runAction(async () => {
+    const { nome, sigla } = tenantUnitSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/unidades/${unitId}`, "PATCH", {
+      nome, sigla: vazio(sigla) ?? null,
+    });
+    revalidarPrefeitura(tenantId);
+  }, "Unidade atualizada");
+
+export const setTenantUnitActive = async (tenantId: string, unitId: string, ativo: boolean) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/unidades/${unitId}`, "PATCH", { ativo });
+    revalidarPrefeitura(tenantId);
+  }, ativo ? "Unidade reativada" : "Unidade inativada");
+
+export const deleteTenantUnit = async (tenantId: string, unitId: string) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/unidades/${unitId}`, "DELETE");
+    revalidarPrefeitura(tenantId);
+  }, "Unidade excluída");
+
+export const createTenantSector = async (tenantId: string, input: TenantSectorInput) =>
+  runAction(async () => {
+    const body = tenantSectorSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/setores`, "POST", body);
+    revalidarPrefeitura(tenantId);
+  }, "Setor cadastrado");
+
+export const updateTenantSector = async (
+  tenantId: string,
+  sectorId: string,
+  input: TenantSectorInput,
+) =>
+  runAction(async () => {
+    const body = tenantSectorSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/setores/${sectorId}`, "PATCH", body);
+    revalidarPrefeitura(tenantId);
+  }, "Setor atualizado");
+
+export const setTenantSectorActive = async (
+  tenantId: string,
+  sectorId: string,
+  ativo: boolean,
+) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/setores/${sectorId}`, "PATCH", { ativo });
+    revalidarPrefeitura(tenantId);
+  }, ativo ? "Setor reativado" : "Setor inativado");
+
+export const deleteTenantSector = async (tenantId: string, sectorId: string) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/setores/${sectorId}`, "DELETE");
+    revalidarPrefeitura(tenantId);
+  }, "Setor excluído");
+
+export const createTenantUser = async (tenantId: string, input: TenantUserInput) =>
+  runAction(async () => {
+    const body = tenantUserSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios`, "POST", { ...body, lotacoes: [] });
+    revalidarPrefeitura(tenantId);
+  }, "Usuário cadastrado");
+
+export const setTenantUserActive = async (tenantId: string, userId: string, ativo: boolean) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios/${userId}`, "PATCH", { ativo });
+    revalidarPrefeitura(tenantId);
+  }, ativo ? "Usuário reativado" : "Usuário inativado");
+
+export const resetTenantUserPassword = async (
+  tenantId: string,
+  userId: string,
+  input: ResetPasswordInput,
+) =>
+  runAction(async () => {
+    const { senha } = resetPasswordSchema.parse(input);
+    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios/${userId}`, "PATCH", { senha });
+    revalidarPrefeitura(tenantId);
+  }, "Senha redefinida");
+
+export const deleteTenantUser = async (tenantId: string, userId: string) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios/${userId}`, "DELETE");
+    revalidarPrefeitura(tenantId);
+  }, "Usuário excluído");

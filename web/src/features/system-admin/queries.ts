@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { apiRequest, ApiError } from "@/shared/api/http-client";
 import { readAdminToken } from "./session";
-import type { EntityAdmin, Letterhead, PromotableUser, Tenant } from "./types";
+import type {
+  EntityAdmin, Letterhead, PromotableUser, SystemAdmin, Tenant, TenantSector, TenantUnit,
+  TenantUser,
+} from "./types";
 
 // O painel do produto usa token próprio, com escopo separado do dos servidores.
 const adminRequest = async <T>(path: string): Promise<T> => {
@@ -17,6 +20,20 @@ const adminRequest = async <T>(path: string): Promise<T> => {
 };
 
 export const listTenants = () => adminRequest<Tenant[]>("/admin/orgaos");
+
+export const getTenant = async (id: string): Promise<Tenant | undefined> =>
+  (await listTenants()).find((tenant) => tenant.id === id);
+
+export const listSystemAdmins = () => adminRequest<SystemAdmin[]>("/admin/administradores");
+
+export const listTenantUnits = (tenantId: string) =>
+  adminRequest<TenantUnit[]>(`/admin/orgaos/${tenantId}/unidades`);
+
+export const listTenantSectors = (tenantId: string) =>
+  adminRequest<TenantSector[]>(`/admin/orgaos/${tenantId}/setores`);
+
+export const listTenantUsers = (tenantId: string) =>
+  adminRequest<TenantUser[]>(`/admin/orgaos/${tenantId}/usuarios`);
 
 export const getLetterhead = (tenantId: string) =>
   adminRequest<Letterhead>(`/admin/orgaos/${tenantId}/timbre`);

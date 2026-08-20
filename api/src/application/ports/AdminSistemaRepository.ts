@@ -48,8 +48,31 @@ export type AdministradorDaEntidade = {
   criadoEm: string;
 };
 
+/** Administrador do produto (tabela `admin_sistema`), fora do isolamento por órgão. */
+export type AdminDoSistema = {
+  id: string;
+  nome: string;
+  email: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+export type NovoAdminDoSistema = {
+  nome: string;
+  email: string;
+  senhaHash: string;
+};
+
 export interface AdminSistemaRepository {
   buscarPorEmail(email: string): Promise<AdminAutenticavel | null>;
+  buscarAdminPorId(id: string): Promise<AdminDoSistema | null>;
+  listarAdminsDoSistema(): Promise<AdminDoSistema[]>;
+  contarAdminsDoSistemaAtivos(ignorarId?: string): Promise<number>;
+  criarAdminDoSistema(dados: NovoAdminDoSistema): Promise<string>;
+  atualizarAdminDoSistema(
+    id: string,
+    dados: { nome?: string; senhaHash?: string; ativo?: boolean },
+  ): Promise<void>;
   listarAdministradores(orgaoId: string): Promise<AdministradorDaEntidade[]>;
   /** Quantos ADMIN ativos a prefeitura tem, para não deixá-la sem nenhum. */
   contarAdministradoresAtivos(orgaoId: string, ignorarId?: string): Promise<number>;

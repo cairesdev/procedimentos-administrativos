@@ -65,14 +65,18 @@ export const DriverForm = ({ driver, users }: { driver?: Driver; users: Option[]
         />
       </FieldGrid>
 
-      <SelectField
-        label="Usuário do sistema"
-        options={users}
-        emptyOption="Sem vínculo"
-        hint="Opcional: liga o motorista a um login, se ele usar o sistema."
-        error={errors.usuarioId?.message}
-        {...form.register("usuarioId")}
-      />
+      {/* Sem permissão para ler usuários a lista vem vazia; aí o campo some
+          em vez de virar um select inútil. O vínculo é opcional. */}
+      {users.length > 0 ? (
+        <SelectField
+          label="Usuário do sistema"
+          options={users}
+          emptyOption="Sem vínculo"
+          hint="Opcional: liga o motorista a um login, se ele usar o sistema."
+          error={errors.usuarioId?.message}
+          {...form.register("usuarioId")}
+        />
+      ) : null}
 
       <div>
         <Button type="submit" disabled={isSubmitting}>

@@ -36,4 +36,35 @@ export type PromotableUser = {
   ativo: boolean;
 };
 
+/** Administrador do produto (não pertence a nenhuma prefeitura). */
+export type SystemAdmin = {
+  id: string;
+  nome: string;
+  email: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+export type TenantUnit = { id: string; nome: string; sigla: string | null; ativo: boolean };
+
+export type TenantSector = {
+  id: string;
+  nome: string;
+  tipo: string;
+  ativo: boolean;
+};
+
+export type TenantUser = {
+  id: string;
+  nome: string;
+  email: string;
+  papelBase: string;
+  ativo: boolean;
+};
+
+export const SECTOR_TYPES = [
+  "PROTOCOLO", "COMPRAS", "CONTROLADORIA",
+  "ALIMENTACAO_ESCOLAR", "FROTAS", "PATRIMONIO", "OPERACIONAL",
+];
+
 export const MODULES: ModuleName[] = ["PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO"];
