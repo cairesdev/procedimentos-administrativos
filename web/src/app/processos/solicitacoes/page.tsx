@@ -1,23 +1,30 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { listProcesses } from "@/features/processes/queries";
-import { ProcessTable } from "@/features/processes/components/ProcessTable";
-import { listSectors } from "@/features/sectors/queries";
+import { listRequests } from "@/features/requests/queries";
+import { RequestTable } from "@/features/requests/components/RequestTable";
+import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
-import { Card, PageHeader } from "@/shared/ui/layout";
+import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
 
-export default async function RequestsPage() {
+type RequestsPageProps = {
+  searchParams: Promise<{ situacao?: string; unidade?: string }>;
+};
+
+export default async function RequestsPage({ searchParams }: RequestsPageProps) {
   const viewer = await requirePermission("requests:read", "PROCESSOS");
-  const [processes, sectors] = await Promise.all([listProcesses(), listSectors()]);
+  const { situacao, unidade } = await searchParams;
 
-  const requests = processes.filter((process) => process.tipoProcesso === "SOLICITACAO_ITENS");
+  const [requests, units] = await Promise.all([
+    listRequests({ situacao, unidade }),
+    listUnits(),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Solicitações"
-        subtitle="Pedidos de itens de contrato em tramitação"
+        subtitle="Pedidos de itens de contrato, do rascunho ao processo em tramitação"
         action={
           viewer.can("requests:create") ? (
             <Link href="/processos/solicitacoes/nova">
@@ -30,8 +37,32 @@ export default async function RequestsPage() {
         }
       />
 
-      <Card title={`${requests.length} em tramitação`} padded={false}>
-        <ProcessTable processes={requests} sectors={sectors} />
+      {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
+      <form method="get">
+        <Toolbar>
+          <select name="situacao" defaultValue={situacao ?? ""} aria-label="Situação">
+            <option value="">Rascunhos e enviadas</option>
+            <option value="RASCUNHO">Só rascunhos</option>
+            <option value="ENVIADA">Só enviadas</option>
+          </select>
+
+          <select name="unidade" defaultValue={unidade ?? ""} aria-label="Unidade">
+            <option value="">Todas as unidades</option>
+            {units.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {unit.nome}
+              </option>
+            ))}
+          </select>
+
+          <Button type="submit" variant="secondary">
+            Filtrar
+          </Button>
+        </Toolbar>
+      </form>
+
+      <Card title={`${requests.length} solicitações`} padded={false}>
+        <RequestTable requests={requests} />
       </Card>
     </>
   );

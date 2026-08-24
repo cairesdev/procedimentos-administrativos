@@ -4,19 +4,52 @@ import type {
   DestinoEtapa, NovaOrdemFornecimento, NovoDespacho, ProcessoDetalhe, TramitacaoRepository,
 } from "../../application/ports/TramitacaoRepository";
 
+// Só ENCAMINHAMENTO move o processo — parecer encerra e ordem não desloca.
+// Por isso o último encaminhamento é exatamente o que o pôs onde ele está.
+const ENTRADA_NO_SETOR = `
+  coalesce(
+    (SELECT max(d.data) FROM despacho d
+      WHERE d.processo_id = p.id AND d.tipo = 'ENCAMINHAMENTO'),
+    p.data_abertura)`;
+
+// Prazo da etapa do fluxo correspondente ao setor atual, quando ativo.
+const PRAZO_DA_ETAPA = `
+  (SELECT fe.prazo_dias
+     FROM fluxo_etapa fe
+     JOIN fluxo_configuracao fc ON fc.id = fe.fluxo_id
+    WHERE fc.orgao_id = p.orgao_id
+      AND fc.tipo_processo = p.tipo_processo
+      AND fe.setor_id = p.setor_atual_id
+      AND fe.prazo_ativo
+      AND fe.prazo_dias IS NOT NULL
+    ORDER BY fe.ordem
+    LIMIT 1)`;
+
 const COLUNAS_PROCESSO = `
-  id, orgao_id AS "orgaoId", numero_protocolo AS "numeroProtocolo",
-  numero_processo_adm AS "numeroProcessoAdm", tipo_processo AS "tipoProcesso",
-  setor_atual_id AS "setorAtualId", departamento_atual_id AS "departamentoAtualId", status`;
+  p.id, p.orgao_id AS "orgaoId", p.numero_protocolo AS "numeroProtocolo",
+  p.numero_processo_adm AS "numeroProcessoAdm", p.tipo_processo AS "tipoProcesso",
+  p.setor_atual_id AS "setorAtualId", p.departamento_atual_id AS "departamentoAtualId", p.status,
+  ${ENTRADA_NO_SETOR} AS "entrouNoSetorEm",
+  ${PRAZO_DA_ETAPA} AS "prazoDias",
+  CASE WHEN ${PRAZO_DA_ETAPA} IS NULL THEN NULL
+       ELSE ${ENTRADA_NO_SETOR} + (${PRAZO_DA_ETAPA} || ' days')::interval
+  END AS "prazoLimite",
+  -- Dias inteiros até o vencimento; negativo = atrasado.
+  CASE WHEN ${PRAZO_DA_ETAPA} IS NULL THEN NULL
+       ELSE floor(extract(epoch FROM (
+              ${ENTRADA_NO_SETOR} + (${PRAZO_DA_ETAPA} || ' days')::interval - now()
+            )) / 86400)::int
+  END AS "diasParaVencer"`;
 
 const SQL = {
-  buscarProcesso: `SELECT ${COLUNAS_PROCESSO} FROM processo WHERE orgao_id = $1 AND id = $2`,
+  buscarProcesso: `SELECT ${COLUNAS_PROCESSO} FROM processo p WHERE p.orgao_id = $1 AND p.id = $2`,
   listarFila: `
-    SELECT ${COLUNAS_PROCESSO} FROM processo
-     WHERE orgao_id = $1
-       AND ($2::uuid IS NULL OR setor_atual_id = $2)
-       AND status IN ('ABERTO', 'TRAMITANDO')
-     ORDER BY data_abertura`,
+    SELECT ${COLUNAS_PROCESSO} FROM processo p
+     WHERE p.orgao_id = $1
+       AND ($2::uuid IS NULL OR p.setor_atual_id = $2)
+       AND p.status IN ('ABERTO', 'TRAMITANDO')
+     -- Quem está mais perto de estourar (ou já estourou) primeiro; sem prazo, por antiguidade.
+     ORDER BY "diasParaVencer" NULLS LAST, p.data_abertura`,
   listarDespachos: `
     SELECT d.id, d.tipo, d.texto, d.data, d.setor_id AS "setorId",
            d.departamento_id AS "departamentoId", u.nome AS "usuarioNome"

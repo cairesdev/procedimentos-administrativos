@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Badge, Table } from "@/shared/ui/layout";
-import { humanize } from "@/shared/ui/labels";
+import { humanize, toDate } from "@/shared/ui/labels";
 import type { Sector } from "@/features/sectors/types";
+import { deadlineOf } from "../deadline";
 import type { Process } from "../types";
 
 const statusTone = {
@@ -19,26 +20,47 @@ export const ProcessTable = ({
   sectors: Sector[];
 }) => (
   <Table
-    columns={["Protocolo", "Processo", "Tipo", "Setor atual", "Situação"]}
+    columns={["Protocolo", "Processo", "Tipo", "Setor atual", "Prazo", "Situação"]}
     isEmpty={processes.length === 0}
     emptyMessage="Nenhum processo na fila."
   >
-    {processes.map((process) => (
-      <tr key={process.id}>
-        <td>
-          <Link href={`/processos/fila/${process.id}`} style={{ color: "var(--acao)" }}>
-            {process.numeroProtocolo}
-          </Link>
-        </td>
-        <td>{process.numeroProcessoAdm}</td>
-        <td>{humanize(process.tipoProcesso)}</td>
-        <td>
-          {sectors.find((sector) => sector.id === process.setorAtualId)?.nome ?? "—"}
-        </td>
-        <td>
-          <Badge tone={statusTone[process.status]}>{process.status.toLowerCase()}</Badge>
-        </td>
-      </tr>
-    ))}
+    {processes.map((process) => {
+      const prazo = deadlineOf(process);
+
+      return (
+        <tr key={process.id}>
+          <td>
+            <Link href={`/processos/fila/${process.id}`} style={{ color: "var(--acao)" }}>
+              {process.numeroProtocolo}
+            </Link>
+          </td>
+          <td>{process.numeroProcessoAdm}</td>
+          <td>{humanize(process.tipoProcesso)}</td>
+          <td>
+            {sectors.find((sector) => sector.id === process.setorAtualId)?.nome ?? "—"}
+            <br />
+            <small>desde {toDate(process.entrouNoSetorEm)}</small>
+          </td>
+          <td>
+            {prazo.state === "sem-prazo" ? (
+              <span style={{ color: "var(--texto_apagado)" }}>—</span>
+            ) : (
+              <>
+                <Badge tone={prazo.tone}>{prazo.label}</Badge>
+                {process.prazoLimite ? (
+                  <>
+                    <br />
+                    <small>até {toDate(process.prazoLimite)}</small>
+                  </>
+                ) : null}
+              </>
+            )}
+          </td>
+          <td>
+            <Badge tone={statusTone[process.status]}>{process.status.toLowerCase()}</Badge>
+          </td>
+        </tr>
+      );
+    })}
   </Table>
 );

@@ -27,6 +27,7 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
         <AssetTable
           assets={assets}
           categories={categories}
+          locations={locations}
           canWrite={viewer.can("assets:write")}
         />
       </Card>

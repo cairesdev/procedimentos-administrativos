@@ -8,7 +8,8 @@ import { ProcessTimeline } from "@/features/processes/components/ProcessTimeline
 import { listSectors } from "@/features/sectors/queries";
 import { getWorkflow } from "@/features/workflows/queries";
 import { requirePermission } from "@/shared/auth/guards";
-import { humanize } from "@/shared/ui/labels";
+import { deadlineOf } from "@/features/processes/deadline";
+import { humanize, toDate } from "@/shared/ui/labels";
 import { Badge, Card, Columns, PageHeader, Stack, SummaryGrid } from "@/shared/ui/layout";
 
 type ProcessPageProps = { params: Promise<{ id: string }> };
@@ -30,6 +31,7 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
 
   const currentSector = sectors.find((sector) => sector.id === process.setorAtualId);
   const isOpen = process.status === "ABERTO" || process.status === "TRAMITANDO";
+  const prazo = deadlineOf(process);
 
   return (
     <>
@@ -67,6 +69,16 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
                 { label: "Tipo", value: humanize(process.tipoProcesso) },
                 { label: "Setor atual", value: currentSector?.nome ?? "—" },
                 { label: "Despachos", value: `${process.despachos.length}` },
+                { label: "No setor desde", value: toDate(process.entrouNoSetorEm) },
+                {
+                  label: "Prazo da etapa",
+                  value:
+                    prazo.state === "sem-prazo" ? (
+                      "sem prazo"
+                    ) : (
+                      <Badge tone={prazo.tone}>{prazo.label}</Badge>
+                    ),
+                },
               ]}
             />
           </Card>

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPapel } from "../middlewares/exigirPapel";
+import { MOTIVOS_DE_BAIXA } from "../../../application/ports/PatrimonioRepository";
 
 const localSchema = z.object({
   codigo: z.string().regex(/^\d{1,10}$/, "Use apenas números, ex.: 001"),
@@ -48,6 +49,13 @@ const edicaoRemessaSchema = z.object({
 const edicaoBemSchema = z.object({
   nome: z.string().min(1).max(150).optional(),
   categoriaId: z.string().uuid().optional(),
+});
+
+const transferenciaSchema = z.object({ localDestinoId: z.string().uuid() });
+
+const baixaSchema = z.object({
+  motivo: z.enum(MOTIVOS_DE_BAIXA),
+  observacao: z.string().max(4000).optional(),
 });
 
 const inventarioSchema = z.object({
@@ -223,6 +231,76 @@ patrimonioRouter.delete("/bens/:id", podeEscrever, async (req, res, next) => {
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
     );
     res.json({ message: "Bem excluído" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ---- Transferência e baixa -------------------------------------------------
+
+patrimonioRouter.get("/transferencias", async (req, res, next) => {
+  try {
+    res.json(
+      await container.patrimonio.listarTransferencias(req.sessao!.orgaoId, {
+        status: typeof req.query.status === "string" ? req.query.status : undefined,
+        localId: typeof req.query.local === "string" ? req.query.local : undefined,
+      }),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+patrimonioRouter.post("/bens/:id/transferir", podeEscrever, async (req, res, next) => {
+  try {
+    const { localDestinoId } = transferenciaSchema.parse(req.body);
+    res.status(201).json(
+      await container.gerenciarPatrimonio.transferirBem(
+        req.sessao!.orgaoId, req.params.id!, localDestinoId, req.sessao!.usuarioId,
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+patrimonioRouter.post("/transferencias/:id/aceitar", podeEscrever, async (req, res, next) => {
+  try {
+    await container.gerenciarPatrimonio.aceitarTransferencia(
+      req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
+    );
+    res.json({ message: "Transferência aceita" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+patrimonioRouter.post("/transferencias/:id/recusar", podeEscrever, async (req, res, next) => {
+  try {
+    await container.gerenciarPatrimonio.recusarTransferencia(
+      req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
+    );
+    res.json({ message: "Transferência recusada" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+patrimonioRouter.get("/baixas", async (req, res, next) => {
+  try {
+    res.json(await container.patrimonio.listarBaixas(req.sessao!.orgaoId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+patrimonioRouter.post("/bens/:id/baixa", podeEscrever, async (req, res, next) => {
+  try {
+    const dados = baixaSchema.parse(req.body);
+    await container.gerenciarPatrimonio.darBaixa(
+      req.sessao!.orgaoId, req.params.id!, dados, req.sessao!.usuarioId,
+    );
+    res.status(201).json({ message: "Baixa registrada" });
   } catch (error) {
     next(error);
   }

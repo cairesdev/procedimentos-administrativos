@@ -1,9 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { compare, hash } from "bcryptjs";
-import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste } from "../shared/ExclusaoSegura";
+import { sanitizarNomeDeArquivo as sanitizar } from "../shared/NomeDeArquivo";
 import type {
   AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, NovoOrgao, TimbreDoOrgao,
 } from "../ports/AdminSistemaRepository";
+import type {
+  ArmazenamentoArquivos, ArquivoParaLeitura,
+} from "../ports/ArmazenamentoArquivos";
 import type { AuditoriaRepository, TipoEvento } from "../ports/AuditoriaRepository";
 import type { UsuarioRepository } from "../ports/UsuarioRepository";
 
@@ -19,11 +24,16 @@ export type PrimeiroAdmin = {
   senha: string;
 };
 
+/** Tipos que um brasão pode ter — o que navegador e impressão renderizam. */
+const IMAGENS_ACEITAS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const TAMANHO_MAXIMO = 2 * 1024 * 1024;
+
 export class AdministrarSistema {
   constructor(
     private readonly admins: AdminSistemaRepository,
     private readonly usuarios: UsuarioRepository,
     private readonly auditoria: AuditoriaRepository,
+    private readonly armazenamento: ArmazenamentoArquivos,
   ) {}
 
   autenticar = async (email: string, senha: string): Promise<SessaoAdmin> => {
@@ -58,9 +68,67 @@ export class AdministrarSistema {
     await this.admins.definirModulos(id, modulos);
   };
 
-  salvarTimbre = async (id: string, dados: TimbreDoOrgao): Promise<void> => {
+  /**
+   * Só texto: a logomarca tem caminho no storage e é trocada pelo upload —
+   * deixar o caminho editável à mão apagaria o arquivo enviado.
+   */
+  salvarTimbre = async (
+    id: string,
+    dados: Omit<TimbreDoOrgao, "arquivoLogomarca">,
+  ): Promise<void> => {
     garantirExiste(await this.admins.buscarOrgao(id), "Prefeitura");
-    await this.admins.salvarTimbre(id, dados);
+    const atual = await this.admins.buscarTimbre(id);
+    await this.admins.salvarTimbre(id, {
+      ...dados,
+      arquivoLogomarca: atual?.arquivoLogomarca ?? null,
+    });
+  };
+
+  enviarLogomarca = async (dados: {
+    orgaoId: string;
+    conteudo: Buffer;
+    mimeType: string;
+    nomeOriginal: string;
+  }): Promise<{ arquivoLogomarca: string }> => {
+    garantirExiste(await this.admins.buscarOrgao(dados.orgaoId), "Prefeitura");
+    if (!IMAGENS_ACEITAS.includes(dados.mimeType)) {
+      throw new ErroDeNegocio("Envie a logomarca em PNG, JPEG, WEBP ou SVG");
+    }
+    if (dados.conteudo.length > TAMANHO_MAXIMO) {
+      throw new ErroDeNegocio("Logomarca acima de 2 MB");
+    }
+
+    const atual = await this.admins.buscarTimbre(dados.orgaoId);
+    const caminho = `${dados.orgaoId}/timbre/${randomUUID()}-${sanitizar(dados.nomeOriginal)}`;
+
+    // Grava o arquivo antes do banco; só apaga o antigo depois que o novo
+    // caminho está persistido, para nunca ficar com o registro apontando
+    // para um objeto que não existe mais.
+    await this.armazenamento.salvar(caminho, dados.conteudo, dados.mimeType);
+    try {
+      await this.admins.salvarTimbre(dados.orgaoId, {
+        cabecalhoTimbre: atual?.cabecalhoTimbre ?? null,
+        rodapeTimbre: atual?.rodapeTimbre ?? null,
+        arquivoLogomarca: caminho,
+      });
+    } catch (error) {
+      await this.armazenamento.remover(caminho);
+      throw error;
+    }
+
+    if (atual?.arquivoLogomarca) {
+      await this.armazenamento
+        .remover(atual.arquivoLogomarca)
+        .catch((erro) => console.error("Logomarca antiga não removida", erro));
+    }
+    return { arquivoLogomarca: caminho };
+  };
+
+  /** Bytes da logomarca do órgão, para a API servir a imagem. */
+  abrirLogomarca = async (orgaoId: string): Promise<ArquivoParaLeitura> => {
+    const timbre = await this.admins.buscarTimbre(orgaoId);
+    if (!timbre?.arquivoLogomarca) throw new NaoEncontrado("Logomarca não configurada");
+    return this.armazenamento.abrir(timbre.arquivoLogomarca);
   };
 
   // ---- Administradores do produto -----------------------------------------

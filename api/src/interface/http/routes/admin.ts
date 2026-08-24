@@ -1,7 +1,9 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { container } from "../../../container";
 import { authenticateAdmin, emitirTokenAdmin } from "../middlewares/authenticateAdmin";
+import { enviarArquivo } from "../enviarArquivo";
 import { garantirExiste, garantirSemVinculos } from "../../../application/shared/ExclusaoSegura";
 import {
   criarSetorSchema, criarUnidadeSchema, criarUsuarioSchema,
@@ -35,10 +37,15 @@ const edicaoOrgaoSchema = z.object({
 
 const modulosSchema = z.object({ modulos: z.array(z.enum(MODULOS)) });
 
+// Sem `arquivoLogomarca`: o caminho no storage é definido pelo upload.
 const timbreSchema = z.object({
-  arquivoLogomarca: z.string().max(255).nullable().default(null),
   cabecalhoTimbre: z.string().nullable().default(null),
   rodapeTimbre: z.string().nullable().default(null),
+});
+
+const logomarca = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
 });
 
 const primeiroAdminSchema = z.object({
@@ -139,6 +146,37 @@ adminRouter.put("/orgaos/:id/timbre", async (req, res, next) => {
     next(error);
   }
 });
+
+adminRouter.get("/orgaos/:id/timbre/logomarca", async (req, res, next) => {
+  try {
+    enviarArquivo(res, await container.administrarSistema.abrirLogomarca(req.params.id!));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put(
+  "/orgaos/:id/timbre/logomarca",
+  logomarca.single("arquivo"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        res.status(422).json({ message: "Arquivo ausente — envie no campo 'arquivo'" });
+        return;
+      }
+      res.json(
+        await container.administrarSistema.enviarLogomarca({
+          orgaoId: req.params.id!,
+          conteudo: req.file.buffer,
+          mimeType: req.file.mimetype,
+          nomeOriginal: req.file.originalname,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ---- Cadastros da prefeitura, pelo painel do produto -----------------------
 //

@@ -69,6 +69,59 @@ export type BemResumo = {
 
 export type BemDetalhe = BemResumo & { conferencias: number };
 
+export type StatusTransferencia = "PENDENTE" | "ACEITA" | "RECUSADA";
+
+export type NovaTransferencia = {
+  bemId: string;
+  localOrigemId: string;
+  localDestinoId: string;
+  enviadoPorUsuarioId: string;
+};
+
+export type TransferenciaResumo = {
+  id: string;
+  bemId: string;
+  codigoTombamento: string;
+  nomeBem: string;
+  localOrigemId: string;
+  localOrigemNome: string;
+  localDestinoId: string;
+  localDestinoNome: string;
+  enviadoPor: string;
+  dataEnvio: string;
+  aceitoPor: string | null;
+  dataAceite: string | null;
+  status: StatusTransferencia;
+};
+
+export const MOTIVOS_DE_BAIXA = [
+  "QUEBRADO",
+  "DOADO",
+  "EXTRAVIADO",
+  "LEILAO",
+  "OUTRO",
+] as const;
+
+export type MotivoDeBaixa = (typeof MOTIVOS_DE_BAIXA)[number];
+
+export type NovaBaixa = {
+  bemId: string;
+  motivo: MotivoDeBaixa;
+  observacao?: string;
+  usuarioId: string;
+};
+
+export type BaixaResumo = {
+  bemId: string;
+  codigoTombamento: string;
+  nomeBem: string;
+  localNome: string;
+  motivo: MotivoDeBaixa;
+  observacao: string | null;
+  dadaPor: string;
+  data: string;
+};
+
 export type EdicaoBem = { nome?: string; categoriaId?: string };
 
 export type NovoInventario = { localId: string; dataInicio: string };
@@ -128,6 +181,28 @@ export interface PatrimonioRepository {
   buscarBem(orgaoId: string, id: string): Promise<BemDetalhe | null>;
   atualizarBem(orgaoId: string, id: string, dados: EdicaoBem): Promise<void>;
   removerBem(orgaoId: string, id: string): Promise<void>;
+
+  listarTransferencias(
+    orgaoId: string,
+    filtros: { status?: string; localId?: string },
+  ): Promise<TransferenciaResumo[]>;
+  buscarTransferencia(orgaoId: string, id: string): Promise<TransferenciaResumo | null>;
+  /** Um bem só pode ter uma transferência em aberto por vez. */
+  transferenciaPendenteDoBem(orgaoId: string, bemId: string): Promise<TransferenciaResumo | null>;
+  criarTransferencia(dados: NovaTransferencia): Promise<string>;
+  /** Aceitar move o bem e fecha a transferência na mesma transação. */
+  aceitarTransferencia(
+    id: string,
+    bemId: string,
+    localDestinoId: string,
+    usuarioId: string,
+  ): Promise<void>;
+  recusarTransferencia(id: string, usuarioId: string): Promise<void>;
+
+  listarBaixas(orgaoId: string): Promise<BaixaResumo[]>;
+  buscarBaixa(orgaoId: string, bemId: string): Promise<BaixaResumo | null>;
+  /** Grava a baixa e leva o bem a BAIXADO na mesma transação. */
+  registrarBaixa(orgaoId: string, dados: NovaBaixa): Promise<void>;
 
   listarInventarios(orgaoId: string): Promise<InventarioResumo[]>;
   buscarInventario(orgaoId: string, id: string): Promise<InventarioResumo | null>;

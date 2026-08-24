@@ -38,6 +38,15 @@ export const assetEditSchema = z.object({
   categoriaId: z.uuid("Escolha a categoria"),
 });
 
+export const transferSchema = z.object({
+  localDestinoId: z.uuid("Escolha o local de destino"),
+});
+
+export const writeOffSchema = z.object({
+  motivo: z.enum(["QUEBRADO", "DOADO", "EXTRAVIADO", "LEILAO", "OUTRO"]),
+  observacao: z.string().max(4000).optional(),
+});
+
 export const inventorySchema = z.object({
   localId: z.uuid("Escolha o local"),
   dataInicio: z.string().min(1, "Informe a data"),
@@ -61,5 +70,7 @@ export type AssetCategoryInput = z.input<typeof assetCategorySchema>;
 export type AssetIntakeInput = z.input<typeof assetIntakeSchema>;
 export type AssetIntakeEditInput = z.input<typeof assetIntakeEditSchema>;
 export type AssetEditInput = z.input<typeof assetEditSchema>;
+export type TransferInput = z.input<typeof transferSchema>;
+export type WriteOffInput = z.input<typeof writeOffSchema>;
 export type InventoryInput = z.input<typeof inventorySchema>;
 export type InventoryCheckInput = z.input<typeof inventoryCheckSchema>;

@@ -13,8 +13,8 @@ export const tenantSchema = z.object({
   modulos: z.array(z.enum(MODULES as [string, ...string[]])).default([]),
 });
 
+// A logomarca não entra aqui: é arquivo, sobe em requisição própria.
 export const letterheadSchema = z.object({
-  arquivoLogomarca: z.string().max(255).optional(),
   cabecalhoTimbre: z.string().optional(),
   rodapeTimbre: z.string().optional(),
 });

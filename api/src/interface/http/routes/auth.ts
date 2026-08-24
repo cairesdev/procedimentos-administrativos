@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { container } from "../../../container";
+import { enviarArquivo } from "../enviarArquivo";
 import { authenticate, emitirToken } from "../middlewares/authenticate";
 import { loginSchema } from "../schemas/processos";
 
@@ -29,6 +30,35 @@ authRouter.get("/eu", authenticate, async (req, res, next) => {
       return;
     }
     res.json(perfil);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Timbre da própria prefeitura, para o servidor imprimir documento com o
+ * cabeçalho dela. O `/admin` configura; aqui é só leitura, do próprio órgão.
+ */
+authRouter.get("/timbre", authenticate, async (req, res, next) => {
+  try {
+    res.json(
+      (await container.adminSistema.buscarTimbre(req.sessao!.orgaoId)) ?? {
+        arquivoLogomarca: null,
+        cabecalhoTimbre: null,
+        rodapeTimbre: null,
+      },
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** A imagem em si — o `arquivoLogomarca` é caminho privado no storage. */
+authRouter.get("/timbre/logomarca", authenticate, async (req, res, next) => {
+  try {
+    enviarArquivo(res, await container.administrarSistema.abrirLogomarca(req.sessao!.orgaoId), {
+      cacheSegundos: 300,
+    });
   } catch (error) {
     next(error);
   }

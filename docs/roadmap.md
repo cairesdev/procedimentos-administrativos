@@ -60,6 +60,9 @@ módulos, timbre e primeiro administrador.
 | GET/POST /patrimonio/inventarios | um aberto por local; lista montada dos bens ATIVOS do local |
 | POST /:id/conferencias | upsert por (inventário, bem); `situacao` nula = ainda não conferido |
 | POST /:id/concluir | audita INVENTARIO_CONCLUIDO |
+| GET /patrimonio/transferencias, POST /bens/:id/transferir | pedido nasce PENDENTE; bem só muda de local no aceite; bloqueado por inventário aberto, transferência pendente ou bem baixado |
+| POST /transferencias/:id/aceitar\|recusar | aceite move o bem e fecha na mesma transação; destino em inventário bloqueia |
+| GET /patrimonio/baixas, POST /bens/:id/baixa | motivo obrigatório; bem vai a BAIXADO; sem estorno |
 
 **Web dividido em sistemas** — hub em `/` + `/processos`, `/patrimonio` e `/administracao`, cada um
 com navegação e cor próprias (`shared/auth/modules.ts`, `shared/workspace/WorkspaceShell`).
@@ -96,16 +99,12 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
    sem login.
 3. **Atendimento externo de balcão** — busca por número de protocolo, anexar como requerente,
    redespachar.
-4. **Documentos emitidos** — comprovantes/declarações com timbre da prefeitura + QR do código
-   (`documento_emitido`, `orgao_documento_config`).
-5. **Prazos de etapa** — sinalizar processos vencidos na fila (prazo_dias/prazo_ativo já existem).
-6. **Patrimônio — 2ª fatia**: transferência entre locais com aceite do destino e baixa formal com
-   motivo (modelados em `decisoes.md`, ainda sem API nem tela).
-7. **Tela de auditoria** — API pronta (`GET /auditoria`), sem tela; link tirado do menu até existir.
-8. **Testes automatizados** — só o smoke test do módulo Processos.
-9. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
+4. **Documentos emitidos** — o timbre já sai na impressão da solicitação; falta registrar o
+   documento em `documento_emitido` com código verificador + QR e estender aos demais comprovantes.
+5. **Testes automatizados** — só o smoke test do módulo Processos.
+6. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
    `docs/decisoes.md` + UML.
-10. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
+7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura
 
@@ -129,6 +128,28 @@ MinIO deixou de precisar de domínio público.
   ADMIN/GESTOR, e o 403 derrubava a renderização inteira. Agora só busca quem tem `users:read`; o
   vínculo com usuário é opcional no motorista, então o campo simplesmente some.
 
+## Configurações que não faziam nada (auditoria de coerência)
+
+Levantamento do que a interface deixa configurar e nenhum código consome. Duas foram resolvidas:
+
+| Configuração | Situação |
+| --- | --- |
+| Prazo por etapa | **resolvido** — calculado e sinalizado na fila e no detalhe |
+| Trilha de auditoria | **resolvido** — tela em `/processos/auditoria` |
+| Visibilidade estendida da etapa | gravada, nunca lida — nenhuma consulta usa |
+| Timbre da prefeitura (`/admin`) | **resolvido** — imprime a solicitação com cabeçalho, logomarca e rodapé |
+| Módulo ALMOXARIFADO no `/admin` | habilitável, sem nenhuma tela — o hub mostra o card travado |
+| `usuario_permissao` (overrides) | decidido em `decisoes.md`, sem código; permissão é só papel base |
+
+Sobra a visibilidade estendida e os overrides de permissão — enquanto nenhum código os ler, o
+honesto é escondê-los do painel: melhor não oferecer do que oferecer sem efeito.
+
+## Corrigido nesta rodada
+
+- O filtro de bens oferecia o status **EM_AVERIGUACAO**, que o CHECK de `bem.status` não permite —
+  filtrar por ele nunca casava nada. E a folha de inventário afirmava que bens não encontrados eram
+  "marcados para averiguação", coisa que o código nunca fez. Os dois textos agora dizem a verdade.
+
 ## Dívidas conhecidas
 
 - Usernames do backfill da migration 0007 são placeholders (`prefixo-email.4chars`).
@@ -137,3 +158,24 @@ MinIO deixou de precisar de domínio público.
 - Sem rate-limit/refresh-token no auth.
 - Backup cobre só o banco; `./data/minio` (anexos) precisa de cópia à parte.
 - Filtro de bens é `<form method="get">` (recarrega a página); sem paginação em nenhuma listagem.
+
+## Solicitações, timbre e hub (rodada atual)
+
+**Detalhe completo da solicitação.** `GET /solicitacoes` lista (filtros de situação e unidade) e
+`GET /solicitacoes/:id` devolve o cabeçalho, cada item com o que veio do contrato (produto, marca,
+modo de medição, valor unitário, quantidade, valor calculado e o saldo de hoje) e os contratos de
+origem com fornecedor, vigência e fiscal. `/processos/solicitacoes` passou a listar solicitações —
+antes listava processos — e `/processos/solicitacoes/[id]` mostra tudo isso numa tela só.
+Migration `0013` acrescentou `solicitacao.created_at` (retroativo pela abertura do processo), que
+não existia: rascunho não tinha data nenhuma.
+
+**Timbre em uso.** `/processos/solicitacoes/[id]/imprimir` renderiza o mesmo detalhe dentro da
+folha timbrada da prefeitura, sem sidebar nem topbar, com `@media print` escondendo o botão.
+A logomarca deixou de ser um nome de arquivo digitado à mão — o painel do produto agora **faz
+upload de verdade** (`PUT /admin/orgaos/:id/timbre/logomarca`, PNG/JPEG/WEBP/SVG até 2 MB, guardado
+no MinIO) e a imagem desce em streaming pela API (`GET /auth/timbre/logomarca` para o servidor da
+prefeitura, `GET /admin/orgaos/:id/timbre/logomarca` para o painel). Trocar a logomarca apaga a
+anterior do storage; salvar os textos preserva o arquivo.
+
+**Hub sem buraco.** O lobby mostra todos os sistemas: os que o usuário não pode abrir aparecem
+travados, com cadeado e o motivo (módulo não contratado ou perfil sem acesso), em vez de sumirem.

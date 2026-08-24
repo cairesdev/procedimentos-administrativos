@@ -24,7 +24,64 @@ export type SolicitacaoDetalhe = {
   itens: { itemId: string; quantidadeSolicitada: number; valorCalculado: number }[];
 };
 
+/** Linha da listagem: o essencial para achar a solicitação. */
+export type SolicitacaoResumo = {
+  id: string;
+  situacao: "RASCUNHO" | "ENVIADA";
+  unidadeSolicitanteId: string;
+  unidadeSolicitanteNome: string;
+  processoId: string | null;
+  numeroProtocolo: string | null;
+  numeroProcessoAdm: string | null;
+  statusProcesso: string | null;
+  criadaEm: string;
+  /** Contagem, para a listagem. O detalhe traz a lista em `itens`. */
+  totalItens: number;
+  valorTotal: number;
+};
+
+/** Item da solicitação com tudo que veio do contrato de origem. */
+export type ItemDaSolicitacao = {
+  itemId: string;
+  contratoId: string;
+  produto: string;
+  descricao: string | null;
+  unidadeMedida: string;
+  marca: string | null;
+  modoMedicao: "UNIDADE" | "PERCENTUAL" | "VALOR";
+  valorUnitario: number;
+  quantidadeSolicitada: number;
+  valorCalculado: number;
+  /** Estado atual do item no contrato, para conferir o que sobrou. */
+  quantidadeTotalContratada: number;
+  saldoDisponivel: number;
+};
+
+/** Contrato de origem dos itens, com fornecedor e vigência. */
+export type ContratoDaSolicitacao = {
+  id: string;
+  numero: string;
+  dataInicio: string;
+  dataFim: string;
+  valorTotal: number;
+  fiscalNomeMatricula: string | null;
+  fornecedorId: string;
+  fornecedorRazaoSocial: string;
+  fornecedorDocumento: string;
+  fornecedorEmail: string | null;
+  fornecedorTelefone: string | null;
+  origem: "LICITACAO" | "ATA";
+  origemNumero: string | null;
+};
+
+export type SolicitacaoCompleta = SolicitacaoResumo & {
+  itens: ItemDaSolicitacao[];
+  contratos: ContratoDaSolicitacao[];
+};
+
 export interface SolicitacaoRepository {
+  listar(orgaoId: string, filtros: { situacao?: string; unidadeId?: string }): Promise<SolicitacaoResumo[]>;
+  buscarCompleta(orgaoId: string, id: string): Promise<SolicitacaoCompleta | null>;
   criarRascunho(orgaoId: string, unidadeId: string): Promise<string>;
   buscarPorId(orgaoId: string, id: string): Promise<SolicitacaoDetalhe | null>;
   buscarPorProcessoId(orgaoId: string, processoId: string): Promise<SolicitacaoDetalhe | null>;

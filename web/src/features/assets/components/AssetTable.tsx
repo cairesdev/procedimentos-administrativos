@@ -2,8 +2,9 @@ import { Badge, Table } from "@/shared/ui/layout";
 import { humanize } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
 import { deleteAsset } from "../actions";
+import { AssetMovementActions } from "./AssetMovementActions";
 import { AssetForm } from "./AssetForm";
-import { CONSERVATION_STATES, type Asset, type AssetCategory } from "../types";
+import { CONSERVATION_STATES, type Asset, type AssetCategory, type AssetLocation } from "../types";
 
 const stateTone = (state: string) =>
   state === "DANIFICADO" || state === "EM_CONSERTO" ? "warning" : "success";
@@ -11,10 +12,12 @@ const stateTone = (state: string) =>
 export const AssetTable = ({
   assets,
   categories,
+  locations,
   canWrite,
 }: {
   assets: Asset[];
   categories: AssetCategory[];
+  locations: AssetLocation[];
   canWrite: boolean;
 }) => {
   const columns = ["Tombamento", "Bem", "Categoria", "Local", "Conservação", "Situação"];
@@ -45,7 +48,8 @@ export const AssetTable = ({
             </Badge>
           </td>
           {canWrite ? (
-            <td>
+            <td style={{ whiteSpace: "nowrap" }}>
+              <AssetMovementActions asset={asset} locations={locations} />
               <RowActions
                 label={asset.codigoTombamento}
                 editTitle="Editar bem"

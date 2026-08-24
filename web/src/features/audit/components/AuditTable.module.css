@@ -1,0 +1,34 @@
+.quando {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.vazio {
+  color: var(--texto_apagado);
+}
+
+.detalhes {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.par {
+  display: flex;
+  gap: 6px;
+}
+
+.par dt {
+  color: var(--texto_suave);
+  white-space: nowrap;
+}
+
+.par dt::after {
+  content: ":";
+}
+
+.par dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

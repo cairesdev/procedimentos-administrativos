@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { container } from "../../../container";
+import { enviarArquivo } from "../enviarArquivo";
 import { exigirPapel } from "../middlewares/exigirPapel";
 import { despacharSchema, ordemFornecimentoSchema, parecerSchema } from "../schemas/tramitacao";
 
@@ -104,24 +105,11 @@ processosRouter.get("/:id/anexos", async (req, res, next) => {
 
 processosRouter.get("/:id/anexos/:anexoId/download", async (req, res, next) => {
   try {
-    const { fluxo, tamanho, mimeType, nomeArquivo } = await container.anexosDeProcesso.baixar(
+    const { nomeArquivo, ...arquivo } = await container.anexosDeProcesso.baixar(
       req.sessao!.orgaoId,
       req.params.anexoId!,
     );
-
-    res.setHeader("Content-Type", mimeType);
-    res.setHeader("Content-Length", tamanho);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`,
-    );
-
-    // Erro no meio do stream não vira 500: o header já foi enviado.
-    fluxo.on("error", (erro) => {
-      console.error("Falha ao ler anexo", erro);
-      res.destroy(erro);
-    });
-    fluxo.pipe(res);
+    enviarArquivo(res, arquivo, { nomeParaDownload: nomeArquivo });
   } catch (error) {
     next(error);
   }

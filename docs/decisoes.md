@@ -128,6 +128,26 @@ redefinir senha e ativar/inativar.
   O autor vai em `detalhes`, não em `usuario_id`: o admin do sistema não existe na tabela `usuario`.
   O token do painel passou a carregar nome e e-mail para isso.
 
+## Prazos de etapa e auditoria (implementado)
+
+Os campos `prazo_dias`/`prazo_ativo` do fluxo já eram configuráveis desde o começo, mas **nenhum
+código os lia** — o gestor preenchia e nada acontecia. Agora:
+
+- **Entrada no setor** = data do último despacho de ENCAMINHAMENTO, ou a abertura do processo se
+  ele nunca se moveu. Só ENCAMINHAMENTO desloca (parecer encerra, ordem não move), então o último
+  encaminhamento é exatamente o que pôs o processo onde ele está.
+- **Vencimento** = entrada + `prazo_dias` da etapa do fluxo correspondente ao setor atual, quando
+  `prazo_ativo`. A conta é feita no banco com o `now()` do servidor — o relógio do navegador não
+  entra.
+- **A fila vem ordenada pelo mais urgente**, com aviso no topo de quantos passaram do prazo. Faixa
+  de alerta: 2 dias antes do vencimento.
+- **Prazo é sinalização, não bloqueio.** Processo vencido continua tramitando normalmente.
+
+A **tela de auditoria** passou a consumir o `GET /auditoria` que já existia: filtro por tipo de
+evento (agrupado por módulo), período (padrão: últimos 30 dias) e paginação. Os enums viram frase
+em português — a trilha é lida por gestor, não por dev. Linha sem usuário é ação do fornecedor pelo
+painel; o autor fica em `detalhes`.
+
 ## Navegação: um sistema por módulo (implementado)
 
 Cada módulo é um **sistema à parte**, com URL, navegação e cor próprias — nenhuma tela cita
@@ -136,7 +156,7 @@ a prefeitura. Prefixos: `/processos`, `/patrimonio`, `/administracao` (unidades,
 usuários, que servem a todos os sistemas). O `WorkspaceShell` injeta a cor de destaque do módulo
 e redireciona para `/modulo-indisponivel` se a prefeitura não tiver o módulo.
 
-## Módulo Patrimônio (API + telas implementadas na 1ª fatia)
+## Módulo Patrimônio (implementado)
 
 Código de tombamento **fixo desde a origem**: `<código do local>-<sequencial por local>` (001-214);
 local atual é campo separado. Categorias de bem por prefeitura. Estados de conservação + baixa
@@ -152,10 +172,28 @@ bem. Excluir entrada ou bem é bloqueado (422) se algum deles já foi conferido 
 **Editar entrada** alcança só os dados da nota (data, fornecedor, NF) — lotes não, os bens já
 nasceram tombados.
 
-**1ª fatia entregue**: locais, categorias, entrada em lote com tombamento sequencial por local e
-inventário periódico com folha de conferência. **Transferência entre locais e baixa formal ficaram
-para a fatia seguinte** — a tela de bens é somente leitura por enquanto. O código do local não pode
-ser editado depois de criado, porque já compõe o tombamento dos bens.
+**1ª fatia**: locais, categorias, entrada em lote com tombamento sequencial por local e inventário
+periódico com folha de conferência. O código do local não pode ser editado depois de criado, porque
+já compõe o tombamento dos bens.
+
+**2ª fatia entregue** — o módulo está completo:
+
+- **Transferência com aceite**: o pedido nasce PENDENTE e **o bem não sai do lugar até o destino
+  aceitar** — até lá continua contando na origem, inclusive em inventário. Recusa deixa tudo como
+  estava. O tombamento **não muda**: ele nasceu do local de origem e acompanha o bem para sempre.
+- **Baixa formal** com motivo (quebrado, doado, extraviado, leilão, outro) e observação. O bem vai
+  para BAIXADO, some das listagens ativas e do inventário, e permanece no histórico com quem
+  registrou. **Não há estorno de baixa** — não foi modelado e não inventei.
+- **Trava por inventário aberto**: não se transfere, aceita nem dá baixa em bem cujo local está em
+  contagem. Mexer no acervo no meio do inventário mudaria a lista de esperados debaixo de quem está
+  conferindo. Vale para a origem (ao enviar) e para o destino (ao aceitar).
+- **Um bem tem no máximo uma transferência pendente**, e bem com transferência pendente não recebe
+  baixa: resolve-se a transferência primeiro.
+
+**Limitação conhecida**: qualquer usuário com `assets:write` aceita ou recusa qualquer
+transferência — não existe vínculo entre usuário e local no modelo, então o sistema não sabe quem
+"é do destino". Na prática o patrimônio da prefeitura é operado por poucas pessoas; se virar
+problema, exige modelar responsável por local.
 
 ## Módulo Almoxarifado / Alimentação Escolar (modelado, não implementado)
 
@@ -170,3 +208,24 @@ Consumo item a item + declaração periódica. **Devolução com aceite** do alm
 Papel NUTRICIONISTA solicita pelas unidades do seu almoxarifado. Extras: transferência entre
 almoxarifados, ajuste de estoque com motivo, relatórios de consumo (PNAE). Comprovante documental
 em cada etapa via `documento_emitido`.
+
+## Timbre e impressão
+
+- O timbre da prefeitura (cabeçalho, rodapé, logomarca) é configurado **só pelo painel do produto**
+  (`/admin`), nunca pelo ADMIN da prefeitura — é identidade visual do contrato, não cadastro
+  operacional.
+- **Logomarca é arquivo**, não texto: sobe por upload, fica no MinIO junto com os anexos e desce
+  em streaming pela API. Ninguém digita caminho de storage à mão, e o bucket continua privado.
+- **A impressão reaproveita a tela de detalhe.** Não existe um segundo layout do documento: o que
+  o servidor vê na tela é o que sai no papel, dentro da folha timbrada. Diverge menos e evita
+  manter duas versões do mesmo conteúdo.
+- Prefeitura sem timbre configurado **imprime assim mesmo**, com aviso de que falta configurar —
+  travar a impressão por causa de identidade visual seria pior que o documento sem brasão.
+- Ainda **não é documento emitido**: não há registro em `documento_emitido`, código verificador nem
+  QR. Isso continua no roadmap.
+
+## Lobby
+
+- O hub mostra **todos** os sistemas, sempre. O que o usuário não pode abrir aparece travado, com
+  cadeado e o motivo — módulo não contratado pela prefeitura ou perfil sem acesso. Esconder dava a
+  impressão de produto incompleto; travado, o usuário entende que existe e sabe a quem pedir.

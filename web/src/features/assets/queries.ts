@@ -5,6 +5,8 @@ import type {
   AssetCategory,
   AssetIntake,
   AssetLocation,
+  AssetTransfer,
+  AssetWriteOff,
   Inventory,
   InventoryDetail,
 } from "./types";
@@ -27,3 +29,14 @@ export const listInventories = () => apiRequest<Inventory[]>(endpoints.inventori
 
 export const getInventory = (id: string) =>
   apiRequest<InventoryDetail>(`${endpoints.inventories}/${id}`);
+
+export const listAssetTransfers = (filters: { status?: string; local?: string } = {}) => {
+  const query = new URLSearchParams();
+  if (filters.status) query.set("status", filters.status);
+  if (filters.local) query.set("local", filters.local);
+  return apiRequest<AssetTransfer[]>(
+    `${endpoints.assetTransfers}${query.size > 0 ? `?${query}` : ""}`,
+  );
+};
+
+export const listAssetWriteOffs = () => apiRequest<AssetWriteOff[]>(endpoints.assetWriteOffs);

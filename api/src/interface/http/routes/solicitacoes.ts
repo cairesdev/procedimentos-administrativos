@@ -63,9 +63,30 @@ solicitacoesRouter.post("/:id/cancelar", async (req, res, next) => {
   }
 });
 
+solicitacoesRouter.get("/", async (req, res, next) => {
+  try {
+    res.json(
+      await container.solicitacoes.listar(req.sessao!.orgaoId, {
+        situacao: typeof req.query.situacao === "string" ? req.query.situacao : undefined,
+        unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined,
+      }),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Detalhe completo: a solicitação, o processo que ela gerou, cada item com o
+ * que veio do contrato e o saldo de hoje, e os contratos de origem com
+ * fornecedor e vigência. Quem despacha decide olhando isto.
+ */
 solicitacoesRouter.get("/:id", async (req, res, next) => {
   try {
-    const solicitacao = await container.solicitacoes.buscarPorId(req.sessao!.orgaoId, req.params.id!);
+    const solicitacao = await container.solicitacoes.buscarCompleta(
+      req.sessao!.orgaoId,
+      req.params.id!,
+    );
     if (!solicitacao) {
       res.status(404).json({ message: "Solicitação não encontrada" });
       return;

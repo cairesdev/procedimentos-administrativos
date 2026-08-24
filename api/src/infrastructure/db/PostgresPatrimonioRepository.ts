@@ -1,9 +1,10 @@
-import { pool } from "./pool";
+import { pool, executarEmTransacao } from "./pool";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   BemDetalhe, BemResumo, CategoriaResumo, ConferenciaDeItem, EdicaoBem, EdicaoCategoria,
   EdicaoLocal, EdicaoRemessa, InventarioResumo, ItemDeInventario, LocalResumo, NovaCategoria,
-  NovaRemessa, NovoInventario, NovoLocal, PatrimonioRepository, RemessaDetalhe, RemessaResumo,
+  BaixaResumo, NovaBaixa, NovaRemessa, NovaTransferencia, NovoInventario, NovoLocal,
+  PatrimonioRepository, RemessaDetalhe, RemessaResumo, TransferenciaResumo,
 } from "../../application/ports/PatrimonioRepository";
 
 const SQL = {
@@ -122,6 +123,86 @@ const SQL = {
     UPDATE bem SET nome = COALESCE($3, nome), categoria_id = COALESCE($4, categoria_id)
      WHERE orgao_id = $1 AND id = $2`,
   removerBem: `DELETE FROM bem WHERE orgao_id = $1 AND id = $2`,
+
+  listarTransferencias: `
+    SELECT tr.id, tr.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
+           b.nome AS "nomeBem",
+           tr.local_origem_id AS "localOrigemId", lo.nome AS "localOrigemNome",
+           tr.local_destino_id AS "localDestinoId", ld.nome AS "localDestinoNome",
+           ue.nome AS "enviadoPor", tr.data_envio AS "dataEnvio",
+           ua.nome AS "aceitoPor", tr.data_aceite AS "dataAceite", tr.status
+      FROM transferencia_bem tr
+      JOIN bem b ON b.id = tr.bem_id
+      JOIN local lo ON lo.id = tr.local_origem_id
+      JOIN local ld ON ld.id = tr.local_destino_id
+      JOIN usuario ue ON ue.id = tr.enviado_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = tr.aceito_por_usuario_id
+     WHERE b.orgao_id = $1
+       AND ($2::text IS NULL OR tr.status = $2)
+       AND ($3::uuid IS NULL OR tr.local_origem_id = $3 OR tr.local_destino_id = $3)
+     ORDER BY tr.data_envio DESC`,
+  buscarTransferencia: `
+    SELECT tr.id, tr.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
+           b.nome AS "nomeBem",
+           tr.local_origem_id AS "localOrigemId", lo.nome AS "localOrigemNome",
+           tr.local_destino_id AS "localDestinoId", ld.nome AS "localDestinoNome",
+           ue.nome AS "enviadoPor", tr.data_envio AS "dataEnvio",
+           ua.nome AS "aceitoPor", tr.data_aceite AS "dataAceite", tr.status
+      FROM transferencia_bem tr
+      JOIN bem b ON b.id = tr.bem_id
+      JOIN local lo ON lo.id = tr.local_origem_id
+      JOIN local ld ON ld.id = tr.local_destino_id
+      JOIN usuario ue ON ue.id = tr.enviado_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = tr.aceito_por_usuario_id
+     WHERE b.orgao_id = $1 AND tr.id = $2`,
+  transferenciaPendente: `
+    SELECT tr.id, tr.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
+           b.nome AS "nomeBem",
+           tr.local_origem_id AS "localOrigemId", lo.nome AS "localOrigemNome",
+           tr.local_destino_id AS "localDestinoId", ld.nome AS "localDestinoNome",
+           ue.nome AS "enviadoPor", tr.data_envio AS "dataEnvio",
+           ua.nome AS "aceitoPor", tr.data_aceite AS "dataAceite", tr.status
+      FROM transferencia_bem tr
+      JOIN bem b ON b.id = tr.bem_id
+      JOIN local lo ON lo.id = tr.local_origem_id
+      JOIN local ld ON ld.id = tr.local_destino_id
+      JOIN usuario ue ON ue.id = tr.enviado_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = tr.aceito_por_usuario_id
+     WHERE b.orgao_id = $1 AND tr.bem_id = $2 AND tr.status = 'PENDENTE'
+     LIMIT 1`,
+  criarTransferencia: `
+    INSERT INTO transferencia_bem
+      (bem_id, local_origem_id, local_destino_id, enviado_por_usuario_id)
+    VALUES ($1, $2, $3, $4) RETURNING id`,
+  fecharTransferencia: `
+    UPDATE transferencia_bem
+       SET status = $2, aceito_por_usuario_id = $3, data_aceite = now()
+     WHERE id = $1 AND status = 'PENDENTE'`,
+  // O tombamento NÃO muda: local_tombamento_id fica como nasceu.
+  moverBem: `UPDATE bem SET local_atual_id = $2 WHERE id = $1`,
+
+  listarBaixas: `
+    SELECT ba.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
+           b.nome AS "nomeBem", l.nome AS "localNome",
+           ba.motivo, ba.observacao, u.nome AS "dadaPor", ba.data
+      FROM baixa_bem ba
+      JOIN bem b ON b.id = ba.bem_id
+      JOIN local l ON l.id = b.local_atual_id
+      JOIN usuario u ON u.id = ba.usuario_id
+     WHERE b.orgao_id = $1
+     ORDER BY ba.data DESC`,
+  buscarBaixa: `
+    SELECT ba.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
+           b.nome AS "nomeBem", l.nome AS "localNome",
+           ba.motivo, ba.observacao, u.nome AS "dadaPor", ba.data
+      FROM baixa_bem ba
+      JOIN bem b ON b.id = ba.bem_id
+      JOIN local l ON l.id = b.local_atual_id
+      JOIN usuario u ON u.id = ba.usuario_id
+     WHERE b.orgao_id = $1 AND ba.bem_id = $2`,
+  registrarBaixa: `
+    INSERT INTO baixa_bem (bem_id, motivo, observacao, usuario_id) VALUES ($1, $2, $3, $4)`,
+  baixarBem: `UPDATE bem SET status = 'BAIXADO' WHERE orgao_id = $1 AND id = $2`,
 
   listarInventarios: `
     SELECT i.id, i.local_id AS "localId", l.nome AS "localNome",
@@ -320,6 +401,76 @@ export class PostgresPatrimonioRepository implements PatrimonioRepository {
 
   removerBem = async (orgaoId: string, id: string): Promise<void> => {
     await pool.query(SQL.removerBem, [orgaoId, id]);
+  };
+
+  listarTransferencias = async (
+    orgaoId: string,
+    filtros: { status?: string; localId?: string },
+  ): Promise<TransferenciaResumo[]> => {
+    const { rows } = await pool.query(SQL.listarTransferencias, [
+      orgaoId, filtros.status ?? null, filtros.localId ?? null,
+    ]);
+    return rows;
+  };
+
+  buscarTransferencia = async (
+    orgaoId: string,
+    id: string,
+  ): Promise<TransferenciaResumo | null> => {
+    const { rows } = await pool.query(SQL.buscarTransferencia, [orgaoId, id]);
+    return rows[0] ?? null;
+  };
+
+  transferenciaPendenteDoBem = async (
+    orgaoId: string,
+    bemId: string,
+  ): Promise<TransferenciaResumo | null> => {
+    const { rows } = await pool.query(SQL.transferenciaPendente, [orgaoId, bemId]);
+    return rows[0] ?? null;
+  };
+
+  criarTransferencia = async (dados: NovaTransferencia): Promise<string> => {
+    const { rows } = await pool.query(SQL.criarTransferencia, [
+      dados.bemId, dados.localOrigemId, dados.localDestinoId, dados.enviadoPorUsuarioId,
+    ]);
+    return rows[0].id;
+  };
+
+  // Fechar a transferência e mover o bem andam juntos: um sem o outro deixaria
+  // o bem em local errado ou a transferência eternamente pendente.
+  aceitarTransferencia = async (
+    id: string,
+    bemId: string,
+    localDestinoId: string,
+    usuarioId: string,
+  ): Promise<void> => {
+    await executarEmTransacao(async (tx) => {
+      await tx.query(SQL.fecharTransferencia, [id, "ACEITA", usuarioId]);
+      await tx.query(SQL.moverBem, [bemId, localDestinoId]);
+    });
+  };
+
+  recusarTransferencia = async (id: string, usuarioId: string): Promise<void> => {
+    await pool.query(SQL.fecharTransferencia, [id, "RECUSADA", usuarioId]);
+  };
+
+  listarBaixas = async (orgaoId: string): Promise<BaixaResumo[]> => {
+    const { rows } = await pool.query(SQL.listarBaixas, [orgaoId]);
+    return rows;
+  };
+
+  buscarBaixa = async (orgaoId: string, bemId: string): Promise<BaixaResumo | null> => {
+    const { rows } = await pool.query(SQL.buscarBaixa, [orgaoId, bemId]);
+    return rows[0] ?? null;
+  };
+
+  registrarBaixa = async (orgaoId: string, dados: NovaBaixa): Promise<void> => {
+    await executarEmTransacao(async (tx) => {
+      await tx.query(SQL.registrarBaixa, [
+        dados.bemId, dados.motivo, dados.observacao ?? null, dados.usuarioId,
+      ]);
+      await tx.query(SQL.baixarBem, [orgaoId, dados.bemId]);
+    });
   };
 
   listarInventarios = async (orgaoId: string): Promise<InventarioResumo[]> => {

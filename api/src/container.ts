@@ -59,7 +59,9 @@ export const container = {
   patrimonio,
   gerenciarPatrimonio: new GerenciarPatrimonio(patrimonio, auditoria, executarEmTransacao),
   adminSistema,
-  administrarSistema: new AdministrarSistema(adminSistema, usuarios, auditoria),
+  administrarSistema: new AdministrarSistema(
+    adminSistema, usuarios, auditoria, new MinioArmazenamento(),
+  ),
   licitacoes,
   contratos,
   solicitacoes,

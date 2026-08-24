@@ -171,7 +171,8 @@ export const InventorySheet = ({
 
       {closed ? (
         <Alert tone="info">
-          Inventário concluído. Bens não encontrados foram marcados para averiguação.
+          Inventário concluído. As divergências ficam registradas aqui; o que fazer com cada bem
+          não encontrado — localizar ou dar baixa — é decisão de quem administra o patrimônio.
         </Alert>
       ) : null}
 

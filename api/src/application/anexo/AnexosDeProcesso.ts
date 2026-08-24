@@ -5,6 +5,7 @@ import type {
 } from "../ports/ArmazenamentoArquivos";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { TramitacaoRepository } from "../ports/TramitacaoRepository";
+import { sanitizarNomeDeArquivo } from "../shared/NomeDeArquivo";
 
 export type AnexarEntrada = {
   orgaoId: string;
@@ -32,7 +33,7 @@ export class AnexosDeProcesso {
       throw new ErroDeNegocio("Processo concluído não recebe anexos");
     }
 
-    const caminho = `${dados.orgaoId}/processos/${dados.processoId}/${randomUUID()}-${sanitizar(dados.nomeOriginal)}`;
+    const caminho = `${dados.orgaoId}/processos/${dados.processoId}/${randomUUID()}-${sanitizarNomeDeArquivo(dados.nomeOriginal)}`;
 
     // Compensação: upload primeiro, insert depois, remove o arquivo se o insert falhar.
     await this.storage.salvar(caminho, dados.conteudo, dados.mimeType);
@@ -100,5 +101,3 @@ export class AnexosDeProcesso {
   };
 }
 
-const sanitizar = (nome: string): string =>
-  nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);

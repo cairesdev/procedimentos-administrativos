@@ -9,6 +9,13 @@ export type ProcessoDetalhe = {
   setorAtualId: string | null;
   departamentoAtualId: string | null;
   status: "ABERTO" | "TRAMITANDO" | "ENCERRADO" | "CANCELADO";
+  /** Quando o processo chegou ao setor onde está: último encaminhamento, ou a abertura. */
+  entrouNoSetorEm: string;
+  /** Prazo da etapa atual no fluxo. Nulo quando a etapa não tem prazo ativo. */
+  prazoDias: number | null;
+  prazoLimite: string | null;
+  /** Negativo = atrasado. Nulo quando não há prazo. */
+  diasParaVencer: number | null;
 };
 
 export type NovoDespacho = {

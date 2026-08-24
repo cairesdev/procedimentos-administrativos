@@ -1,8 +1,8 @@
 import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste, garantirSemVinculos } from "../shared/ExclusaoSegura";
 import type {
-  ConferenciaDeItem, EdicaoBem, EdicaoCategoria, EdicaoLocal, EdicaoRemessa, NovaCategoria,
-  NovaRemessa, NovoLocal, PatrimonioRepository,
+  ConferenciaDeItem, EdicaoBem, EdicaoCategoria, EdicaoLocal, EdicaoRemessa, MotivoDeBaixa,
+  NovaCategoria, NovaRemessa, NovoLocal, PatrimonioRepository,
 } from "../ports/PatrimonioRepository";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
@@ -139,6 +139,184 @@ export class GerenciarPatrimonio {
       tipoEvento: "BEM_EXCLUIDO",
       referenciaId: id,
       detalhes: { codigoTombamento: bem.codigoTombamento, nome: bem.nome },
+    });
+  };
+
+  // ---- Transferência entre locais -----------------------------------------
+
+  /**
+   * O bem só muda de local com aceite do destino. Até lá ele continua contando
+   * na origem — inclusive em inventário.
+   */
+  transferirBem = async (
+    orgaoId: string,
+    bemId: string,
+    localDestinoId: string,
+    usuarioId: string,
+  ): Promise<{ id: string }> => {
+    const bem = garantirExiste(await this.patrimonio.buscarBem(orgaoId, bemId), "Bem");
+    if (bem.status !== "ATIVO") {
+      throw new ErroDeNegocio(`Bem ${bem.codigoTombamento} está baixado e não se transfere`);
+    }
+    if (bem.localAtualId === localDestinoId) {
+      throw new ErroDeNegocio("O bem já está neste local");
+    }
+
+    const destino = garantirExiste(
+      await this.patrimonio.buscarLocal(orgaoId, localDestinoId),
+      "Local de destino",
+    );
+    if (!destino.ativo) throw new ErroDeNegocio(`Local ${destino.nome} está inativo`);
+
+    const pendente = await this.patrimonio.transferenciaPendenteDoBem(orgaoId, bemId);
+    if (pendente) {
+      throw new Conflito(
+        `Já existe transferência aguardando aceite de ${pendente.localDestinoNome}`,
+        { transferenciaId: pendente.id },
+      );
+    }
+
+    // Mover bem no meio de uma contagem faria a lista de esperados mudar
+    // debaixo de quem está conferindo.
+    if (await this.patrimonio.inventarioAbertoNoLocal(orgaoId, bem.localAtualId)) {
+      throw new ErroDeNegocio(
+        `${bem.localAtualNome} tem inventário em andamento. Conclua antes de transferir.`,
+      );
+    }
+
+    const id = await this.patrimonio.criarTransferencia({
+      bemId,
+      localOrigemId: bem.localAtualId,
+      localDestinoId,
+      enviadoPorUsuarioId: usuarioId,
+    });
+
+    await this.auditoria.registrar({
+      orgaoId,
+      usuarioId,
+      tipoEvento: "TRANSFERENCIA_ENVIADA",
+      referenciaId: id,
+      detalhes: {
+        tombamento: bem.codigoTombamento,
+        de: bem.localAtualNome,
+        para: destino.nome,
+      },
+    });
+    return { id };
+  };
+
+  aceitarTransferencia = async (
+    orgaoId: string,
+    id: string,
+    usuarioId: string,
+  ): Promise<void> => {
+    const transferencia = garantirExiste(
+      await this.patrimonio.buscarTransferencia(orgaoId, id),
+      "Transferência",
+    );
+    if (transferencia.status !== "PENDENTE") {
+      throw new ErroDeNegocio(
+        `Transferência já ${transferencia.status.toLowerCase()}`,
+        422,
+        { statusAtual: transferencia.status },
+      );
+    }
+
+    // Mesma razão da origem: o destino não pode ganhar bem durante a contagem.
+    if (await this.patrimonio.inventarioAbertoNoLocal(orgaoId, transferencia.localDestinoId)) {
+      throw new ErroDeNegocio(
+        `${transferencia.localDestinoNome} tem inventário em andamento. Conclua antes de aceitar.`,
+      );
+    }
+
+    await this.patrimonio.aceitarTransferencia(
+      id,
+      transferencia.bemId,
+      transferencia.localDestinoId,
+      usuarioId,
+    );
+    await this.auditoria.registrar({
+      orgaoId,
+      usuarioId,
+      tipoEvento: "TRANSFERENCIA_ACEITA",
+      referenciaId: id,
+      detalhes: {
+        tombamento: transferencia.codigoTombamento,
+        de: transferencia.localOrigemNome,
+        para: transferencia.localDestinoNome,
+      },
+    });
+  };
+
+  recusarTransferencia = async (
+    orgaoId: string,
+    id: string,
+    usuarioId: string,
+  ): Promise<void> => {
+    const transferencia = garantirExiste(
+      await this.patrimonio.buscarTransferencia(orgaoId, id),
+      "Transferência",
+    );
+    if (transferencia.status !== "PENDENTE") {
+      throw new ErroDeNegocio(`Transferência já ${transferencia.status.toLowerCase()}`, 422, {
+        statusAtual: transferencia.status,
+      });
+    }
+
+    await this.patrimonio.recusarTransferencia(id, usuarioId);
+    await this.auditoria.registrar({
+      orgaoId,
+      usuarioId,
+      tipoEvento: "TRANSFERENCIA_RECUSADA",
+      referenciaId: id,
+      detalhes: {
+        tombamento: transferencia.codigoTombamento,
+        destinoQueRecusou: transferencia.localDestinoNome,
+      },
+    });
+  };
+
+  // ---- Baixa formal --------------------------------------------------------
+
+  /** Baixa não apaga: o bem sai do ativo e continua no histórico com o motivo. */
+  darBaixa = async (
+    orgaoId: string,
+    bemId: string,
+    dados: { motivo: MotivoDeBaixa; observacao?: string },
+    usuarioId: string,
+  ): Promise<void> => {
+    const bem = garantirExiste(await this.patrimonio.buscarBem(orgaoId, bemId), "Bem");
+    if (bem.status !== "ATIVO") {
+      throw new ErroDeNegocio(`Bem ${bem.codigoTombamento} já está baixado`);
+    }
+
+    const pendente = await this.patrimonio.transferenciaPendenteDoBem(orgaoId, bemId);
+    if (pendente) {
+      throw new ErroDeNegocio(
+        "Este bem tem transferência aguardando aceite. Resolva a transferência antes de dar baixa.",
+        422,
+        { transferenciaId: pendente.id },
+      );
+    }
+
+    if (await this.patrimonio.inventarioAbertoNoLocal(orgaoId, bem.localAtualId)) {
+      throw new ErroDeNegocio(
+        `${bem.localAtualNome} tem inventário em andamento. Conclua antes de dar baixa.`,
+      );
+    }
+
+    await this.patrimonio.registrarBaixa(orgaoId, { bemId, ...dados, usuarioId });
+    await this.auditoria.registrar({
+      orgaoId,
+      usuarioId,
+      tipoEvento: "BEM_BAIXADO",
+      referenciaId: bemId,
+      detalhes: {
+        tombamento: bem.codigoTombamento,
+        local: bem.localAtualNome,
+        motivo: dados.motivo,
+        observacao: dados.observacao ?? null,
+      },
     });
   };
 

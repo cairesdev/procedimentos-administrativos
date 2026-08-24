@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { apiRequest, ApiError } from "@/shared/api/http-client";
+import { apiBaseUrl, apiRequest, ApiError } from "@/shared/api/http-client";
 import { runAction } from "@/shared/api/action-result";
 import { clearAdminToken, readAdminToken, writeAdminToken } from "./session";
 import {
@@ -83,12 +83,46 @@ export const saveLetterhead = async (id: string, input: LetterheadInput) =>
   runAction(async () => {
     const parsed = letterheadSchema.parse(input);
     await withAdminToken(`/admin/orgaos/${id}/timbre`, "PUT", {
-      arquivoLogomarca: parsed.arquivoLogomarca || null,
       cabecalhoTimbre: parsed.cabecalhoTimbre || null,
       rodapeTimbre: parsed.rodapeTimbre || null,
     });
-    revalidatePath("/admin");
+    revalidarPrefeitura(id);
   }, "Timbre salvo");
+
+const IMAGENS_ACEITAS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+
+/**
+ * Upload da logomarca. Multipart não passa por `apiRequest` (que serializa
+ * JSON), então a chamada é feita à mão com o token de administrador.
+ */
+export const uploadLetterheadLogo = async (id: string, formData: FormData) =>
+  runAction(async () => {
+    const arquivo = formData.get("arquivo");
+    if (!(arquivo instanceof File) || arquivo.size === 0) {
+      throw new ApiError(422, "Escolha um arquivo de imagem");
+    }
+    if (!IMAGENS_ACEITAS.includes(arquivo.type)) {
+      throw new ApiError(422, "Envie a logomarca em PNG, JPEG, WEBP ou SVG");
+    }
+
+    const token = await readAdminToken();
+    if (!token) redirect("/admin/login");
+
+    const corpo = new FormData();
+    corpo.append("arquivo", arquivo, arquivo.name);
+
+    const resposta = await fetch(`${apiBaseUrl}/admin/orgaos/${id}/timbre/logomarca`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: corpo,
+      cache: "no-store",
+    });
+    if (!resposta.ok) {
+      const dados = await resposta.json().catch(() => null);
+      throw new ApiError(resposta.status, dados?.message ?? "Falha ao enviar a logomarca");
+    }
+    revalidarPrefeitura(id);
+  }, "Logomarca atualizada");
 
 export const createEntityAdmin = async (id: string, input: FirstAdminInput) =>
   runAction(async () => {

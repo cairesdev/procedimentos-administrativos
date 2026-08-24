@@ -12,6 +12,8 @@ import {
   assetLocationSchema,
   inventoryCheckSchema,
   inventorySchema,
+  transferSchema,
+  writeOffSchema,
   type AssetCategoryInput,
   type AssetEditInput,
   type AssetIntakeEditInput,
@@ -19,6 +21,8 @@ import {
   type AssetLocationInput,
   type InventoryCheckInput,
   type InventoryInput,
+  type TransferInput,
+  type WriteOffInput,
 } from "./schemas";
 
 const LOCATIONS = "/patrimonio/locais";
@@ -26,6 +30,7 @@ const CATEGORIES = "/patrimonio/categorias";
 const INTAKES = "/patrimonio/entradas";
 const ASSETS = "/patrimonio/bens";
 const INVENTORIES = "/patrimonio/inventarios";
+const TRANSFERS = "/patrimonio/transferencias";
 
 const blankToUndefined = (value?: string) => value?.trim() || undefined;
 
@@ -209,3 +214,43 @@ export const closeInventory = async (inventoryId: string) =>
     revalidatePath(INVENTORIES);
     revalidatePath(ASSETS);
   }, "Inventário concluído");
+
+
+// ---- Transferência entre locais --------------------------------------------
+
+/** Só cria o pedido: o bem continua no local de origem até o destino aceitar. */
+export const transferAsset = async (assetId: string, input: TransferInput) =>
+  runAction(async () => {
+    const body = transferSchema.parse(input);
+    await apiRequest(endpoints.transferAsset(assetId), { method: "POST", body });
+    revalidatePath(ASSETS);
+    revalidatePath(TRANSFERS);
+  }, "Transferência enviada — aguardando aceite do destino");
+
+export const acceptTransfer = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(endpoints.transferAction(id, "aceitar"), { method: "POST", body: {} });
+    revalidatePath(ASSETS);
+    revalidatePath(TRANSFERS);
+    revalidatePath(LOCATIONS);
+  }, "Transferência aceita — o bem mudou de local");
+
+export const refuseTransfer = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(endpoints.transferAction(id, "recusar"), { method: "POST", body: {} });
+    revalidatePath(TRANSFERS);
+  }, "Transferência recusada — o bem fica onde está");
+
+// ---- Baixa formal ----------------------------------------------------------
+
+/** O bem sai do ativo e continua no histórico com o motivo. Não tem estorno. */
+export const writeOffAsset = async (assetId: string, input: WriteOffInput) =>
+  runAction(async () => {
+    const dados = writeOffSchema.parse(input);
+    await apiRequest(endpoints.writeOffAsset(assetId), {
+      method: "POST",
+      body: { motivo: dados.motivo, observacao: blankToUndefined(dados.observacao) },
+    });
+    revalidatePath(ASSETS);
+    revalidatePath(LOCATIONS);
+  }, "Baixa registrada");

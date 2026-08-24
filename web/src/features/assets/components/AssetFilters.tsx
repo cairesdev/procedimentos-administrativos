@@ -2,9 +2,10 @@ import { Toolbar } from "@/shared/ui/layout";
 import { Button } from "@/shared/ui/button";
 import type { AssetLocation } from "../types";
 
+// Só o que o CHECK de `bem.status` permite. "Em averiguação" chegou a aparecer
+// aqui, mas não existe no banco — o filtro nunca casava nada.
 const STATUSES = [
   { value: "ATIVO", label: "Ativo" },
-  { value: "EM_AVERIGUACAO", label: "Em averiguação" },
   { value: "BAIXADO", label: "Baixado" },
 ];
 
