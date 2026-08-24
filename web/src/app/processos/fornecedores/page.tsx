@@ -2,12 +2,17 @@ import { listSuppliers } from "@/features/suppliers/queries";
 import { SupplierForm } from "@/features/suppliers/components/SupplierForm";
 import { SupplierTable } from "@/features/suppliers/components/SupplierTable";
 import { requirePermission } from "@/shared/auth/guards";
-import { Card, PageHeader } from "@/shared/ui/layout";
+import { Button } from "@/shared/ui/button";
+import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
+import { Pagination } from "@/shared/ui/Pagination";
 
-export default async function SuppliersPage() {
+type SuppliersPageProps = { searchParams: Promise<{ busca?: string; pagina?: string }> };
+
+export default async function SuppliersPage({ searchParams }: SuppliersPageProps) {
   const viewer = await requirePermission("suppliers:read");
-  const suppliers = await listSuppliers();
+  const { busca, pagina } = await searchParams;
+  const suppliers = await listSuppliers(busca, pagina);
 
   return (
     <>
@@ -27,8 +32,25 @@ export default async function SuppliersPage() {
         }
       />
 
-      <Card title={`${suppliers.length} encontrados`} padded={false}>
-        <SupplierTable suppliers={suppliers} canWrite={viewer.can("suppliers:write")} />
+      {/* Busca por GET: some da URL ao limpar e volta para a página 1. */}
+      <form method="get">
+        <Toolbar>
+          <input
+            type="search"
+            name="busca"
+            defaultValue={busca ?? ""}
+            placeholder="Razão social ou CNPJ"
+            aria-label="Buscar fornecedor"
+          />
+          <Button type="submit" variant="secondary">
+            Buscar
+          </Button>
+        </Toolbar>
+      </form>
+
+      <Card title={`${suppliers.total} encontrados`} padded={false}>
+        <SupplierTable suppliers={suppliers.itens} canWrite={viewer.can("suppliers:write")} />
+        <Pagination info={suppliers} base="/processos/fornecedores" filtros={{ busca }} />
       </Card>
     </>
   );

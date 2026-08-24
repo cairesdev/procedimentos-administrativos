@@ -1,4 +1,8 @@
 import { pool } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type {
   DadosFornecedor, FornecedorCompleto, FornecedorRepository,
 } from "../../application/ports/FornecedorRepository";
@@ -27,12 +31,12 @@ const SQL = {
       inscricao_municipal = COALESCE($7, inscricao_municipal)
     WHERE id = $1`,
   listar: `
-    SELECT ${COLUNAS} FROM fornecedor
+    SELECT ${COLUNAS}, ${TOTAL_DA_JANELA} FROM fornecedor
      WHERE $1::text IS NULL
         OR documento LIKE $1 || '%'
         OR upper(razao_social) LIKE '%' || upper($1) || '%'
-     ORDER BY razao_social
-     LIMIT 50`,
+     ORDER BY razao_social, id
+     LIMIT $2 OFFSET $3`,
 };
 
 export class PostgresFornecedorRepository implements FornecedorRepository {
@@ -63,8 +67,13 @@ export class PostgresFornecedorRepository implements FornecedorRepository {
     ]);
   };
 
-  listar = async (busca?: string): Promise<FornecedorCompleto[]> => {
-    const { rows } = await pool.query(SQL.listar, [busca ?? null]);
-    return rows;
+  listar = async (
+    paginacao: Paginacao,
+    busca?: string,
+  ): Promise<Pagina<FornecedorCompleto>> => {
+    const { rows } = await pool.query(SQL.listar, [
+      busca ?? null, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina(rows, paginacao);
   };
 }

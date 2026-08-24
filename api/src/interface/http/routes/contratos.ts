@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { container } from "../../../container";
 import { criarContratoSchema, editarContratoSchema } from "../schemas/processos";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 export const contratosRouter = Router();
 
@@ -20,7 +21,7 @@ contratosRouter.post("/", async (req, res, next) => {
 
 contratosRouter.get("/", async (req, res, next) => {
   try {
-    const contratos = await container.contratos.listar(req.sessao!.orgaoId);
+    const contratos = await container.contratos.listar(req.sessao!.orgaoId, paginacaoSchema.parse(req.query));
     res.json(contratos);
   } catch (error) {
     next(error);

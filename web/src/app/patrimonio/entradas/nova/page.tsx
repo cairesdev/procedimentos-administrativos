@@ -1,6 +1,6 @@
 import { listAssetCategories, listAssetLocations } from "@/features/assets/queries";
 import { AssetIntakeWizard } from "@/features/assets/components/AssetIntakeWizard";
-import { listSuppliers } from "@/features/suppliers/queries";
+import { listAllSuppliers } from "@/features/suppliers/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Alert, PageHeader } from "@/shared/ui/layout";
 
@@ -9,7 +9,7 @@ export default async function NewAssetIntakePage() {
   const [locations, categories, suppliers] = await Promise.all([
     listAssetLocations(),
     listAssetCategories(),
-    listSuppliers(),
+    listAllSuppliers(),
   ]);
 
   const ready =

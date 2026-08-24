@@ -57,19 +57,26 @@ export const ModalTrigger = ({
   label,
   title,
   description,
+  icon,
+  variant,
   children,
 }: {
   label: string;
   title: string;
   description?: string;
+  /** Troca o "+" quando a ação não é criar — cancelar, por exemplo. */
+  icon?: ReactNode;
+  variant?: "primary" | "secondary" | "ghost";
   children: ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
-        <Plus size={15} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "6px" }} />
+      <Button type="button" variant={variant} onClick={() => setOpen(true)}>
+        <span style={{ verticalAlign: "-2px", marginRight: "6px", display: "inline-flex" }}>
+          {icon ?? <Plus size={15} aria-hidden="true" />}
+        </span>
         {label}
       </Button>
       <Modal open={open} onClose={() => setOpen(false)} title={title} description={description}>

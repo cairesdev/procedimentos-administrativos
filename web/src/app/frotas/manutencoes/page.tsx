@@ -5,19 +5,21 @@ import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type MaintenancesPageProps = {
-  searchParams: Promise<{ veiculo?: string; abertas?: string }>;
+  searchParams: Promise<{ veiculo?: string; abertas?: string; pagina?: string }>;
 };
 
 export default async function MaintenancesPage({ searchParams }: MaintenancesPageProps) {
   const viewer = await requirePermission("fleet:read", "FROTAS");
-  const { veiculo, abertas } = await searchParams;
+  const { veiculo, abertas, pagina } = await searchParams;
 
   const [maintenances, vehicles] = await Promise.all([
     listMaintenances({
       veiculo,
       abertas: abertas === "" || abertas === undefined ? undefined : abertas === "true",
+      pagina,
     }),
     listVehicles(),
   ]);
@@ -68,8 +70,13 @@ export default async function MaintenancesPage({ searchParams }: MaintenancesPag
         </Toolbar>
       </form>
 
-      <Card title={`${maintenances.length} registros`} padded={false}>
-        <MaintenanceTable maintenances={maintenances} canWrite={canWrite} />
+      <Card title={`${maintenances.total} registros`} padded={false}>
+        <MaintenanceTable maintenances={maintenances.itens} canWrite={canWrite} />
+        <Pagination
+          info={maintenances}
+          base="/frotas/manutencoes"
+          filtros={{ veiculo, abertas }}
+        />
       </Card>
     </>
   );

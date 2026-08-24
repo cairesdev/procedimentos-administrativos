@@ -6,17 +6,18 @@ import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type RequestsPageProps = {
-  searchParams: Promise<{ situacao?: string; unidade?: string }>;
+  searchParams: Promise<{ situacao?: string; unidade?: string; pagina?: string }>;
 };
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps) {
   const viewer = await requirePermission("requests:read", "PROCESSOS");
-  const { situacao, unidade } = await searchParams;
+  const { situacao, unidade, pagina } = await searchParams;
 
   const [requests, units] = await Promise.all([
-    listRequests({ situacao, unidade }),
+    listRequests({ situacao, unidade, pagina }),
     listUnits(),
   ]);
 
@@ -61,8 +62,13 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         </Toolbar>
       </form>
 
-      <Card title={`${requests.length} solicitações`} padded={false}>
-        <RequestTable requests={requests} />
+      <Card title={`${requests.total} solicitações`} padded={false}>
+        <RequestTable requests={requests.itens} />
+        <Pagination
+          info={requests}
+          base="/processos/solicitacoes"
+          filtros={{ situacao, unidade }}
+        />
       </Card>
     </>
   );

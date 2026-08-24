@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 const itemSchema = z.object({
   produto: z.string().min(1).max(150),
@@ -49,7 +50,7 @@ atasRouter.post("/", async (req, res, next) => {
 
 atasRouter.get("/", async (req, res, next) => {
   try {
-    res.json(await container.atas.listar(req.sessao!.orgaoId));
+    res.json(await container.atas.listar(req.sessao!.orgaoId, paginacaoSchema.parse(req.query)));
   } catch (error) {
     next(error);
   }

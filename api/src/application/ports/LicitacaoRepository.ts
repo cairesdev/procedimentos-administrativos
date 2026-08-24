@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 export type NovaLicitacao = {
   orgaoId: string;
   numero: string;
@@ -28,7 +29,7 @@ export type EdicaoLicitacao = Partial<Omit<NovaLicitacao, "orgaoId" | "resumo">>
 export interface LicitacaoRepository {
   existeNumero(orgaoId: string, numero: string, ignorarId?: string): Promise<boolean>;
   criar(dados: NovaLicitacao): Promise<string>;
-  listar(orgaoId: string): Promise<LicitacaoResumo[]>;
+  listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<LicitacaoResumo>>;
   buscarPorId(orgaoId: string, id: string): Promise<LicitacaoResumo | null>;
   atualizar(orgaoId: string, id: string, dados: EdicaoLicitacao): Promise<void>;
   contarVinculos(orgaoId: string, id: string): Promise<Record<string, number>>;

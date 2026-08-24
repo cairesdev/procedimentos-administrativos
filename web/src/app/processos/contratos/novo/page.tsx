@@ -1,7 +1,7 @@
-import { listBids } from "@/features/bids/queries";
+import { listAllBids } from "@/features/bids/queries";
 import { ContractWizard } from "@/features/contracts/components/ContractWizard";
-import { listPriceRecords } from "@/features/price-records/queries";
-import { listSuppliers } from "@/features/suppliers/queries";
+import { listAllPriceRecords } from "@/features/price-records/queries";
+import { listAllSuppliers } from "@/features/suppliers/queries";
 import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
@@ -17,9 +17,9 @@ export default async function NewContractPage({
   const { origem, origemId } = await searchParams;
   const [units, suppliers, bids, priceRecords] = await Promise.all([
     listUnits(),
-    listSuppliers(),
-    listBids(),
-    listPriceRecords(),
+    listAllSuppliers(),
+    listAllBids(),
+    listAllPriceRecords(),
   ]);
 
   return (

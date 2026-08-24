@@ -13,6 +13,10 @@ import { EmitirParecer } from "./application/tramitacao/EmitirParecer";
 import { EmitirOrdemFornecimento } from "./application/tramitacao/EmitirOrdemFornecimento";
 import { PostgresAnexoRepository } from "./infrastructure/db/PostgresAnexoRepository";
 import { MinioArmazenamento } from "./infrastructure/storage/MinioArmazenamento";
+import { PostgresDocumentoRepository } from "./infrastructure/db/PostgresDocumentoRepository";
+import { PostgresFonteDeContexto } from "./infrastructure/db/PostgresFonteDeContexto";
+import { EmitirDocumento } from "./application/documento/EmitirDocumento";
+import { ManterModelos } from "./application/documento/ManterModelos";
 import { AnexosDeProcesso } from "./application/anexo/AnexosDeProcesso";
 import { PostgresAuditoriaRepository } from "./infrastructure/db/PostgresAuditoriaRepository";
 import { PostgresAtaRepository } from "./infrastructure/db/PostgresAtaRepository";
@@ -52,8 +56,14 @@ const adminSistema = new PostgresAdminSistemaRepository();
 const patrimonio = new PostgresPatrimonioRepository();
 const frota = new PostgresFrotaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
+const documentos = new PostgresDocumentoRepository();
 
 export const container = {
+  documentos,
+  manterModelos: new ManterModelos(documentos),
+  emitirDocumento: new EmitirDocumento(
+    documentos, new PostgresFonteDeContexto(), usuarios, auditoria,
+  ),
   frota,
   gerenciarFrota: new GerenciarFrota(frota, auditoria),
   patrimonio,

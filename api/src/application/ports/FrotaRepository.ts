@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 export type NovoVeiculo = {
   orgaoId: string;
   unidadeId?: string;
@@ -208,7 +209,8 @@ export interface FrotaRepository {
   listarViagens(
     orgaoId: string,
     filtros: { status?: string; veiculoId?: string; de?: string; ate?: string },
-  ): Promise<ViagemResumo[]>;
+    paginacao: Paginacao,
+  ): Promise<Pagina<ViagemResumo>>;
   buscarViagem(orgaoId: string, id: string): Promise<ViagemDetalhe | null>;
   criarViagem(dados: NovaViagem): Promise<string>;
   /** Viagens do mesmo veículo que se cruzam com o horário — só para avisar. */
@@ -244,7 +246,8 @@ export interface FrotaRepository {
   listarManutencoes(
     orgaoId: string,
     filtros: { veiculoId?: string; abertas?: boolean },
-  ): Promise<ManutencaoResumo[]>;
+    paginacao: Paginacao,
+  ): Promise<Pagina<ManutencaoResumo>>;
   buscarManutencao(orgaoId: string, id: string): Promise<ManutencaoResumo | null>;
   abrirManutencao(dados: NovaManutencao): Promise<string>;
   encerrarManutencao(id: string, dados: EncerramentoManutencao): Promise<void>;

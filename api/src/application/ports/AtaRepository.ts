@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 export type NovoItemAta = {
@@ -45,6 +46,6 @@ export interface AtaRepository {
   contarVinculos(orgaoId: string, id: string): Promise<Record<string, number>>;
   remover(orgaoId: string, id: string, tx: Tx): Promise<void>;
   criar(dados: NovaAta, tx: Tx): Promise<string>;
-  listar(orgaoId: string): Promise<AtaResumo[]>;
+  listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<AtaResumo>>;
   listarItens(orgaoId: string, ataId: string): Promise<ItemDeAta[]>;
 }

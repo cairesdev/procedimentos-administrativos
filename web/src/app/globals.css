@@ -74,3 +74,11 @@ button {
 table {
   font-variant-numeric: tabular-nums;
 }
+
+/* Cromo de tela que não vai para o papel: barra de ações, avisos de status.
+   Documento oficial impresso não leva botão nem alerta do sistema. */
+@media print {
+  .somente_tela {
+    display: none !important;
+  }
+}

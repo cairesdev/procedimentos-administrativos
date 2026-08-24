@@ -7,17 +7,18 @@ import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type TripsPageProps = {
-  searchParams: Promise<{ status?: string; veiculo?: string }>;
+  searchParams: Promise<{ status?: string; veiculo?: string; pagina?: string }>;
 };
 
 export default async function TripsPage({ searchParams }: TripsPageProps) {
   const viewer = await requirePermission("fleet:read", "FROTAS");
-  const { status, veiculo } = await searchParams;
+  const { status, veiculo, pagina } = await searchParams;
 
   const [trips, vehicles, drivers, units] = await Promise.all([
-    listTrips({ status, veiculo }),
+    listTrips({ status, veiculo, pagina }),
     listVehicles(),
     listDrivers(),
     listUnits(),
@@ -68,8 +69,9 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
         </Toolbar>
       </form>
 
-      <Card title={`${trips.length} viagens`} padded={false}>
-        <TripTable trips={trips} />
+      <Card title={`${trips.total} viagens`} padded={false}>
+        <TripTable trips={trips.itens} />
+        <Pagination info={trips} base="/frotas/viagens" filtros={{ status, veiculo }} />
       </Card>
     </>
   );

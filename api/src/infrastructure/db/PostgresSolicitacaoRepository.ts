@@ -1,4 +1,8 @@
 import { pool } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   ContratoDaSolicitacao,
@@ -43,14 +47,16 @@ const SQL = {
            s.created_at AS "criadaEm",
            (SELECT count(*) FROM solicitacao_item si WHERE si.solicitacao_id = s.id) AS "totalItens",
            coalesce((SELECT sum(si.valor_calculado) FROM solicitacao_item si
-                      WHERE si.solicitacao_id = s.id), 0) AS "valorTotal"
+                      WHERE si.solicitacao_id = s.id), 0) AS "valorTotal",
+           ${TOTAL_DA_JANELA}
       FROM solicitacao s
       JOIN unidade u ON u.id = s.unidade_solicitante_id
       LEFT JOIN processo p ON p.id = s.processo_id
      WHERE s.orgao_id = $1
        AND ($2::text IS NULL OR s.situacao = $2)
        AND ($3::uuid IS NULL OR s.unidade_solicitante_id = $3)
-     ORDER BY s.created_at DESC`,
+     ORDER BY s.created_at DESC, s.id
+     LIMIT $4 OFFSET $5`,
   cabecalhoCompleto: `
     SELECT s.id, s.situacao,
            s.unidade_solicitante_id AS "unidadeSolicitanteId",
@@ -136,11 +142,14 @@ export class PostgresSolicitacaoRepository implements SolicitacaoRepository {
   listar = async (
     orgaoId: string,
     filtros: { situacao?: string; unidadeId?: string },
-  ): Promise<SolicitacaoResumo[]> => {
+    paginacao: Paginacao,
+  ): Promise<Pagina<SolicitacaoResumo>> => {
     const { rows } = await pool.query(SQL.listar, [
       orgaoId, filtros.situacao ?? null, filtros.unidadeId ?? null,
+      paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
-    return rows.map(resumo);
+    const pagina = montarPagina<SolicitacaoResumo>(rows, paginacao);
+    return { ...pagina, itens: pagina.itens.map(resumo) };
   };
 
   buscarCompleta = async (orgaoId: string, id: string): Promise<SolicitacaoCompleta | null> => {

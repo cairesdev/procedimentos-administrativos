@@ -229,3 +229,118 @@ em cada etapa via `documento_emitido`.
 - O hub mostra **todos** os sistemas, sempre. O que o usuário não pode abrir aparece travado, com
   cadeado e o motivo — módulo não contratado pela prefeitura ou perfil sem acesso. Esconder dava a
   impressão de produto incompleto; travado, o usuário entende que existe e sabe a quem pedir.
+
+## Paginação
+
+- **Envelope `{ itens, total, pagina, porPagina }`**, não array com `X-Total-Count`: o total fica
+  visível no JSON, fácil de depurar, e o cliente HTTP não precisa ler cabeçalho.
+- **Só as listas que crescem sem teto.** Cadastro pequeno segue array puro. A regra prática: se a
+  prefeitura pode chegar a centenas de linhas, pagina; se são dezenas, não.
+- **Padrão 25 por página, teto 100.** O teto existe para o cliente não pedir a tabela inteira e
+  derrubar a memória do processo.
+- **Página começa em 1** e some da URL quando é a primeira — link limpo e um endereço só para a
+  primeira página. Trocar o filtro volta para a página 1 (o formulário GET não reenvia `pagina`).
+- **Formulário de seleção não pagina**: usa o modo "todas as páginas". Esconder opção de `<select>`
+  é pior que uma ida a mais ao banco.
+- **Contagem agregada é da API.** Alerta de fila ou de pendências fala do conjunto todo; contar no
+  cliente passaria a contar só a página, e a tela que existe para alertar mostraria menos do que a
+  realidade.
+
+## Rate-limit
+
+- **Duas camadas**: login apertado (força bruta é o risco real) e teto geral folgado (laço acidental
+  no front, cliente automatizado). Ataque distribuído se resolve na borda, na Cloudflare — não aqui.
+- **Chave do login é IP + identificador**: travar mil senhas de um usuário trava aquele usuário;
+  varrer mil usuários do mesmo lugar trava aquele lugar. Acerto de senha não consome cota, então
+  uso legítimo nunca esbarra no limite.
+- **Teto geral por usuário autenticado**, aplicado depois do `authenticate`. A API só é acessível
+  pelo container do Next, logo o IP do socket é sempre o mesmo e não distingue ninguém.
+- **Contador em memória.** Não há Redis no projeto e a API roda em um processo só. Se um dia
+  escalar para mais réplicas, cada uma passa a contar a sua parte — aí o limite efetivo vira
+  `n × limite` e a decisão precisa ser revista.
+
+## Documentos emitidos (levantamento consolidado)
+
+Base: cinco peças do sistema legado — Termo de Autorização, Despacho do Fiscal do Contrato,
+Relatório da Controladoria e duas Ordens de Serviço/Fornecimento (São Bernardo/MA e Alto
+Parnaíba/MA). Todas seguem a mesma anatomia: timbre, título em caixa alta, corpo com dados do
+processo interpolados, local e data por extenso, bloco de assinatura com cargo ou setor.
+
+**Observação que orientou o desenho**: as duas ordens de serviço são o *mesmo tipo de documento*
+em prefeituras diferentes e têm layouts que não se parecem — São Bernardo usa uma tabela corrida
+de itens, Alto Parnaíba usa um formulário em seções numeradas com três colunas de assinatura.
+Documento oficial é identidade do órgão, não do produto.
+
+### Decisões
+
+- **Cada módulo tem modelo predefinido, editável pela entidade.** O padrão não é texto no
+  código-fonte: é linha no banco com `orgao_id` nulo — o **modelo global**, mantido pelo painel do
+  produto. A prefeitura que precisa de outra redação edita e passa a ter uma linha própria, que
+  vence sobre a global; quem não mexeu continua seguindo o global.
+  *Por que não constante no código*: poluiria o fonte com texto jurídico e exigiria deploy para
+  corrigir vírgula. *Por que não copiar o global para cada prefeitura na criação*: um erro de
+  redação viraria correção prefeitura por prefeitura, com script de migração para as já
+  cadastradas. Com resolução por fallback, é um `UPDATE` só.
+- **"Restaurar padrão" é apagar a linha da prefeitura.** Sem campo de controle, sem cópia de volta.
+- **Prefeitura nova já nasce com todas as peças funcionando**, sem etapa de implantação.
+- **O que torna o documento dela é o timbre**, não o texto: brasão, cabeçalho e rodapé já vêm do
+  `orgao_documento_config`. Por isso um corpo compartilhado atende a maioria, e a edição fica
+  reservada a quem realmente tem redação própria — como as duas ordens de serviço do levantamento.
+- **A emissão é um botão, nunca automática.** O servidor decide quando emitir, na tela do processo,
+  da ordem, do bem. O sistema não impõe a sequência de peças. Consequência aceita: nada garante que
+  a peça obrigatória exista — instruir os autos continua sendo responsabilidade de quem conduz.
+- **O documento guarda o retrato, não o arquivo.** Na emissão, `documento_emitido` grava o corpo já
+  interpolado e um JSON com os dados usados. A peça é remontada sempre a partir desse retrato: sai
+  igual hoje e daqui a cinco anos, sem guardar PDF no storage. **Editar um modelo — global ou da
+  prefeitura — vale só para emissões novas**; documento já emitido nunca muda.
+  *Por que não renderizar dos dados atuais*: a peça que alguém assinou em março sairia diferente em
+  agosto se o contrato, o item ou o modelo mudassem, e a página de conferência atestaria uma versão
+  que não é a do papel.
+- **Assinatura em duas camadas.** Rodapé com autoria registrada (nome, cargo, matrícula, data e
+  hora) + código verificador + QR apontando para página pública de conferência, mantendo a linha
+  de assinatura à mão do legado. Certificado digital (ICP-Brasil/gov.br) fica fora — é projeto à
+  parte, com custódia de certificado e custo por assinatura.
+- **O código verificador é global**, não por prefeitura: a página de conferência é pública e não
+  tem tenant na URL. Sorteado, não sequencial — código adivinhável deixaria varrer os documentos
+  de todas as prefeituras.
+- **Marcador desconhecido é erro na emissão**, não campo vazio. Documento oficial com lacuna em
+  branco é pior que documento que não saiu.
+
+### Modelo de dados (a implementar)
+
+`documento_modelo` (novo):
+
+| Coluna | Observação |
+| --- | --- |
+| `orgao_id` | **Nulo = modelo global**, mantido pelo painel do produto |
+| `modulo`, `tipo` | PROCESSOS/PATRIMONIO/FROTAS/ALMOXARIFADO + o tipo da peça |
+| `nome` | Rótulo que aparece no botão de emissão |
+| `corpo` | Texto com marcadores |
+| `ativo` | Prefeitura pode desligar uma peça que não usa |
+
+Único parcial por (`orgao_id`, `tipo`) e um único global por `tipo` onde `orgao_id IS NULL` —
+duas linhas globais do mesmo tipo tornariam a resolução ambígua.
+
+`documento_emitido` (existe, a estender): ganha `modelo_id`, `corpo` (texto já interpolado),
+`dados` (JSONB), `emitido_por_usuario_id` e a autoria congelada em texto (`emitido_por_nome`,
+`emitido_por_cargo` — o servidor pode mudar de cargo depois). A coluna `arquivo` deixa de ser
+obrigatória: não há arquivo. `codigo` passa a ser único global, não por órgão.
+
+### Marcadores previstos
+
+Órgão (`{{orgao.nome}}`, `{{orgao.cnpj}}`, `{{orgao.municipio}}`), processo (protocolo, número
+administrativo, tipo, data de abertura), contrato (número, objeto, vigência, fiscal), fornecedor
+(razão social, documento, endereço), ordem (empenho, requisição, projeto/atividade, elemento de
+despesa, fonte, parcelas, nota fiscal), itens (tabela), totais (`{{valorTotal}}`,
+`{{valorTotalPorExtenso}}` — as duas ordens trazem o valor escrito por extenso), data
+(`{{data.porExtenso}}` no formato "segunda-feira, 24 de agosto de 2026") e autor.
+
+### Fatiamento
+
+1. **Feito.** Motor: migration `0014`, resolução global → prefeitura, marcadores validados,
+   emissão com retrato, página pública de conferência com QR. Só o módulo Processos.
+2. **Feito.** Migration `0015` com os sete tipos do catálogo, tela de edição pela prefeitura
+   (marcadores ao lado, pré-visualização, "restaurar padrão") e `/admin/modelos` para o produto
+   manter os padrões.
+3. **Pendente.** Demais módulos: como o motor é genérico, entra modelo global novo por
+   migration — sem código.

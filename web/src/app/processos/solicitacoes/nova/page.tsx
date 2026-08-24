@@ -1,6 +1,6 @@
-import { listContractItems, listContracts } from "@/features/contracts/queries";
+import { listAllContracts, listContractItems } from "@/features/contracts/queries";
 import { RequestBuilder, type ContractWithItems } from "@/features/requests/components/RequestBuilder";
-import { listSuppliers } from "@/features/suppliers/queries";
+import { listAllSuppliers } from "@/features/suppliers/queries";
 import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
@@ -9,9 +9,9 @@ export default async function NewRequestPage() {
   await requirePermission("requests:create", "PROCESSOS");
 
   const [contracts, units, suppliers] = await Promise.all([
-    listContracts(),
+    listAllContracts(),
     listUnits(),
-    listSuppliers(),
+    listAllSuppliers(),
   ]);
 
   // Só contratos vigentes entram na montagem do pedido.

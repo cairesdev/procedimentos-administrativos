@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPapel } from "../middlewares/exigirPapel";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 const veiculoSchema = z.object({
   placa: z.string().min(6).max(10),
@@ -181,12 +182,16 @@ frotasRouter.delete("/motoristas/:id", podeEscrever, async (req, res, next) => {
 frotasRouter.get("/viagens", async (req, res, next) => {
   try {
     res.json(
-      await container.frota.listarViagens(req.sessao!.orgaoId, {
-        status: texto(req.query.status),
-        veiculoId: texto(req.query.veiculo),
-        de: texto(req.query.de),
-        ate: texto(req.query.ate),
-      }),
+      await container.frota.listarViagens(
+        req.sessao!.orgaoId,
+        {
+          status: texto(req.query.status),
+          veiculoId: texto(req.query.veiculo),
+          de: texto(req.query.de),
+          ate: texto(req.query.ate),
+        },
+        paginacaoSchema.parse(req.query),
+      ),
     );
   } catch (error) {
     next(error);
@@ -347,10 +352,14 @@ frotasRouter.get("/manutencoes", async (req, res, next) => {
   try {
     const abertas = req.query.abertas;
     res.json(
-      await container.frota.listarManutencoes(req.sessao!.orgaoId, {
-        veiculoId: texto(req.query.veiculo),
-        abertas: abertas === undefined ? undefined : abertas === "true",
-      }),
+      await container.frota.listarManutencoes(
+        req.sessao!.orgaoId,
+        {
+          veiculoId: texto(req.query.veiculo),
+          abertas: abertas === undefined ? undefined : abertas === "true",
+        },
+        paginacaoSchema.parse(req.query),
+      ),
     );
   } catch (error) {
     next(error);

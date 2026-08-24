@@ -8,6 +8,16 @@ DO $$
 DECLARE
   alvos TEXT;
 BEGIN
+  -- Os modelos GLOBAIS de documento (orgao_id nulo) são configuração do
+  -- produto, não dado de prefeitura. Eles vêm de migration, e como o reset
+  -- preserva `schema_migrations`, a migration não roda de novo — sem esta
+  -- cópia, a base voltaria sem nenhum modelo e ninguém conseguiria emitir
+  -- peça alguma, sem erro visível até alguém tentar. O TRUNCATE ... CASCADE
+  -- alcança `documento_modelo` mesmo se ela ficasse de fora da lista, porque
+  -- referencia `orgao`.
+  CREATE TEMP TABLE modelos_globais ON COMMIT DROP AS
+    SELECT * FROM documento_modelo WHERE orgao_id IS NULL;
+
   SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
     INTO alvos
     FROM pg_tables
@@ -22,5 +32,9 @@ BEGIN
   END IF;
 
   EXECUTE format('TRUNCATE TABLE %s RESTART IDENTITY CASCADE', alvos);
-  RAISE NOTICE 'Base zerada. Preservados: admin_sistema, schema_migrations.';
+
+  INSERT INTO documento_modelo SELECT * FROM modelos_globais;
+
+  RAISE NOTICE 'Base zerada. Preservados: admin_sistema, schema_migrations e % modelo(s) global(is).',
+    (SELECT count(*) FROM modelos_globais);
 END $$;

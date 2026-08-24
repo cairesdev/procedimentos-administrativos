@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
-import { listContracts } from "@/features/contracts/queries";
+import { listAllContracts } from "@/features/contracts/queries";
 import { findProcess } from "@/features/processes/queries";
 import { ProcessActions } from "@/features/processes/components/ProcessActions";
 import { ProcessTimeline } from "@/features/processes/components/ProcessTimeline";
 import { listSectors } from "@/features/sectors/queries";
 import { getWorkflow } from "@/features/workflows/queries";
+import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
+import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
+import { PROCESS_DOCUMENT_TYPES } from "@/features/documents/types";
 import { requirePermission } from "@/shared/auth/guards";
 import { deadlineOf } from "@/features/processes/deadline";
 import { humanize, toDate } from "@/shared/ui/labels";
@@ -18,20 +21,23 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
   const viewer = await requirePermission("processes:read", "PROCESSOS");
   const { id } = await params;
 
-  const [process, profile, activeAssignmentId, sectors, contracts] = await Promise.all([
-    findProcess(id),
-    getProfile(),
-    getActiveAssignmentId(),
-    listSectors(),
-    listContracts(),
-  ]);
+  const [process, profile, activeAssignmentId, sectors, contracts, modelos, emitidos] =
+    await Promise.all([
+      findProcess(id),
+      getProfile(),
+      getActiveAssignmentId(),
+      listSectors(),
+      listAllContracts(),
+      listTemplates("PROCESSOS"),
+      listDocumentsFor(id),
+    ]);
 
   // O override de destino é configurado por tipo de processo.
   const workflow = await getWorkflow(process.tipoProcesso);
 
   const currentSector = sectors.find((sector) => sector.id === process.setorAtualId);
   const isOpen = process.status === "ABERTO" || process.status === "TRAMITANDO";
-  const prazo = deadlineOf(process);
+  const prazo = deadlineOf(process, process.limiarAlertaDias);
 
   return (
     <>
@@ -101,6 +107,21 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
               />
             </Card>
           ) : null}
+
+          {/* Peças do processo: emitir é ato explícito de quem conduz. */}
+          <Card title="Documentos" padded={false}>
+            <div style={{ padding: "14px 16px 0" }}>
+              <IssueDocumentPanel
+                referenciaId={process.id}
+                voltarPara={`/processos/fila/${process.id}`}
+                modelos={modelos.filter((modelo) =>
+                  PROCESS_DOCUMENT_TYPES.includes(modelo.tipo),
+                )}
+                emitidos={emitidos}
+                podeEmitir={isOpen && viewer.can("documents:issue")}
+              />
+            </div>
+          </Card>
         </Stack>
       </Columns>
     </>

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { authenticateAdmin, emitirTokenAdmin } from "../middlewares/authenticateAdmin";
 import { enviarArquivo } from "../enviarArquivo";
+import { CATALOGO_POR_TIPO } from "../../../domain/documento/Catalogo";
+import { limiteDeLogin, limiteGlobal } from "../middlewares/rateLimit";
 import { garantirExiste, garantirSemVinculos } from "../../../application/shared/ExclusaoSegura";
 import {
   criarSetorSchema, criarUnidadeSchema, criarUsuarioSchema,
@@ -66,7 +68,7 @@ const adminDoSistemaSchema = z.object({
 
 export const adminRouter = Router();
 
-adminRouter.post("/login", async (req, res, next) => {
+adminRouter.post("/login", limiteDeLogin, async (req, res, next) => {
   try {
     const { email, senha } = loginSchema.parse(req.body);
     const sessao = await container.administrarSistema.autenticar(email, senha);
@@ -84,7 +86,7 @@ adminRouter.post("/login", async (req, res, next) => {
   }
 });
 
-adminRouter.use(authenticateAdmin);
+adminRouter.use(authenticateAdmin, limiteGlobal);
 
 adminRouter.get("/orgaos", async (_req, res, next) => {
   try {
@@ -177,6 +179,48 @@ adminRouter.put(
     }
   },
 );
+
+// ---- Modelos globais de documento -----------------------------------------
+//
+// O padrão de cada peça vive aqui. Corrigir a redação alcança de uma vez toda
+// prefeitura que não tenha versão própria.
+
+const modeloSchema = z.object({
+  nome: z.string().min(1).max(150),
+  titulo: z.string().min(1).max(150),
+  corpo: z.string().min(1),
+  ativo: z.boolean().default(true),
+});
+
+adminRouter.get("/modelos", async (_req, res, next) => {
+  try {
+    res.json(await container.manterModelos.listarGlobais());
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/modelos/:tipo/marcadores", (req, res, next) => {
+  try {
+    const catalogo = CATALOGO_POR_TIPO[req.params.tipo as keyof typeof CATALOGO_POR_TIPO];
+    if (!catalogo) {
+      res.status(404).json({ message: "Tipo de documento desconhecido" });
+      return;
+    }
+    res.json(catalogo);
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/modelos/:tipo", async (req, res, next) => {
+  try {
+    const dados = modeloSchema.parse(req.body);
+    res.json(await container.manterModelos.salvarGlobal(req.params.tipo!, dados));
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ---- Cadastros da prefeitura, pelo painel do produto -----------------------
 //

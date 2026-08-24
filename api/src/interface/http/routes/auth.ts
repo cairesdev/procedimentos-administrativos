@@ -2,11 +2,12 @@ import { Router } from "express";
 import { container } from "../../../container";
 import { enviarArquivo } from "../enviarArquivo";
 import { authenticate, emitirToken } from "../middlewares/authenticate";
+import { limiteDeLogin } from "../middlewares/rateLimit";
 import { loginSchema } from "../schemas/processos";
 
 export const authRouter = Router();
 
-authRouter.post("/login", async (req, res, next) => {
+authRouter.post("/login", limiteDeLogin, async (req, res, next) => {
   try {
     const dados = loginSchema.parse(req.body);
     const sessao = await container.autenticarUsuario.executar(dados.identificador, dados.senha);

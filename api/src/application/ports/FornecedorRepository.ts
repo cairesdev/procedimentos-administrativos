@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 export type DadosFornecedor = {
   documento: string;
   razaoSocial: string;
@@ -17,5 +18,5 @@ export interface FornecedorRepository {
   buscarPorId(id: string): Promise<FornecedorCompleto | null>;
   criar(dados: DadosFornecedor): Promise<string>;
   atualizar(id: string, dados: Partial<DadosFornecedor>, alteradoPor: string): Promise<void>;
-  listar(busca?: string): Promise<FornecedorCompleto[]>;
+  listar(paginacao: Paginacao, busca?: string): Promise<Pagina<FornecedorCompleto>>;
 }

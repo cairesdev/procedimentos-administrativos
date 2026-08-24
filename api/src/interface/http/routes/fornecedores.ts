@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { container } from "../../../container";
 import { atualizarFornecedorSchema, criarFornecedorSchema } from "../schemas/cadastros";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 export const fornecedoresRouter = Router();
 
@@ -17,7 +18,7 @@ fornecedoresRouter.post("/", async (req, res, next) => {
 fornecedoresRouter.get("/", async (req, res, next) => {
   try {
     const busca = typeof req.query.busca === "string" ? req.query.busca : undefined;
-    res.json(await container.fornecedores.listar(busca));
+    res.json(await container.fornecedores.listar(paginacaoSchema.parse(req.query), busca));
   } catch (error) {
     next(error);
   }

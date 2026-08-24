@@ -1,3 +1,4 @@
+import type { Page } from "@/shared/api/pagination";
 export type ProcessStatus = "ABERTO" | "TRAMITANDO" | "ENCERRADO" | "CANCELADO";
 
 export type Process = {
@@ -28,4 +29,15 @@ export type Dispatch = {
   usuarioNome: string;
 };
 
-export type ProcessDetail = Process & { despachos: Dispatch[] };
+export type ProcessDetail = Process & { despachos: Dispatch[]; limiarAlertaDias: number };
+
+/**
+ * Fila paginada. Os contadores vêm da API porque falam da fila inteira, não
+ * da página — e `limiarAlertaDias` vem junto para a linha ser pintada com o
+ * mesmo critério que gerou o número.
+ */
+export type ProcessQueue = Page<Process> & {
+  atrasados: number;
+  vencendo: number;
+  limiarAlertaDias: number;
+};

@@ -1,4 +1,8 @@
 import { pool } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   ContratoDetalhe,
@@ -23,10 +27,12 @@ const SQL = {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10)`,
   listar: `
     SELECT id, numero, fornecedor_id AS "fornecedorId",
-           data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal"
+           data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal",
+           ${TOTAL_DA_JANELA}
       FROM contrato
      WHERE orgao_id = $1
-     ORDER BY data_inicio DESC`,
+     ORDER BY data_inicio DESC, id
+     LIMIT $2 OFFSET $3`,
   unidadeTemAcesso: `SELECT 1 FROM contrato_unidade WHERE contrato_id = $1 AND unidade_id = $2`,
   buscar: `
     SELECT id, numero, fornecedor_id AS "fornecedorId", processo_id AS "processoId",
@@ -103,9 +109,11 @@ export class PostgresContratoRepository implements ContratoRepository {
     return id;
   };
 
-  listar = async (orgaoId: string): Promise<ContratoResumo[]> => {
-    const { rows } = await pool.query(SQL.listar, [orgaoId]);
-    return rows;
+  listar = async (orgaoId: string, paginacao: Paginacao): Promise<Pagina<ContratoResumo>> => {
+    const { rows } = await pool.query(SQL.listar, [
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina(rows, paginacao);
   };
 
   unidadeTemAcesso = async (contratoId: string, unidadeId: string): Promise<boolean> => {

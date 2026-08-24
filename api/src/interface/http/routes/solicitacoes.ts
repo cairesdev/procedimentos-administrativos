@@ -3,6 +3,7 @@ import { container } from "../../../container";
 import {
   cancelarSolicitacaoSchema, enviarSolicitacaoSchema, rascunhoSolicitacaoSchema,
 } from "../schemas/processos";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 export const solicitacoesRouter = Router();
 
@@ -66,10 +67,14 @@ solicitacoesRouter.post("/:id/cancelar", async (req, res, next) => {
 solicitacoesRouter.get("/", async (req, res, next) => {
   try {
     res.json(
-      await container.solicitacoes.listar(req.sessao!.orgaoId, {
-        situacao: typeof req.query.situacao === "string" ? req.query.situacao : undefined,
-        unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined,
-      }),
+      await container.solicitacoes.listar(
+        req.sessao!.orgaoId,
+        {
+          situacao: typeof req.query.situacao === "string" ? req.query.situacao : undefined,
+          unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined,
+        },
+        paginacaoSchema.parse(req.query),
+      ),
     );
   } catch (error) {
     next(error);

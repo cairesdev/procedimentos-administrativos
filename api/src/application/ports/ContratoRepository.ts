@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 export type NovoItemContrato = {
@@ -62,7 +63,7 @@ export type ContratoDetalhe = ContratoResumo & { processoId: string | null };
 export interface ContratoRepository {
   existeNumero(orgaoId: string, numero: string): Promise<boolean>;
   criar(dados: NovoContrato, tx: Tx): Promise<string>;
-  listar(orgaoId: string): Promise<ContratoResumo[]>;
+  listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<ContratoResumo>>;
   unidadeTemAcesso(contratoId: string, unidadeId: string): Promise<boolean>;
   listarItens(orgaoId: string, contratoId: string): Promise<ItemComSaldo[]>;
   buscar(orgaoId: string, id: string): Promise<ContratoDetalhe | null>;

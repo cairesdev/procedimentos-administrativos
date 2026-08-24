@@ -16,6 +16,7 @@ export const LetterheadSheet = ({
   title,
   subtitle,
   emitidoPor,
+  emitidoEm,
   children,
 }: {
   letterhead: Letterhead;
@@ -23,6 +24,8 @@ export const LetterheadSheet = ({
   title: string;
   subtitle?: string;
   emitidoPor: string;
+  /** Data da emissão. Sem ela, a folha assume que está sendo gerada agora. */
+  emitidoEm?: string;
   children: ReactNode;
 }) => {
   const semTimbre = !letterhead.cabecalhoTimbre && !letterhead.arquivoLogomarca;
@@ -64,7 +67,7 @@ export const LetterheadSheet = ({
         ) : null}
 
         <p className={styles.emissao}>
-          Emitido por {emitidoPor} em {toDateTime(new Date().toISOString())}
+          Emitido por {emitidoPor} em {toDateTime(emitidoEm ?? new Date().toISOString())}
         </p>
       </div>
     </>

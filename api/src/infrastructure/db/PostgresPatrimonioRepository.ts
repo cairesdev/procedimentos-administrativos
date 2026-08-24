@@ -1,4 +1,8 @@
 import { pool, executarEmTransacao } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   BemDetalhe, BemResumo, CategoriaResumo, ConferenciaDeItem, EdicaoBem, EdicaoCategoria,
@@ -52,10 +56,12 @@ const SQL = {
     SELECT r.id, r.data, r.nota_fiscal AS "notaFiscal", r.fornecedor_id AS "fornecedorId",
            (SELECT count(*) FROM bem b
               JOIN remessa_lote rl ON rl.id = b.remessa_lote_id
-             WHERE rl.remessa_id = r.id) AS bens
+             WHERE rl.remessa_id = r.id) AS bens,
+           ${TOTAL_DA_JANELA}
       FROM remessa_patrimonio r
      WHERE r.orgao_id = $1
-     ORDER BY r.data DESC`,
+     ORDER BY r.data DESC, r.id
+     LIMIT $2 OFFSET $3`,
   buscarRemessa: `
     SELECT r.id, r.data, r.nota_fiscal AS "notaFiscal", r.fornecedor_id AS "fornecedorId",
            (SELECT count(*) FROM bem b
@@ -101,14 +107,15 @@ const SQL = {
     SELECT b.id, b.codigo_tombamento AS "codigoTombamento", b.nome,
            b.categoria_id AS "categoriaId", c.nome AS "categoriaNome",
            b.local_atual_id AS "localAtualId", l.nome AS "localAtualNome",
-           b.estado_conservacao AS "estadoConservacao", b.status
+           b.estado_conservacao AS "estadoConservacao", b.status, ${TOTAL_DA_JANELA}
       FROM bem b
       JOIN categoria_bem c ON c.id = b.categoria_id
       JOIN local l ON l.id = b.local_atual_id
      WHERE b.orgao_id = $1
        AND ($2::uuid IS NULL OR b.local_atual_id = $2)
        AND ($3::text IS NULL OR b.status = $3)
-     ORDER BY b.codigo_tombamento`,
+     ORDER BY b.codigo_tombamento, b.id
+     LIMIT $4 OFFSET $5`,
   buscarBem: `
     SELECT b.id, b.codigo_tombamento AS "codigoTombamento", b.nome,
            b.categoria_id AS "categoriaId", c.nome AS "categoriaNome",
@@ -130,7 +137,8 @@ const SQL = {
            tr.local_origem_id AS "localOrigemId", lo.nome AS "localOrigemNome",
            tr.local_destino_id AS "localDestinoId", ld.nome AS "localDestinoNome",
            ue.nome AS "enviadoPor", tr.data_envio AS "dataEnvio",
-           ua.nome AS "aceitoPor", tr.data_aceite AS "dataAceite", tr.status
+           ua.nome AS "aceitoPor", tr.data_aceite AS "dataAceite", tr.status,
+           ${TOTAL_DA_JANELA}
       FROM transferencia_bem tr
       JOIN bem b ON b.id = tr.bem_id
       JOIN local lo ON lo.id = tr.local_origem_id
@@ -140,7 +148,8 @@ const SQL = {
      WHERE b.orgao_id = $1
        AND ($2::text IS NULL OR tr.status = $2)
        AND ($3::uuid IS NULL OR tr.local_origem_id = $3 OR tr.local_destino_id = $3)
-     ORDER BY tr.data_envio DESC`,
+     ORDER BY tr.data_envio DESC, tr.id
+     LIMIT $4 OFFSET $5`,
   buscarTransferencia: `
     SELECT tr.id, tr.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
            b.nome AS "nomeBem",
@@ -184,13 +193,14 @@ const SQL = {
   listarBaixas: `
     SELECT ba.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
            b.nome AS "nomeBem", l.nome AS "localNome",
-           ba.motivo, ba.observacao, u.nome AS "dadaPor", ba.data
+           ba.motivo, ba.observacao, u.nome AS "dadaPor", ba.data, ${TOTAL_DA_JANELA}
       FROM baixa_bem ba
       JOIN bem b ON b.id = ba.bem_id
       JOIN local l ON l.id = b.local_atual_id
       JOIN usuario u ON u.id = ba.usuario_id
      WHERE b.orgao_id = $1
-     ORDER BY ba.data DESC`,
+     ORDER BY ba.data DESC, ba.bem_id
+     LIMIT $2 OFFSET $3`,
   buscarBaixa: `
     SELECT ba.bem_id AS "bemId", b.codigo_tombamento AS "codigoTombamento",
            b.nome AS "nomeBem", l.nome AS "localNome",
@@ -320,9 +330,15 @@ export class PostgresPatrimonioRepository implements PatrimonioRepository {
     await pool.query(SQL.removerCategoria, [orgaoId, id]);
   };
 
-  listarRemessas = async (orgaoId: string): Promise<RemessaResumo[]> => {
-    const { rows } = await pool.query(SQL.listarRemessas, [orgaoId]);
-    return rows.map((linha) => comContagem(linha, ["bens"]));
+  listarRemessas = async (
+    orgaoId: string,
+    paginacao: Paginacao,
+  ): Promise<Pagina<RemessaResumo>> => {
+    const { rows } = await pool.query(SQL.listarRemessas, [
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    const pagina = montarPagina<RemessaResumo>(rows, paginacao);
+    return { ...pagina, itens: pagina.itens.map((linha) => comContagem(linha, ["bens"])) };
   };
 
   buscarRemessa = async (orgaoId: string, id: string): Promise<RemessaDetalhe | null> => {
@@ -383,11 +399,13 @@ export class PostgresPatrimonioRepository implements PatrimonioRepository {
   listarBens = async (
     orgaoId: string,
     filtros: { localId?: string; status?: string },
-  ): Promise<BemResumo[]> => {
+    paginacao: Paginacao,
+  ): Promise<Pagina<BemResumo>> => {
     const { rows } = await pool.query(SQL.listarBens, [
       orgaoId, filtros.localId ?? null, filtros.status ?? null,
+      paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
-    return rows;
+    return montarPagina(rows, paginacao);
   };
 
   buscarBem = async (orgaoId: string, id: string): Promise<BemDetalhe | null> => {
@@ -406,11 +424,13 @@ export class PostgresPatrimonioRepository implements PatrimonioRepository {
   listarTransferencias = async (
     orgaoId: string,
     filtros: { status?: string; localId?: string },
-  ): Promise<TransferenciaResumo[]> => {
+    paginacao: Paginacao,
+  ): Promise<Pagina<TransferenciaResumo>> => {
     const { rows } = await pool.query(SQL.listarTransferencias, [
       orgaoId, filtros.status ?? null, filtros.localId ?? null,
+      paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
-    return rows;
+    return montarPagina(rows, paginacao);
   };
 
   buscarTransferencia = async (
@@ -454,9 +474,11 @@ export class PostgresPatrimonioRepository implements PatrimonioRepository {
     await pool.query(SQL.fecharTransferencia, [id, "RECUSADA", usuarioId]);
   };
 
-  listarBaixas = async (orgaoId: string): Promise<BaixaResumo[]> => {
-    const { rows } = await pool.query(SQL.listarBaixas, [orgaoId]);
-    return rows;
+  listarBaixas = async (orgaoId: string, paginacao: Paginacao): Promise<Pagina<BaixaResumo>> => {
+    const { rows } = await pool.query(SQL.listarBaixas, [
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina(rows, paginacao);
   };
 
   buscarBaixa = async (orgaoId: string, bemId: string): Promise<BaixaResumo | null> => {

@@ -1,4 +1,8 @@
 import { pool } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   AtaRepository, AtaResumo, EdicaoAta, ItemDeAta, NovaAta,
@@ -42,10 +46,11 @@ const SQL = {
   listar: `
     SELECT id, numero, objeto, licitacao_id AS "licitacaoId",
            data_assinatura AS "dataAssinatura", data_vigencia AS "dataVigencia",
-           valor_total AS "valorTotal"
+           valor_total AS "valorTotal", ${TOTAL_DA_JANELA}
       FROM ata_registro_precos
      WHERE orgao_id = $1
-     ORDER BY data_assinatura DESC`,
+     ORDER BY data_assinatura DESC, id
+     LIMIT $2 OFFSET $3`,
   listarItens: `
     SELECT i.id, i.produto, i.descricao, i.unidade_medida AS "unidadeMedida", i.marca,
            i.quantidade, i.valor_unitario AS "valorUnitario", i.valor_total AS "valorTotal"
@@ -115,9 +120,11 @@ export class PostgresAtaRepository implements AtaRepository {
     return id;
   };
 
-  listar = async (orgaoId: string): Promise<AtaResumo[]> => {
-    const { rows } = await pool.query(SQL.listar, [orgaoId]);
-    return rows;
+  listar = async (orgaoId: string, paginacao: Paginacao): Promise<Pagina<AtaResumo>> => {
+    const { rows } = await pool.query(SQL.listar, [
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina(rows, paginacao);
   };
 
   listarItens = async (orgaoId: string, ataId: string): Promise<ItemDeAta[]> => {

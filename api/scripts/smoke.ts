@@ -527,13 +527,18 @@ const executar = async () => {
   conferir(recusa.status === 422, "envio acima do saldo devolve 422");
 
   // --- Auditoria ----------------------------------------------------------
+  // A trilha vem paginada: `{ itens, total, pagina, porPagina }`.
   const trilha = await chamar(
     "GET",
     `/auditoria?referencia=${processoId}`,
     undefined,
     admin,
   );
-  const eventos = trilha.map((r: any) => r.tipoEvento);
+  conferir(
+    typeof trilha.total === "number" && Array.isArray(trilha.itens),
+    "auditoria devolve envelope paginado",
+  );
+  const eventos = trilha.itens.map((r: any) => r.tipoEvento);
   conferir(
     eventos.includes("SOLICITACAO_ENVIADA"),
     "auditoria registrou o envio da solicitação",
@@ -551,7 +556,7 @@ const executar = async () => {
     "auditoria registrou o parecer",
   );
 
-  const envioAuditado = trilha.find(
+  const envioAuditado = trilha.itens.find(
     (r: any) => r.tipoEvento === "SOLICITACAO_ENVIADA",
   );
   conferir(
@@ -562,12 +567,12 @@ const executar = async () => {
 
   const cancelamentos = await chamar(
     "GET",
-    "/auditoria?tipo=SOLICITACAO_CANCELADA&limite=5",
+    "/auditoria?tipo=SOLICITACAO_CANCELADA&porPagina=5",
     undefined,
     admin,
   );
   conferir(
-    cancelamentos.length > 0,
+    cancelamentos.itens.length > 0,
     "filtro por tipo de evento devolve o cancelamento",
   );
 

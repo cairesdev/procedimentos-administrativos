@@ -3,16 +3,17 @@ import { AssetFilters } from "@/features/assets/components/AssetFilters";
 import { AssetTable } from "@/features/assets/components/AssetTable";
 import { requirePermission } from "@/shared/auth/guards";
 import { Card, PageHeader } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type AssetsPageProps = {
-  searchParams: Promise<{ local?: string; status?: string }>;
+  searchParams: Promise<{ local?: string; status?: string; pagina?: string }>;
 };
 
 export default async function AssetsPage({ searchParams }: AssetsPageProps) {
   const viewer = await requirePermission("assets:read", "PATRIMONIO");
-  const { local, status } = await searchParams;
+  const { local, status, pagina } = await searchParams;
   const [assets, locations, categories] = await Promise.all([
-    listAssets({ local, status }),
+    listAssets({ local, status, pagina }),
     listAssetLocations(),
     listAssetCategories(),
   ]);
@@ -23,13 +24,14 @@ export default async function AssetsPage({ searchParams }: AssetsPageProps) {
 
       <AssetFilters locations={locations} selectedLocation={local} selectedStatus={status} />
 
-      <Card title={`${assets.length} bens`} padded={false}>
+      <Card title={`${assets.total} bens`} padded={false}>
         <AssetTable
-          assets={assets}
+          assets={assets.itens}
           categories={categories}
           locations={locations}
           canWrite={viewer.can("assets:write")}
         />
+        <Pagination info={assets} base="/patrimonio/bens" filtros={{ local, status }} />
       </Card>
     </>
   );

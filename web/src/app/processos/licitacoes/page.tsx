@@ -6,10 +6,14 @@ import { BidTable } from "@/features/bids/components/BidTable";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Card, PageHeader } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
-export default async function BidsPage() {
+type BidsPageProps = { searchParams: Promise<{ pagina?: string }> };
+
+export default async function BidsPage({ searchParams }: BidsPageProps) {
   const viewer = await requirePermission("bids:read", "PROCESSOS");
-  const [bids, units] = await Promise.all([listBids(), listUnits()]);
+  const { pagina } = await searchParams;
+  const [bids, units] = await Promise.all([listBids(pagina), listUnits()]);
 
   return (
     <>
@@ -28,8 +32,9 @@ export default async function BidsPage() {
         }
       />
 
-      <Card title={`${bids.length} cadastradas`} padded={false}>
-        <BidTable bids={bids} canWrite={viewer.can("bids:write")} units={units} />
+      <Card title={`${bids.total} cadastradas`} padded={false}>
+        <BidTable bids={bids.itens} canWrite={viewer.can("bids:write")} units={units} />
+        <Pagination info={bids} base="/processos/licitacoes" />
       </Card>
     </>
   );

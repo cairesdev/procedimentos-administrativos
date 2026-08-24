@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 export type ProcessoDetalhe = {
@@ -16,6 +17,17 @@ export type ProcessoDetalhe = {
   prazoLimite: string | null;
   /** Negativo = atrasado. Nulo quando não há prazo. */
   diasParaVencer: number | null;
+};
+
+/**
+ * Fila paginada com os contadores da fila inteira. Somar só a página daria um
+ * número menor que a realidade justamente na tela que existe para alertar.
+ */
+export type FilaDeProcessos = Pagina<ProcessoDetalhe> & {
+  atrasados: number;
+  vencendo: number;
+  /** Mesmo limiar usado nos contadores, para o front pintar igual. */
+  limiarAlertaDias: number;
 };
 
 export type NovoDespacho = {
@@ -49,7 +61,7 @@ export type NovaOrdemFornecimento = {
 
 export interface TramitacaoRepository {
   buscarProcesso(orgaoId: string, processoId: string): Promise<ProcessoDetalhe | null>;
-  listarFila(orgaoId: string, setorId?: string): Promise<ProcessoDetalhe[]>;
+  listarFila(orgaoId: string, paginacao: Paginacao, setorId?: string): Promise<FilaDeProcessos>;
   listarDespachos(processoId: string): Promise<unknown[]>;
   registrarDespacho(dados: NovoDespacho, tx: Tx): Promise<string>;
   moverProcesso(processoId: string, destino: DestinoEtapa, tx: Tx): Promise<void>;

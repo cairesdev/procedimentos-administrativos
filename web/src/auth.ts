@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { apiBaseUrl } from "@/shared/api/http-client";
+import { clientIpHeader } from "@/shared/api/client-ip";
 import type { LoginResponse, Profile } from "@/features/auth/types";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -15,7 +16,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorize: async (credentials) => {
         const response = await fetch(`${apiBaseUrl}/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(await clientIpHeader()) },
           body: JSON.stringify({
             identificador: credentials?.identificador,
             senha: credentials?.senha,

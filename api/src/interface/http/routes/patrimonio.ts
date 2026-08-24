@@ -3,6 +3,7 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPapel } from "../middlewares/exigirPapel";
 import { MOTIVOS_DE_BAIXA } from "../../../application/ports/PatrimonioRepository";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 const localSchema = z.object({
   codigo: z.string().regex(/^\d{1,10}$/, "Use apenas números, ex.: 001"),
@@ -161,10 +162,14 @@ patrimonioRouter.delete("/categorias/:id", podeEscrever, async (req, res, next) 
 patrimonioRouter.get("/bens", async (req, res, next) => {
   try {
     res.json(
-      await container.patrimonio.listarBens(req.sessao!.orgaoId, {
-        localId: typeof req.query.local === "string" ? req.query.local : undefined,
-        status: typeof req.query.status === "string" ? req.query.status : undefined,
-      }),
+      await container.patrimonio.listarBens(
+        req.sessao!.orgaoId,
+        {
+          localId: typeof req.query.local === "string" ? req.query.local : undefined,
+          status: typeof req.query.status === "string" ? req.query.status : undefined,
+        },
+        paginacaoSchema.parse(req.query),
+      ),
     );
   } catch (error) {
     next(error);
@@ -173,7 +178,7 @@ patrimonioRouter.get("/bens", async (req, res, next) => {
 
 patrimonioRouter.get("/remessas", async (req, res, next) => {
   try {
-    res.json(await container.patrimonio.listarRemessas(req.sessao!.orgaoId));
+    res.json(await container.patrimonio.listarRemessas(req.sessao!.orgaoId, paginacaoSchema.parse(req.query)));
   } catch (error) {
     next(error);
   }
@@ -241,10 +246,14 @@ patrimonioRouter.delete("/bens/:id", podeEscrever, async (req, res, next) => {
 patrimonioRouter.get("/transferencias", async (req, res, next) => {
   try {
     res.json(
-      await container.patrimonio.listarTransferencias(req.sessao!.orgaoId, {
-        status: typeof req.query.status === "string" ? req.query.status : undefined,
-        localId: typeof req.query.local === "string" ? req.query.local : undefined,
-      }),
+      await container.patrimonio.listarTransferencias(
+        req.sessao!.orgaoId,
+        {
+          status: typeof req.query.status === "string" ? req.query.status : undefined,
+          localId: typeof req.query.local === "string" ? req.query.local : undefined,
+        },
+        paginacaoSchema.parse(req.query),
+      ),
     );
   } catch (error) {
     next(error);
@@ -288,7 +297,7 @@ patrimonioRouter.post("/transferencias/:id/recusar", podeEscrever, async (req, r
 
 patrimonioRouter.get("/baixas", async (req, res, next) => {
   try {
-    res.json(await container.patrimonio.listarBaixas(req.sessao!.orgaoId));
+    res.json(await container.patrimonio.listarBaixas(req.sessao!.orgaoId, paginacaoSchema.parse(req.query)));
   } catch (error) {
     next(error);
   }

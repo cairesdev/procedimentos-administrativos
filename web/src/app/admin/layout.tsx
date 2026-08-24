@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className={styles.nav}>
           <Link href="/admin">Prefeituras</Link>
           <Link href="/admin/administradores">Administradores</Link>
+          <Link href="/admin/modelos">Modelos padrão</Link>
         </nav>
 
         <form action={adminLogout}>

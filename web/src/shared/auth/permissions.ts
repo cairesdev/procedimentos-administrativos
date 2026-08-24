@@ -28,7 +28,11 @@ export type Permission =
   | "assets:write"
   | "fleet:read"
   | "fleet:write"
-  | "trips:create";
+  | "trips:create"
+  // Emitir peça é ato de quem conduz o processo; editar o modelo é
+  // administração da prefeitura — por isso são duas permissões.
+  | "documents:issue"
+  | "documents:template";
 
 const READ_ONLY: Permission[] = [
   "fleet:read",
@@ -57,6 +61,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "requests:read", "requests:create",
     "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
     "audit:read",
+    "documents:issue", "documents:template",
   ],
   GESTOR: [
     ...READ_ONLY,
@@ -70,10 +75,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "requests:create",
     "processes:dispatch",
     "audit:read",
+    "documents:issue", "documents:template",
   ],
-  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read", "assets:read"],
-  COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order"],
-  PROTOCOLO: [...READ_ONLY, "processes:dispatch"],
+  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read", "assets:read", "documents:issue"],
+  COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
+  PROTOCOLO: [...READ_ONLY, "processes:dispatch", "documents:issue"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
   PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],

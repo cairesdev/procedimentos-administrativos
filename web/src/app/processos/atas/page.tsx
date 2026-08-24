@@ -5,10 +5,14 @@ import { PriceRecordTable } from "@/features/price-records/components/PriceRecor
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Card, PageHeader } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
-export default async function PriceRecordsPage() {
+type PriceRecordsPageProps = { searchParams: Promise<{ pagina?: string }> };
+
+export default async function PriceRecordsPage({ searchParams }: PriceRecordsPageProps) {
   const viewer = await requirePermission("bids:read", "PROCESSOS");
-  const records = await listPriceRecords();
+  const { pagina } = await searchParams;
+  const records = await listPriceRecords(pagina);
 
   return (
     <>
@@ -27,8 +31,9 @@ export default async function PriceRecordsPage() {
         }
       />
 
-      <Card title={`${records.length} cadastradas`} padded={false}>
-        <PriceRecordTable records={records} canWrite={viewer.can("bids:write")} />
+      <Card title={`${records.total} cadastradas`} padded={false}>
+        <PriceRecordTable records={records.itens} canWrite={viewer.can("bids:write")} />
+        <Pagination info={records} base="/processos/atas" />
       </Card>
     </>
   );

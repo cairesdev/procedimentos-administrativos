@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { container } from "../../../container";
 import { criarLicitacaoSchema, editarLicitacaoSchema } from "../schemas/processos";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 export const licitacoesRouter = Router();
 
@@ -19,7 +20,7 @@ licitacoesRouter.post("/", async (req, res, next) => {
 
 licitacoesRouter.get("/", async (req, res, next) => {
   try {
-    const licitacoes = await container.licitacoes.listar(req.sessao!.orgaoId);
+    const licitacoes = await container.licitacoes.listar(req.sessao!.orgaoId, paginacaoSchema.parse(req.query));
     res.json(licitacoes);
   } catch (error) {
     next(error);

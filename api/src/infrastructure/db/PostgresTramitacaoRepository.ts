@@ -1,8 +1,17 @@
 import { pool } from "./pool";
+import { LIMIAR_ALERTA_DIAS } from "../../domain/shared/Prazos";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Paginacao,
+} from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
-  DestinoEtapa, NovaOrdemFornecimento, NovoDespacho, ProcessoDetalhe, TramitacaoRepository,
+  DestinoEtapa, FilaDeProcessos, NovaOrdemFornecimento, NovoDespacho, ProcessoDetalhe,
+  TramitacaoRepository,
 } from "../../application/ports/TramitacaoRepository";
+
+/** Colunas de apoio da query da fila — não fazem parte do contrato. */
+type Contadores = { _atrasados: string; _vencendo: string; dataAbertura: string };
 
 // Só ENCAMINHAMENTO move o processo — parecer encerra e ordem não desloca.
 // Por isso o último encaminhamento é exatamente o que o pôs onde ele está.
@@ -43,13 +52,24 @@ const COLUNAS_PROCESSO = `
 
 const SQL = {
   buscarProcesso: `SELECT ${COLUNAS_PROCESSO} FROM processo p WHERE p.orgao_id = $1 AND p.id = $2`,
+  // Os contadores saem por janela sobre a fila inteira, na mesma ida ao
+  // banco: a página traz 25 linhas, mas o alerta fala da fila toda.
   listarFila: `
-    SELECT ${COLUNAS_PROCESSO} FROM processo p
-     WHERE p.orgao_id = $1
-       AND ($2::uuid IS NULL OR p.setor_atual_id = $2)
-       AND p.status IN ('ABERTO', 'TRAMITANDO')
+    WITH fila AS (
+      SELECT ${COLUNAS_PROCESSO}, p.data_abertura AS "dataAbertura" FROM processo p
+       WHERE p.orgao_id = $1
+         AND ($2::uuid IS NULL OR p.setor_atual_id = $2)
+         AND p.status IN ('ABERTO', 'TRAMITANDO')
+    )
+    SELECT fila.*, ${TOTAL_DA_JANELA},
+           count(*) FILTER (WHERE "diasParaVencer" < 0) OVER () AS "_atrasados",
+           count(*) FILTER (
+             WHERE "diasParaVencer" BETWEEN 0 AND $3
+           ) OVER () AS "_vencendo"
+      FROM fila
      -- Quem está mais perto de estourar (ou já estourou) primeiro; sem prazo, por antiguidade.
-     ORDER BY "diasParaVencer" NULLS LAST, p.data_abertura`,
+     ORDER BY "diasParaVencer" NULLS LAST, "dataAbertura", id
+     LIMIT $4 OFFSET $5`,
   listarDespachos: `
     SELECT d.id, d.tipo, d.texto, d.data, d.setor_id AS "setorId",
            d.departamento_id AS "departamentoId", u.nome AS "usuarioNome"
@@ -109,9 +129,26 @@ export class PostgresTramitacaoRepository implements TramitacaoRepository {
     return rows[0] ?? null;
   };
 
-  listarFila = async (orgaoId: string, setorId?: string): Promise<ProcessoDetalhe[]> => {
-    const { rows } = await pool.query(SQL.listarFila, [orgaoId, setorId ?? null]);
-    return rows;
+  listarFila = async (
+    orgaoId: string,
+    paginacao: Paginacao,
+    setorId?: string,
+  ): Promise<FilaDeProcessos> => {
+    const { rows } = await pool.query(SQL.listarFila, [
+      orgaoId, setorId ?? null, LIMIAR_ALERTA_DIAS,
+      paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+
+    const primeira = rows[0];
+    // `dataAbertura` só existe para ordenar; não faz parte do contrato.
+    const { itens, ...pagina } = montarPagina<ProcessoDetalhe & Contadores>(rows, paginacao);
+    return {
+      ...pagina,
+      itens: itens.map(({ _atrasados, _vencendo, dataAbertura, ...processo }) => processo),
+      atrasados: primeira ? Number(primeira._atrasados) : 0,
+      vencendo: primeira ? Number(primeira._vencendo) : 0,
+      limiarAlertaDias: LIMIAR_ALERTA_DIAS,
+    };
   };
 
   listarDespachos = async (processoId: string): Promise<unknown[]> => {

@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 export type ItemSolicitado = {
@@ -80,7 +81,11 @@ export type SolicitacaoCompleta = SolicitacaoResumo & {
 };
 
 export interface SolicitacaoRepository {
-  listar(orgaoId: string, filtros: { situacao?: string; unidadeId?: string }): Promise<SolicitacaoResumo[]>;
+  listar(
+    orgaoId: string,
+    filtros: { situacao?: string; unidadeId?: string },
+    paginacao: Paginacao,
+  ): Promise<Pagina<SolicitacaoResumo>>;
   buscarCompleta(orgaoId: string, id: string): Promise<SolicitacaoCompleta | null>;
   criarRascunho(orgaoId: string, unidadeId: string): Promise<string>;
   buscarPorId(orgaoId: string, id: string): Promise<SolicitacaoDetalhe | null>;

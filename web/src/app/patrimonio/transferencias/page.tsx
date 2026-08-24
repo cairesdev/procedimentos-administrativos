@@ -5,23 +5,32 @@ import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Table, Toolbar } from "@/shared/ui/layout";
 import { toDateTime } from "@/shared/ui/labels";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type TransfersPageProps = {
-  searchParams: Promise<{ status?: string; local?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    local?: string;
+    pagina?: string;
+    paginaBaixas?: string;
+  }>;
 };
 
 export default async function TransfersPage({ searchParams }: TransfersPageProps) {
   const viewer = await requirePermission("assets:read", "PATRIMONIO");
-  const { status, local } = await searchParams;
+  const { status, local, pagina, paginaBaixas } = await searchParams;
 
-  const [transfers, locations, writeOffs] = await Promise.all([
-    listAssetTransfers({ status, local }),
+  const [transfers, locations, writeOffs, aguardando] = await Promise.all([
+    listAssetTransfers({ status, local, pagina }),
     listAssetLocations(),
-    listAssetWriteOffs(),
+    listAssetWriteOffs(paginaBaixas),
+    // Consulta só pelo total: o aviso fala de todas as pendentes, não das que
+    // por acaso caíram nesta página.
+    listAssetTransfers({ status: "PENDENTE" }),
   ]);
 
   const canWrite = viewer.can("assets:write");
-  const pendentes = transfers.filter((transfer) => transfer.status === "PENDENTE");
+  const pendentes = aguardando.total;
 
   return (
     <>
@@ -30,11 +39,11 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
         subtitle="Bem só muda de local com aceite do destino; baixa tira do ativo sem apagar o histórico"
       />
 
-      {pendentes.length > 0 ? (
+      {pendentes > 0 ? (
         <Alert tone="info">
-          {pendentes.length === 1
+          {pendentes === 1
             ? "Uma transferência aguardando aceite."
-            : `${pendentes.length} transferências aguardando aceite.`}{" "}
+            : `${pendentes} transferências aguardando aceite.`}{" "}
           Até o aceite, o bem continua contando no local de origem.
         </Alert>
       ) : null}
@@ -64,17 +73,22 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
         </Toolbar>
       </form>
 
-      <Card title={`${transfers.length} transferências`} padded={false}>
-        <TransferTable transfers={transfers} canWrite={canWrite} />
+      <Card title={`${transfers.total} transferências`} padded={false}>
+        <TransferTable transfers={transfers.itens} canWrite={canWrite} />
+        <Pagination
+          info={transfers}
+          base="/patrimonio/transferencias"
+          filtros={{ status, local, paginaBaixas }}
+        />
       </Card>
 
-      <Card title={`${writeOffs.length} baixas registradas`} padded={false}>
+      <Card title={`${writeOffs.total} baixas registradas`} padded={false}>
         <Table
           columns={["Bem", "Local", "Motivo", "Observação", "Quando"]}
-          isEmpty={writeOffs.length === 0}
+          isEmpty={writeOffs.itens.length === 0}
           emptyMessage="Nenhum bem baixado."
         >
-          {writeOffs.map((writeOff) => (
+          {writeOffs.itens.map((writeOff) => (
             <tr key={writeOff.bemId}>
               <td>
                 <strong>{writeOff.codigoTombamento}</strong>
@@ -95,6 +109,14 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
             </tr>
           ))}
         </Table>
+
+        {/* Duas listas na mesma tela: cada uma com seu parâmetro de página. */}
+        <Pagination
+          info={writeOffs}
+          base="/patrimonio/transferencias"
+          filtros={{ status, local, pagina }}
+          param="paginaBaixas"
+        />
       </Card>
     </>
   );

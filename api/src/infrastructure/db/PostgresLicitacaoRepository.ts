@@ -1,4 +1,8 @@
 import { pool } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type {
   EdicaoLicitacao,
   LicitacaoRepository,
@@ -32,10 +36,12 @@ const SQL = {
   vincularUnidade: `INSERT INTO licitacao_unidade (licitacao_id, unidade_id) VALUES ($1, $2)`,
   listar: `
     SELECT id, numero, resumo, objeto, modalidade,
-           data_assinatura AS "dataAssinatura", valor_total AS "valorTotal"
+           data_assinatura AS "dataAssinatura", valor_total AS "valorTotal",
+           ${TOTAL_DA_JANELA}
       FROM licitacao
      WHERE orgao_id = $1
-     ORDER BY data_assinatura DESC`,
+     ORDER BY data_assinatura DESC, id
+     LIMIT $2 OFFSET $3`,
   buscarPorId: `
     SELECT id, numero, resumo, objeto, modalidade,
            data_assinatura AS "dataAssinatura", valor_total AS "valorTotal"
@@ -96,9 +102,14 @@ export class PostgresLicitacaoRepository implements LicitacaoRepository {
     return id;
   };
 
-  listar = async (orgaoId: string): Promise<LicitacaoResumo[]> => {
-    const { rows } = await pool.query(SQL.listar, [orgaoId]);
-    return rows;
+  listar = async (
+    orgaoId: string,
+    paginacao: Paginacao,
+  ): Promise<Pagina<LicitacaoResumo>> => {
+    const { rows } = await pool.query(SQL.listar, [
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina(rows, paginacao);
   };
 
   buscarPorId = async (orgaoId: string, id: string): Promise<LicitacaoResumo | null> => {

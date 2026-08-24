@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { clientIpHeader } from "./client-ip";
 
 const baseUrl = (process.env.API_URL ?? "http://localhost:8004").replace(/\/$/, "");
 
@@ -28,6 +29,9 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}):
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // O Express só vê o IP deste container; sem repassar, o rate-limit
+      // por IP contaria a prefeitura inteira como um visitante só.
+      ...(await clientIpHeader()),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
     cache: "no-store",

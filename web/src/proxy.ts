@@ -29,5 +29,14 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/((?!login|admin|modulo-indisponivel|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // `conferencia` fora do matcher: é a página que o QR do documento abre, e
+  // quem confere é o cidadão ou o fornecedor, que não tem login aqui.
+  //
+  // Cada exceção termina em `(?:/|$)` de propósito. Sem isso, o prefixo solto
+  // `admin` também casava `/administracao/...`, e o sistema inteiro de
+  // administração ficava fora da checagem de sessão do proxy — só as guardas
+  // de página seguravam. Página nova que esquecesse a guarda ficaria aberta.
+  matcher: [
+    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

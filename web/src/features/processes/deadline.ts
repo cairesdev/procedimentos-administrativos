@@ -8,14 +8,14 @@ export type Deadline = {
   tone: "neutral" | "success" | "warning";
 };
 
-/** A partir de quantos dias restantes a etapa entra em alerta. */
-const LIMIAR_ALERTA = 2;
-
 /**
  * Traduz `diasParaVencer` (negativo = atrasado) no que a fila mostra. A conta
  * vem do banco, com `now()` do servidor — o relógio do navegador não entra.
+ *
+ * O limiar chega junto da fila (`limiarAlertaDias`): a API é quem conta os
+ * processos em alerta, e uma segunda cópia do número aqui acabaria divergindo.
  */
-export const deadlineOf = (process: Process): Deadline => {
+export const deadlineOf = (process: Process, limiarAlertaDias: number): Deadline => {
   const dias = process.diasParaVencer;
 
   if (dias === null) {
@@ -29,7 +29,7 @@ export const deadlineOf = (process: Process): Deadline => {
       tone: "warning",
     };
   }
-  if (dias <= LIMIAR_ALERTA) {
+  if (dias <= limiarAlertaDias) {
     return {
       state: "vencendo",
       label: dias === 0 ? "vence hoje" : dias === 1 ? "vence amanhã" : `vence em ${dias} dias`,
@@ -38,9 +38,3 @@ export const deadlineOf = (process: Process): Deadline => {
   }
   return { state: "no-prazo", label: `${dias} dias`, tone: "success" };
 };
-
-export const countLate = (processes: Process[]): number =>
-  processes.filter((process) => deadlineOf(process).state === "atrasado").length;
-
-export const countDueSoon = (processes: Process[]): number =>
-  processes.filter((process) => deadlineOf(process).state === "vencendo").length;

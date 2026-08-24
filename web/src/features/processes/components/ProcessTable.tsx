@@ -15,9 +15,11 @@ const statusTone = {
 export const ProcessTable = ({
   processes,
   sectors,
+  limiarAlertaDias,
 }: {
   processes: Process[];
   sectors: Sector[];
+  limiarAlertaDias: number;
 }) => (
   <Table
     columns={["Protocolo", "Processo", "Tipo", "Setor atual", "Prazo", "Situação"]}
@@ -25,7 +27,7 @@ export const ProcessTable = ({
     emptyMessage="Nenhum processo na fila."
   >
     {processes.map((process) => {
-      const prazo = deadlineOf(process);
+      const prazo = deadlineOf(process, limiarAlertaDias);
 
       return (
         <tr key={process.id}>

@@ -2,9 +2,11 @@ import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { container } from "../../../container";
+import { LIMIAR_ALERTA_DIAS } from "../../../domain/shared/Prazos";
 import { enviarArquivo } from "../enviarArquivo";
 import { exigirPapel } from "../middlewares/exigirPapel";
 import { despacharSchema, ordemFornecimentoSchema, parecerSchema } from "../schemas/tramitacao";
+import { paginacaoSchema } from "../schemas/paginacao";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -18,7 +20,11 @@ export const processosRouter = Router();
 processosRouter.get("/", async (req, res, next) => {
   try {
     const setorId = typeof req.query.setor === "string" ? req.query.setor : undefined;
-    res.json(await container.tramitacao.listarFila(req.sessao!.orgaoId, setorId));
+    res.json(
+      await container.tramitacao.listarFila(
+        req.sessao!.orgaoId, paginacaoSchema.parse(req.query), setorId,
+      ),
+    );
   } catch (error) {
     next(error);
   }
@@ -32,7 +38,9 @@ processosRouter.get("/:id", async (req, res, next) => {
       return;
     }
     const despachos = await container.tramitacao.listarDespachos(processo.id);
-    res.json({ ...processo, despachos });
+    // O limiar acompanha o processo para a tela pintar o prazo com o mesmo
+    // critério da fila, sem repetir o número no front.
+    res.json({ ...processo, despachos, limiarAlertaDias: LIMIAR_ALERTA_DIAS });
   } catch (error) {
     next(error);
   }

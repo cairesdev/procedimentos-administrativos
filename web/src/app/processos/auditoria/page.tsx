@@ -1,17 +1,14 @@
-import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { listAuditRecords } from "@/features/audit/queries";
 import { AuditTable } from "@/features/audit/components/AuditTable";
 import { EVENT_GROUPS, EVENT_LABELS } from "@/features/audit/types";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
 type AuditPageProps = {
   searchParams: Promise<{ tipo?: string; desde?: string; ate?: string; pagina?: string }>;
 };
-
-const POR_PAGINA = 50;
 
 const soData = (data: Date) =>
   `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(
@@ -36,30 +33,12 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   const fim = new Date(`${fimTexto}T00:00:00`);
   fim.setDate(fim.getDate() + 1);
 
-  const paginaAtual = Math.max(0, Number(pagina ?? 0) || 0);
-
-  // Pede um a mais que o tamanho da página só para saber se existe próxima.
   const registros = await listAuditRecords({
     tipo,
     desde: inicio.toISOString(),
     ate: fim.toISOString(),
-    limite: POR_PAGINA + 1,
-    deslocamento: paginaAtual * POR_PAGINA,
+    pagina,
   });
-
-  const temProxima = registros.length > POR_PAGINA;
-  const visiveis = temProxima ? registros.slice(0, POR_PAGINA) : registros;
-
-  const filtroAtual = new URLSearchParams();
-  if (tipo) filtroAtual.set("tipo", tipo);
-  filtroAtual.set("desde", inicioTexto);
-  filtroAtual.set("ate", fimTexto);
-
-  const linkPagina = (numero: number) => {
-    const query = new URLSearchParams(filtroAtual);
-    query.set("pagina", String(numero));
-    return `/processos/auditoria?${query}`;
-  };
 
   return (
     <>
@@ -104,38 +83,14 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
         é definitiva: nada aqui é editado ou apagado pelo sistema.
       </Alert>
 
-      <Card
-        title={
-          paginaAtual === 0 && !temProxima
-            ? `${visiveis.length} registros`
-            : `Página ${paginaAtual + 1}`
-        }
-        padded={false}
-      >
-        <AuditTable records={visiveis} />
+      <Card title={`${registros.total} registros`} padded={false}>
+        <AuditTable records={registros.itens} />
+        <Pagination
+          info={registros}
+          base="/processos/auditoria"
+          filtros={{ tipo, desde: inicioTexto, ate: fimTexto }}
+        />
       </Card>
-
-      {paginaAtual > 0 || temProxima ? (
-        <Toolbar>
-          {paginaAtual > 0 ? (
-            <Link href={linkPagina(paginaAtual - 1)}>
-              <Button type="button" variant="secondary">
-                <ChevronLeft size={15} aria-hidden="true" style={{ verticalAlign: "-2px" }} />
-                Anterior
-              </Button>
-            </Link>
-          ) : null}
-
-          {temProxima ? (
-            <Link href={linkPagina(paginaAtual + 1)}>
-              <Button type="button" variant="secondary">
-                Próxima
-                <ChevronRight size={15} aria-hidden="true" style={{ verticalAlign: "-2px" }} />
-              </Button>
-            </Link>
-          ) : null}
-        </Toolbar>
-      ) : null}
     </>
   );
 }

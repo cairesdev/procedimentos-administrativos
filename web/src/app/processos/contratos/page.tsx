@@ -2,17 +2,24 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listContracts } from "@/features/contracts/queries";
 import { ContractTable } from "@/features/contracts/components/ContractTable";
-import { listSuppliers } from "@/features/suppliers/queries";
+import { listAllSuppliers } from "@/features/suppliers/queries";
 import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Card, PageHeader } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
-export default async function ContractsPage() {
+type ContractsPageProps = { searchParams: Promise<{ pagina?: string }> };
+
+export default async function ContractsPage({ searchParams }: ContractsPageProps) {
   const viewer = await requirePermission("contracts:read", "PROCESSOS");
+  const { pagina } = await searchParams;
+
   const [contracts, suppliers, units] = await Promise.all([
-    listContracts(),
-    listSuppliers(),
+    listContracts(pagina),
+    // Lista inteira: a tabela resolve o nome do fornecedor de cada contrato,
+    // e uma página de fornecedores deixaria linhas sem nome.
+    listAllSuppliers(),
     listUnits(),
   ]);
 
@@ -33,13 +40,14 @@ export default async function ContractsPage() {
         }
       />
 
-      <Card title={`${contracts.length} cadastrados`} padded={false}>
+      <Card title={`${contracts.total} cadastrados`} padded={false}>
         <ContractTable
-          contracts={contracts}
+          contracts={contracts.itens}
           suppliers={suppliers}
           units={units}
           canWrite={viewer.can("contracts:write")}
         />
+        <Pagination info={contracts} base="/processos/contratos" />
       </Card>
     </>
   );

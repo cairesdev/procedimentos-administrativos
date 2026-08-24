@@ -1,5 +1,6 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
+import { withPage, type Page } from "@/shared/api/pagination";
 import type {
   Driver, Maintenance, Refuel, ScheduleRow, Trip, TripDetail, UsageRow, Vehicle,
 } from "./types";
@@ -8,20 +9,26 @@ export const listVehicles = () => apiRequest<Vehicle[]>(endpoints.vehicles);
 
 export const listDrivers = () => apiRequest<Driver[]>(endpoints.drivers);
 
-export const listTrips = (filters: { status?: string; veiculo?: string } = {}) => {
+export const listTrips = (
+  filters: { status?: string; veiculo?: string; pagina?: string } = {},
+) => {
   const query = new URLSearchParams();
   if (filters.status) query.set("status", filters.status);
   if (filters.veiculo) query.set("veiculo", filters.veiculo);
-  return apiRequest<Trip[]>(`${endpoints.trips}${query.size > 0 ? `?${query}` : ""}`);
+  withPage(query, filters.pagina);
+  return apiRequest<Page<Trip>>(`${endpoints.trips}${query.size > 0 ? `?${query}` : ""}`);
 };
 
 export const getTrip = (id: string) => apiRequest<TripDetail>(`${endpoints.trips}/${id}`);
 
-export const listMaintenances = (filters: { veiculo?: string; abertas?: boolean } = {}) => {
+export const listMaintenances = (
+  filters: { veiculo?: string; abertas?: boolean; pagina?: string } = {},
+) => {
   const query = new URLSearchParams();
   if (filters.veiculo) query.set("veiculo", filters.veiculo);
   if (filters.abertas !== undefined) query.set("abertas", String(filters.abertas));
-  return apiRequest<Maintenance[]>(
+  withPage(query, filters.pagina);
+  return apiRequest<Page<Maintenance>>(
     `${endpoints.maintenances}${query.size > 0 ? `?${query}` : ""}`,
   );
 };

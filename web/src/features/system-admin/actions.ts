@@ -285,3 +285,14 @@ export const deleteTenantUser = async (tenantId: string, userId: string) =>
     await withAdminToken(`/admin/orgaos/${tenantId}/usuarios/${userId}`, "DELETE");
     revalidarPrefeitura(tenantId);
   }, "Usuário excluído");
+
+/** Salva o modelo padrão do produto. Alcança toda prefeitura sem versão própria. */
+export const saveGlobalTemplate = async (
+  tipo: string,
+  input: { nome: string; titulo: string; corpo: string; ativo: boolean },
+) =>
+  runAction(async () => {
+    await withAdminToken(`/admin/modelos/${tipo}`, "PUT", input);
+    revalidatePath("/admin/modelos");
+    revalidatePath(`/admin/modelos/${tipo}`);
+  }, "Modelo padrão salvo");

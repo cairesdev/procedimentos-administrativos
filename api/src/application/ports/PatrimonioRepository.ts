@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 export type NovoLocal = {
@@ -171,13 +172,17 @@ export interface PatrimonioRepository {
   atualizarCategoria(orgaoId: string, id: string, dados: EdicaoCategoria): Promise<void>;
   removerCategoria(orgaoId: string, id: string): Promise<void>;
 
-  listarRemessas(orgaoId: string): Promise<RemessaResumo[]>;
+  listarRemessas(orgaoId: string, paginacao: Paginacao): Promise<Pagina<RemessaResumo>>;
   buscarRemessa(orgaoId: string, id: string): Promise<RemessaDetalhe | null>;
   criarRemessa(dados: NovaRemessa, tx: Tx): Promise<{ id: string; tombamentos: string[] }>;
   atualizarRemessa(orgaoId: string, id: string, dados: EdicaoRemessa): Promise<void>;
   removerRemessa(orgaoId: string, id: string, tx: Tx): Promise<void>;
 
-  listarBens(orgaoId: string, filtros: { localId?: string; status?: string }): Promise<BemResumo[]>;
+  listarBens(
+    orgaoId: string,
+    filtros: { localId?: string; status?: string },
+    paginacao: Paginacao,
+  ): Promise<Pagina<BemResumo>>;
   buscarBem(orgaoId: string, id: string): Promise<BemDetalhe | null>;
   atualizarBem(orgaoId: string, id: string, dados: EdicaoBem): Promise<void>;
   removerBem(orgaoId: string, id: string): Promise<void>;
@@ -185,7 +190,8 @@ export interface PatrimonioRepository {
   listarTransferencias(
     orgaoId: string,
     filtros: { status?: string; localId?: string },
-  ): Promise<TransferenciaResumo[]>;
+    paginacao: Paginacao,
+  ): Promise<Pagina<TransferenciaResumo>>;
   buscarTransferencia(orgaoId: string, id: string): Promise<TransferenciaResumo | null>;
   /** Um bem só pode ter uma transferência em aberto por vez. */
   transferenciaPendenteDoBem(orgaoId: string, bemId: string): Promise<TransferenciaResumo | null>;
@@ -199,7 +205,7 @@ export interface PatrimonioRepository {
   ): Promise<void>;
   recusarTransferencia(id: string, usuarioId: string): Promise<void>;
 
-  listarBaixas(orgaoId: string): Promise<BaixaResumo[]>;
+  listarBaixas(orgaoId: string, paginacao: Paginacao): Promise<Pagina<BaixaResumo>>;
   buscarBaixa(orgaoId: string, bemId: string): Promise<BaixaResumo | null>;
   /** Grava a baixa e leva o bem a BAIXADO na mesma transação. */
   registrarBaixa(orgaoId: string, dados: NovaBaixa): Promise<void>;

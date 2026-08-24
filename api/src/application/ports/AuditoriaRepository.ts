@@ -1,3 +1,4 @@
+import type { Pagina, Paginacao } from "../shared/Paginacao";
 import type { Tx } from "./Transacao";
 
 // Só eventos de negócio — nunca edição simples de cadastro.
@@ -27,6 +28,8 @@ export type TipoEvento =
   | "VIAGEM_FINALIZADA"
   | "MANUTENCAO_ABERTA"
   | "MANUTENCAO_ENCERRADA"
+  | "DOCUMENTO_EMITIDO"
+  | "DOCUMENTO_CANCELADO"
   // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.
   | "ADMIN_ENTIDADE_CRIADO"
   | "ADMIN_ENTIDADE_PROMOVIDO"
@@ -52,19 +55,17 @@ export type RegistroAuditoria = {
   data: string;
 };
 
-export type FiltroAuditoria = {
+export type FiltroAuditoria = Paginacao & {
   orgaoId: string;
   referenciaId?: string;
   tipoEvento?: string;
   desde?: string;
   ate?: string;
-  limite: number;
-  deslocamento: number;
 };
 
 export interface AuditoriaRepository {
   // tx opcional: dentro de transação o registro é atômico com o efeito;
   // fora dela (anexos) grava direto no pool.
   registrar(evento: EventoAuditoria, tx?: Tx): Promise<void>;
-  listar(filtro: FiltroAuditoria): Promise<RegistroAuditoria[]>;
+  listar(filtro: FiltroAuditoria): Promise<Pagina<RegistroAuditoria>>;
 }

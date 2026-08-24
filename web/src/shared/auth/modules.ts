@@ -183,6 +183,17 @@ export const workspaces: Workspace[] = [
           { href: "/administracao/usuarios", label: "Usuários", permission: "users:read" },
         ],
       },
+      {
+        group: "Documentos",
+        icon: "fileSignature",
+        links: [
+          {
+            href: "/administracao/documentos",
+            label: "Modelos de documento",
+            permission: "documents:template",
+          },
+        ],
+      },
     ],
   },
 ];

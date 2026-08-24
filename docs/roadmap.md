@@ -99,8 +99,9 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
    sem login.
 3. **Atendimento externo de balcão** — busca por número de protocolo, anexar como requerente,
    redespachar.
-4. **Documentos emitidos** — o timbre já sai na impressão da solicitação; falta registrar o
-   documento em `documento_emitido` com código verificador + QR e estender aos demais comprovantes.
+4. **Documentos emitidos** — motor e modelos padrão prontos (fatias 1 e 2). Falta estender aos
+   módulos de patrimônio, frotas e almoxarifado: como o motor é genérico, cada peça nova é um
+   modelo global por migration, sem código.
 5. **Testes automatizados** — só o smoke test do módulo Processos.
 6. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
    `docs/decisoes.md` + UML.
@@ -179,3 +180,121 @@ anterior do storage; salvar os textos preserva o arquivo.
 
 **Hub sem buraco.** O lobby mostra todos os sistemas: os que o usuário não pode abrir aparecem
 travados, com cadeado e o motivo (módulo não contratado ou perfil sem acesso), em vez de sumirem.
+
+## Paginação e rate-limit
+
+**Paginação só onde a lista cresce sem teto.** Treze endpoints passaram a devolver
+`{ itens, total, pagina, porPagina }`: processos (fila), solicitações, contratos, licitações,
+atas, fornecedores, bens, entradas, transferências, baixas, viagens, manutenções e auditoria.
+Query: `?pagina=2&porPagina=50`, padrão 25 e teto 100. Cadastro que cabe numa tela — unidade,
+setor, usuário, categoria, local, veículo, motorista, itens de contrato/ata, abastecimento da
+viagem — continua devolvendo array puro; paginar isso só atrapalharia quem consome.
+
+O total sai por `COUNT(*) OVER()` na mesma query, não num segundo `SELECT`: uma ida ao banco e
+total coerente com a página, mesmo sob escrita concorrente. Toda query paginada ganhou desempate
+por `id` no `ORDER BY` — sem isso, linhas com a mesma data podem trocar de página entre uma
+requisição e outra e sumir da navegação.
+
+**Três armadilhas que a paginação criaria, resolvidas junto:**
+
+- *Contadores da fila.* O alerta de "N processos atrasados" contava no cliente e passaria a contar
+  só a página. Agora `GET /processos` devolve `atrasados`, `vencendo` e `limiarAlertaDias` por
+  janela sobre a fila inteira. O limiar virou `domain/shared/Prazos.ts` e viaja na resposta — a
+  segunda cópia do número no front era a mesma classe de bug do `papelBase`.
+- *Aviso de transferências pendentes.* Passou a vir do `total` de uma consulta filtrada por
+  `PENDENTE`, não da contagem da página.
+- *Formulários de seleção.* Um `<select>` de contratos que mostra 25 de 300 esconde opção sem
+  avisar. Os formulários usam `listAll*`, que percorre as páginas (`porPagina=100`, no máximo 20
+  voltas) e devolve a lista inteira. Tela de listagem não usa isso — lá a página é o ponto.
+
+`GET /fornecedores` tinha `LIMIT 50` fixo no SQL: o 51º fornecedor era invisível e ninguém
+recebia aviso. Agora pagina de verdade, e a tela ganhou busca por razão social/CNPJ.
+
+**Rate-limit em duas camadas** (`express-rate-limit`, contador em memória — basta para um processo
+de API; com mais de uma réplica, cada uma conta a sua):
+
+| Camada | Janela | Chave | Observação |
+| --- | --- | --- | --- |
+| `/auth/login` e `/admin/login` | 5/min | IP + identificador tentado | Só erro consome cota (`skipSuccessfulRequests`) |
+| Demais rotas autenticadas | 300/min | `usuarioId` ou `adminId` | Aplicado **depois** do `authenticate` |
+
+O teto geral vem depois da autenticação de propósito: a API só recebe conexão do container do
+Next, então antes de saber quem é o usuário todo mundo cairia no mesmo balde e o primeiro a usar o
+sistema com força travaria a prefeitura inteira. Pelo mesmo motivo o Next repassa o IP real em
+`X-Client-IP` (de `cf-connecting-ip` / `x-forwarded-for`), e a API confia nesse cabeçalho —
+o que só é seguro porque a porta 3333 **não** é publicada. Se um dia a API for exposta
+diretamente, esse cabeçalho vira mentira do cliente e o limite por IP precisa mudar.
+
+## Documentos emitidos — fatia 1 (motor)
+
+Peças oficiais em qualquer módulo: modelo predefinido no banco, editável pela prefeitura, emitido
+por botão, congelado na emissão e conferível por QR.
+
+**Modelo.** `documento_modelo` guarda o padrão como linha com `orgao_id` nulo — o **modelo global**,
+mantido pelo painel do produto. A prefeitura que edita ganha uma linha própria que vence sobre a
+global; "restaurar padrão" é apagar essa linha. A resolução sai em uma consulta
+(`DISTINCT ON (tipo) ... ORDER BY tipo, (orgao_id IS NULL)`): dois SELECTs abririam janela para o
+modelo trocar entre a leitura e o uso. Índices únicos **parciais** garantem um global por tipo e um
+da prefeitura por tipo.
+
+**Marcadores.** Duas construções, de propósito: `{{contrato.numero}}` e blocos
+`{{#itens}}…{{/itens}}` que repetem por item (com `{{indice}}` para numerar). Sem condicional, sem
+expressão — modelo de peça oficial é preenchimento de lacuna. Cada tipo tem catálogo próprio
+(`domain/documento/Catalogo.ts`), conferido **ao salvar**, para o erro aparecer para quem edita e
+não para quem tenta imprimir. Marcador que o contexto não conhece **derruba a emissão**: documento
+com lacuna em branco é pior que documento que não saiu.
+
+**Corpo é HTML restrito**, necessário para as tabelas das ordens de serviço. Passa por lista de
+permissão (`sanitize-html`) ao salvar **e** ao renderizar, e todo valor interpolado é escapado —
+a peça aparece numa página pública, onde HTML editável viraria XSS.
+
+**Retrato, não arquivo.** `documento_emitido` grava o corpo já interpolado, os dados que o geraram
+e a autoria congelada em texto (o servidor muda de setor; a peça não). Editar o modelo depois não
+reescreve o que já saiu. Nenhum PDF no storage.
+
+**Conferência pública** em `/conferencia/{codigo}`, fora do proxy de sessão, com limite próprio de
+20/min por IP — é a única porta para conteúdo de qualquer prefeitura. Código sorteado em alfabeto
+sem caracteres ambíguos (`0/O`, `1/I/L`), único no produto inteiro, e a resposta é a mesma para
+código malformado e inexistente. Cancelar não apaga: a peça segue conferível, marcada como sem
+efeito — papel já entregue não pode ficar sem contraparte.
+
+**Por extenso** (`domain/documento/PorExtenso.ts`): valor monetário e data como o legado imprime.
+Arredonda em centavos antes de separar, senão `0.1 + 0.2` sairia como vinte e nove centavos. A data
+é fixada em `America/Sao_Paulo` — em container rodando UTC, o documento viraria o dia às 21h.
+Pequena diferença em relação ao legado: os grupos são separados por vírgula, conforme a norma
+("dezoito mil, quatrocentos e um reais"), enquanto o sistema antigo escreve "e".
+
+Duas permissões novas: `documents:issue` (emitir, para quem conduz o processo) e
+`documents:template` (editar modelo, administração da prefeitura).
+
+## Corrigido nesta rodada
+
+- **`/administracao/*` nunca passou pelo proxy de sessão.** O matcher excluía o prefixo solto
+  `admin`, que também casa `administracao`. As guardas de página seguravam, então não houve porta
+  aberta — mas qualquer tela nova que esquecesse `requirePermission` ficaria pública. Cada exceção
+  do matcher agora termina em `(?:/|$)`.
+
+## Documentos emitidos — fatia 2 (modelos padrão)
+
+Migration `0015` semeia os **sete tipos do catálogo** como modelos globais, decalcados dos PDFs do
+legado: Termo de Autorização, Despacho, Despacho do Fiscal, Parecer, Relatório da Controladoria,
+Ordem de Serviço/Fornecimento e Comprovante de Solicitação. `ON CONFLICT DO NOTHING` para que
+rodar de novo não sobrescreva ajuste já feito pelo painel do produto.
+
+O painel do produto ganhou **Modelos padrão** (`/admin/modelos`): é o que torna verdadeira a
+promessa de que corrigir a redação é um `UPDATE` só. A prefeitura edita a versão dela em
+Administração › Modelos de documento, com a lista de marcadores ao lado e "restaurar padrão".
+
+**Verificação dos modelos semeados** — um harness lê a própria migration e, para cada corpo,
+confere contra o catálogo do tipo, garante que o sanitizador não remove nada do que foi escrito,
+renderiza com contexto completo e checa que não sobra marcador cru nem tabela sem repetição. A
+Ordem de Fornecimento é renderizada com os dados reais do PDF de São Bernardo e comparada com o
+valor por extenso esperado.
+
+### Corrigido junto
+
+- **`reset.sql` apagaria os modelos globais.** Ele trunca tudo menos `admin_sistema` e
+  `schema_migrations` — e, como preserva `schema_migrations`, a migration `0015` não rodaria de
+  novo. A base voltaria sem modelo nenhum e a emissão pararia sem erro visível até alguém tentar.
+  (Nem adiantaria excluir `documento_modelo` da lista: `TRUNCATE ... CASCADE` em `orgao` alcança
+  a tabela pela FK.) O reset agora copia os globais para uma tabela temporária e os devolve depois.

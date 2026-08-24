@@ -1,0 +1,54 @@
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 16px;
+  border-top: 1px solid var(--borda);
+}
+
+.contagem {
+  font-size: 12.5px;
+  color: var(--texto_suave);
+}
+
+.botoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.posicao {
+  font-size: 12.5px;
+  color: var(--texto_suave);
+  padding: 0 2px;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font-size: 13px;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.botao:hover {
+  background: var(--superficie_alt);
+}
+
+/* Extremo da lista: continua ocupando o mesmo espaço para a barra não pular. */
+.botao_inerte {
+  color: var(--texto_apagado);
+  cursor: default;
+  opacity: 0.55;
+}
+
+.botao_inerte:hover {
+  background: var(--superficie);
+}

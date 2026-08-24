@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { apiRequest, ApiError } from "@/shared/api/http-client";
 import { readAdminToken } from "./session";
+import type { DocumentTemplate, MarkerCatalog } from "@/features/documents/types";
 import type {
   EntityAdmin, Letterhead, PromotableUser, SystemAdmin, Tenant, TenantSector, TenantUnit,
   TenantUser,
@@ -20,6 +21,16 @@ const adminRequest = async <T>(path: string): Promise<T> => {
 };
 
 export const listTenants = () => adminRequest<Tenant[]>("/admin/orgaos");
+
+/** Modelos padrão do produto — valem para toda prefeitura sem versão própria. */
+export const listGlobalTemplates = () =>
+  adminRequest<DocumentTemplate[]>("/admin/modelos");
+
+export const getGlobalTemplate = async (tipo: string) =>
+  (await listGlobalTemplates()).find((modelo) => modelo.tipo === tipo);
+
+export const getGlobalMarkerCatalog = (tipo: string) =>
+  adminRequest<MarkerCatalog>(`/admin/modelos/${tipo}/marcadores`);
 
 export const getTenant = async (id: string): Promise<Tenant | undefined> =>
   (await listTenants()).find((tenant) => tenant.id === id);

@@ -1,13 +1,16 @@
 import { listProcesses } from "@/features/processes/queries";
 import { ProcessTable } from "@/features/processes/components/ProcessTable";
-import { countDueSoon, countLate } from "@/features/processes/deadline";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { listSectors } from "@/features/sectors/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { Pagination } from "@/shared/ui/Pagination";
 
-export default async function ProcessQueuePage() {
+type ProcessQueuePageProps = { searchParams: Promise<{ pagina?: string }> };
+
+export default async function ProcessQueuePage({ searchParams }: ProcessQueuePageProps) {
   await requirePermission("processes:read", "PROCESSOS");
+  const { pagina } = await searchParams;
 
   const [profile, activeAssignmentId, sectors] = await Promise.all([
     getProfile(),
@@ -19,11 +22,12 @@ export default async function ProcessQueuePage() {
   const active = profile.lotacoes.find((assignment) => assignment.id === activeAssignmentId)
     ?? profile.lotacoes[0];
   const sectorId = active?.setorId ?? undefined;
-  const processes = await listProcesses(sectorId);
+  const fila = await listProcesses(sectorId, pagina);
 
   const sectorName = sectors.find((sector) => sector.id === sectorId)?.nome;
-  const atrasados = countLate(processes);
-  const vencendo = countDueSoon(processes);
+  // Os contadores vêm da API e falam da fila inteira — somar a página mostraria
+  // menos atraso do que existe justamente na tela que serve para alertar.
+  const { atrasados, vencendo } = fila;
 
   return (
     <>
@@ -58,8 +62,13 @@ export default async function ProcessQueuePage() {
         </div>
       )}
 
-      <Card title={`${processes.length} em andamento`} padded={false}>
-        <ProcessTable processes={processes} sectors={sectors} />
+      <Card title={`${fila.total} em andamento`} padded={false}>
+        <ProcessTable
+          processes={fila.itens}
+          sectors={sectors}
+          limiarAlertaDias={fila.limiarAlertaDias}
+        />
+        <Pagination info={fila} base="/processos/fila" />
       </Card>
     </>
   );

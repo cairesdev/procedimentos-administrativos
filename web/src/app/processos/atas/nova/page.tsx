@@ -1,11 +1,11 @@
-import { listBids } from "@/features/bids/queries";
+import { listAllBids } from "@/features/bids/queries";
 import { PriceRecordForm } from "@/features/price-records/components/PriceRecordForm";
 import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
 
 export default async function NewPriceRecordPage() {
   await requirePermission("bids:write", "PROCESSOS");
-  const bids = await listBids();
+  const bids = await listAllBids();
 
   return (
     <>

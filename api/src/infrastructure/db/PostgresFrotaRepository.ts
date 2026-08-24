@@ -1,4 +1,8 @@
 import { pool, executarEmTransacao } from "./pool";
+import {
+  montarPagina, TOTAL_DA_JANELA, deslocamentoDe,
+  type Pagina, type Paginacao,
+} from "../../application/shared/Paginacao";
 import type {
   AbastecimentoResumo, DadosFinalizacao, DadosRetirada, EdicaoMotorista, EdicaoVeiculo,
   EncerramentoManutencao, FrotaRepository, LinhaDaAgenda, LinhaDoRelatorio, ManutencaoResumo,
@@ -84,7 +88,8 @@ const SQL = {
            t.motorista_id AS "motoristaId", m.nome AS "motoristaNome",
            t.data_hora_desejada AS "dataHoraDesejada",
            t.data_hora_remarcada AS "dataHoraRemarcada",
-           t.motivo, t.responsavel, t.status, t.created_at AS "createdAt"
+           t.motivo, t.responsavel, t.status, t.created_at AS "createdAt",
+           ${TOTAL_DA_JANELA}
       FROM viagem t
       JOIN unidade u ON u.id = t.unidade_solicitante_id
       JOIN veiculo v ON v.id = t.veiculo_id
@@ -94,7 +99,8 @@ const SQL = {
        AND ($3::uuid IS NULL OR t.veiculo_id = $3)
        AND ($4::timestamptz IS NULL OR coalesce(t.data_hora_remarcada, t.data_hora_desejada) >= $4)
        AND ($5::timestamptz IS NULL OR coalesce(t.data_hora_remarcada, t.data_hora_desejada) <= $5)
-     ORDER BY coalesce(t.data_hora_remarcada, t.data_hora_desejada) DESC`,
+     ORDER BY coalesce(t.data_hora_remarcada, t.data_hora_desejada) DESC, t.id
+     LIMIT $6 OFFSET $7`,
   buscarViagem: `
     SELECT t.id, t.unidade_solicitante_id AS "unidadeSolicitanteId",
            u.nome AS "unidadeSolicitanteNome",
@@ -232,13 +238,14 @@ const SQL = {
   listarManutencoes: `
     SELECT m.id, m.veiculo_id AS "veiculoId", v.placa AS "veiculoPlaca", m.tipo,
            m.data_inicio AS "dataInicio", m.data_fim AS "dataFim",
-           m.descricao, m.oficina, m.custo
+           m.descricao, m.oficina, m.custo, ${TOTAL_DA_JANELA}
       FROM manutencao m
       JOIN veiculo v ON v.id = m.veiculo_id
      WHERE v.orgao_id = $1
        AND ($2::uuid IS NULL OR m.veiculo_id = $2)
        AND ($3::boolean IS NULL OR (m.data_fim IS NULL) = $3)
-     ORDER BY m.data_inicio DESC`,
+     ORDER BY m.data_inicio DESC, m.id
+     LIMIT $4 OFFSET $5`,
   buscarManutencao: `
     SELECT m.id, m.veiculo_id AS "veiculoId", v.placa AS "veiculoPlaca", m.tipo,
            m.data_inicio AS "dataInicio", m.data_fim AS "dataFim",
@@ -387,12 +394,14 @@ export class PostgresFrotaRepository implements FrotaRepository {
   listarViagens = async (
     orgaoId: string,
     filtros: { status?: string; veiculoId?: string; de?: string; ate?: string },
-  ): Promise<ViagemResumo[]> => {
+    paginacao: Paginacao,
+  ): Promise<Pagina<ViagemResumo>> => {
     const { rows } = await pool.query(SQL.listarViagens, [
       orgaoId, filtros.status ?? null, filtros.veiculoId ?? null,
       filtros.de ?? null, filtros.ate ?? null,
+      paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
-    return rows;
+    return montarPagina(rows, paginacao);
   };
 
   buscarViagem = async (orgaoId: string, id: string): Promise<ViagemDetalhe | null> => {
@@ -536,12 +545,15 @@ export class PostgresFrotaRepository implements FrotaRepository {
   listarManutencoes = async (
     orgaoId: string,
     filtros: { veiculoId?: string; abertas?: boolean },
-  ): Promise<ManutencaoResumo[]> => {
+    paginacao: Paginacao,
+  ): Promise<Pagina<ManutencaoResumo>> => {
     const { rows } = await pool.query(SQL.listarManutencoes, [
       orgaoId, filtros.veiculoId ?? null,
       filtros.abertas === undefined ? null : filtros.abertas,
+      paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
-    return rows.map((linha) => numerico(linha, ["custo"]));
+    const pagina = montarPagina<ManutencaoResumo>(rows, paginacao);
+    return { ...pagina, itens: pagina.itens.map((linha) => numerico(linha, ["custo"])) };
   };
 
   buscarManutencao = async (orgaoId: string, id: string): Promise<ManutencaoResumo | null> => {
