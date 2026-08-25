@@ -23,6 +23,8 @@ export type NovoAnexo = {
   arquivo: string;
   enviadoPorUsuarioId?: string;
   enviadoPorRequerenteId?: string;
+  /** Exigência que este documento responde; nulo = envio espontâneo. */
+  exigenciaId?: string;
 };
 
 export type AnexoDetalhe = {

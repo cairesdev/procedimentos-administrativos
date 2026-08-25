@@ -26,6 +26,9 @@ export const AUDIT_EVENTS = [
   "MANUTENCAO_ABERTA",
   "MANUTENCAO_ENCERRADA",
   "ATENDIMENTO_ABERTO",
+  "EXIGENCIA_REGISTRADA",
+  "EXIGENCIA_RESPONDIDA",
+  "EXIGENCIA_CANCELADA",
   "DOCUMENTO_EMITIDO",
   "DOCUMENTO_CANCELADO",
   "ADMIN_ENTIDADE_CRIADO",
@@ -73,7 +76,10 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   },
   {
     group: "Protocolo",
-    events: ["ATENDIMENTO_ABERTO"],
+    events: [
+      "ATENDIMENTO_ABERTO", "EXIGENCIA_REGISTRADA", "EXIGENCIA_RESPONDIDA",
+      "EXIGENCIA_CANCELADA",
+    ],
   },
   {
     group: "Documentos",
@@ -116,6 +122,9 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   MANUTENCAO_ABERTA: "Manutenção aberta",
   MANUTENCAO_ENCERRADA: "Manutenção encerrada",
   ATENDIMENTO_ABERTO: "Atendimento externo aberto",
+  EXIGENCIA_REGISTRADA: "Exigência registrada",
+  EXIGENCIA_RESPONDIDA: "Exigência respondida pelo requerente",
+  EXIGENCIA_CANCELADA: "Exigência cancelada",
   DOCUMENTO_EMITIDO: "Documento emitido",
   DOCUMENTO_CANCELADO: "Documento cancelado",
   ADMIN_ENTIDADE_CRIADO: "Administrador criado",

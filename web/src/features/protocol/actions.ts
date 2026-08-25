@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { apiRequest } from "@/shared/api/http-client";
 import { runAction } from "@/shared/api/action-result";
 import {
-  serviceSchema, subjectSchema, type ServiceInput, type SubjectInput,
+  cancelRequirementSchema, requirementSchema, serviceSchema, subjectSchema,
+  type CancelRequirementInput, type RequirementInput, type ServiceInput, type SubjectInput,
 } from "./schemas";
 
 const vazio = (valor?: string) => valor?.trim() || undefined;
@@ -70,3 +71,27 @@ export const openService = async (input: ServiceInput) => {
   if (destino) redirect(destino);
   return resultado;
 };
+
+export const createRequirement = async (processoId: string, input: RequirementInput) =>
+  runAction(async () => {
+    const dados = requirementSchema.parse(input);
+    await apiRequest(`/protocolo/processos/${processoId}/exigencias`, {
+      method: "POST",
+      body: dados,
+    });
+    revalidatePath(`/processos/fila/${processoId}`);
+  }, "Exigência registrada");
+
+export const cancelRequirement = async (
+  processoId: string,
+  exigenciaId: string,
+  input: CancelRequirementInput,
+) =>
+  runAction(async () => {
+    const dados = cancelRequirementSchema.parse(input);
+    await apiRequest(`/protocolo/exigencias/${exigenciaId}/cancelar`, {
+      method: "POST",
+      body: dados,
+    });
+    revalidatePath(`/processos/fila/${processoId}`);
+  }, "Exigência cancelada");

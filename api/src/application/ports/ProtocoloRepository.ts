@@ -90,6 +90,41 @@ export type NovoAtendimento = {
   departamentoAtualId?: string;
 };
 
+export type Exigencia = {
+  id: string;
+  processoId: string;
+  texto: string;
+  prazoDias: number | null;
+  prazoLimite: string | null;
+  status: "PENDENTE" | "RESPONDIDA" | "CANCELADA";
+  criadaEm: string;
+  criadaPorNome: string;
+  respostaTexto: string | null;
+  respondidaEm: string | null;
+  canceladaMotivo: string | null;
+  /** Quantos documentos o requerente juntou respondendo a esta exigência. */
+  anexos: number;
+};
+
+export type NovaExigencia = {
+  orgaoId: string;
+  processoId: string;
+  texto: string;
+  prazoDias?: number;
+  criadaPorUsuarioId: string;
+};
+
+/**
+ * Processo alcançado pelo par protocolo + documento — a credencial do canal
+ * público. Devolve o mínimo para autorizar a ação do requerente.
+ */
+export type ProcessoDoRequerente = {
+  processoId: string;
+  orgaoId: string;
+  requerenteId: string;
+  status: string;
+};
+
 /** Identificação mínima da prefeitura para o portal do cidadão. */
 export type PrefeituraPublica = {
   id: string;
@@ -135,4 +170,18 @@ export interface ProtocoloRepository {
    * alheio.
    */
   acompanhar(numeroProtocolo: string, documento: string): Promise<AcompanhamentoPublico | null>;
+
+  /** Autoriza a ação do requerente: o par protocolo + documento tem de casar. */
+  processoDoRequerente(
+    numeroProtocolo: string,
+    documento: string,
+  ): Promise<ProcessoDoRequerente | null>;
+
+  listarExigencias(orgaoId: string, processoId: string): Promise<Exigencia[]>;
+  buscarExigencia(id: string): Promise<Exigencia | null>;
+  criarExigencia(dados: NovaExigencia, prazoLimite: string | null): Promise<string>;
+  responderExigencia(id: string, texto: string): Promise<void>;
+  cancelarExigencia(orgaoId: string, id: string, motivo: string): Promise<void>;
+  /** Exigências que o requerente vê no acompanhamento — sem dado interno. */
+  exigenciasDoRequerente(processoId: string): Promise<Exigencia[]>;
 }

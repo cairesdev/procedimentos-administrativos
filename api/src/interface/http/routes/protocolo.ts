@@ -139,3 +139,53 @@ protocoloRouter.get("/atendimentos", async (req, res, next) => {
     next(error);
   }
 });
+
+// ---- Exigência: o setor pergunta --------------------------------------------
+
+const exigenciaSchema = z.object({
+  texto: z.string().min(10).max(4000),
+  prazoDias: z.coerce.number().int().min(1).max(365).optional(),
+});
+
+const cancelamentoSchema = z.object({ motivo: z.string().min(3).max(500) });
+
+protocoloRouter.get("/processos/:processoId/exigencias", async (req, res, next) => {
+  try {
+    res.json(
+      await container.exigirDoRequerente.listar(req.sessao!.orgaoId, req.params.processoId!),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.post("/processos/:processoId/exigencias", async (req, res, next) => {
+  try {
+    const dados = exigenciaSchema.parse(req.body);
+    res.status(201).json(
+      await container.exigirDoRequerente.exigir({
+        ...dados,
+        orgaoId: req.sessao!.orgaoId,
+        processoId: req.params.processoId!,
+        usuarioId: req.sessao!.usuarioId,
+      }),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.post("/exigencias/:id/cancelar", async (req, res, next) => {
+  try {
+    const { motivo } = cancelamentoSchema.parse(req.body);
+    await container.exigirDoRequerente.cancelarExigencia({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      exigenciaId: req.params.id!,
+      motivo,
+    });
+    res.json({ message: "Exigência cancelada" });
+  } catch (error) {
+    next(error);
+  }
+});

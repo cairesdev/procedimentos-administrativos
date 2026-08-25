@@ -6,7 +6,7 @@ import {
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   AcompanhamentoPublico, AssuntoDeProtocolo, AtendimentoResumo, NovoAssunto, NovoAtendimento,
-  NovoRequerente, PrefeituraPublica, ProtocoloRepository, Requerente,
+  Exigencia, NovaExigencia, NovoRequerente, PrefeituraPublica, ProtocoloRepository, Requerente,
 } from "../../application/ports/ProtocoloRepository";
 
 const COLUNAS_ASSUNTO = `
@@ -117,6 +117,52 @@ const SQL = {
        AND p.numero_protocolo = $1
        AND r.documento = $2`,
 
+  // Credencial do canal público: o par tem de casar, e devolve o mínimo.
+  processoDoRequerente: `
+    SELECT p.id AS "processoId", p.orgao_id AS "orgaoId",
+           p.requerente_id AS "requerenteId", p.status
+      FROM processo p
+      JOIN requerente r ON r.id = p.requerente_id
+     WHERE p.tipo_processo = 'ATENDIMENTO_EXTERNO'
+       AND p.numero_protocolo = $1
+       AND r.documento = $2`,
+
+  listarExigencias: `
+    SELECT e.id, e.processo_id AS "processoId", e.texto,
+           e.prazo_dias AS "prazoDias", e.prazo_limite AS "prazoLimite",
+           e.status, e.criada_em AS "criadaEm",
+           coalesce(u.nome, '—') AS "criadaPorNome",
+           e.resposta_texto AS "respostaTexto", e.respondida_em AS "respondidaEm",
+           e.cancelada_motivo AS "canceladaMotivo",
+           (SELECT count(*) FROM anexo a WHERE a.exigencia_id = e.id) AS anexos
+      FROM exigencia e
+      LEFT JOIN usuario u ON u.id = e.criada_por_usuario_id
+     WHERE ($1::uuid IS NULL OR e.orgao_id = $1) AND e.processo_id = $2
+     ORDER BY e.criada_em DESC`,
+  buscarExigencia: `
+    SELECT e.id, e.processo_id AS "processoId", e.texto,
+           e.prazo_dias AS "prazoDias", e.prazo_limite AS "prazoLimite",
+           e.status, e.criada_em AS "criadaEm",
+           coalesce(u.nome, '—') AS "criadaPorNome",
+           e.resposta_texto AS "respostaTexto", e.respondida_em AS "respondidaEm",
+           e.cancelada_motivo AS "canceladaMotivo",
+           (SELECT count(*) FROM anexo a WHERE a.exigencia_id = e.id) AS anexos
+      FROM exigencia e
+      LEFT JOIN usuario u ON u.id = e.criada_por_usuario_id
+     WHERE e.id = $1`,
+  criarExigencia: `
+    INSERT INTO exigencia
+      (orgao_id, processo_id, texto, prazo_dias, prazo_limite, criada_por_usuario_id)
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+  responderExigencia: `
+    UPDATE exigencia
+       SET status = 'RESPONDIDA', resposta_texto = $2, respondida_em = now()
+     WHERE id = $1 AND status = 'PENDENTE'`,
+  cancelarExigencia: `
+    UPDATE exigencia
+       SET status = 'CANCELADA', cancelada_motivo = $3
+     WHERE orgao_id = $1 AND id = $2 AND status = 'PENDENTE'`,
+
   // Andamento sem texto: só para onde o pedido foi e quando. O que o servidor
   // escreveu no despacho é peça de trabalho interna, não resposta ao cidadão.
   andamento: `
@@ -130,6 +176,11 @@ const SQL = {
 const numerico = (linha: Record<string, unknown>): AssuntoDeProtocolo => ({
   ...(linha as unknown as AssuntoDeProtocolo),
   atendimentos: Number(linha.atendimentos),
+});
+
+const comAnexos = (linha: Record<string, unknown>): Exigencia => ({
+  ...(linha as unknown as Exigencia),
+  anexos: Number(linha.anexos),
 });
 
 export class PostgresProtocoloRepository implements ProtocoloRepository {
@@ -224,6 +275,43 @@ export class PostgresProtocoloRepository implements ProtocoloRepository {
   contarAberturasRecentes = async (documento: string, desde: Date): Promise<number> => {
     const { rows } = await pool.query(SQL.aberturasRecentes, [documento, desde]);
     return Number(rows[0].total);
+  };
+
+  processoDoRequerente = async (numeroProtocolo: string, documento: string) => {
+    const { rows } = await pool.query(SQL.processoDoRequerente, [numeroProtocolo, documento]);
+    return rows[0] ?? null;
+  };
+
+  listarExigencias = async (orgaoId: string, processoId: string): Promise<Exigencia[]> => {
+    const { rows } = await pool.query(SQL.listarExigencias, [orgaoId, processoId]);
+    return rows.map(comAnexos);
+  };
+
+  /** Sem órgão na chamada: quem já provou o par protocolo + documento passa. */
+  exigenciasDoRequerente = async (processoId: string): Promise<Exigencia[]> => {
+    const { rows } = await pool.query(SQL.listarExigencias, [null, processoId]);
+    return rows.map(comAnexos);
+  };
+
+  buscarExigencia = async (id: string): Promise<Exigencia | null> => {
+    const { rows } = await pool.query(SQL.buscarExigencia, [id]);
+    return rows[0] ? comAnexos(rows[0]) : null;
+  };
+
+  criarExigencia = async (dados: NovaExigencia, prazoLimite: string | null): Promise<string> => {
+    const { rows } = await pool.query(SQL.criarExigencia, [
+      dados.orgaoId, dados.processoId, dados.texto,
+      dados.prazoDias ?? null, prazoLimite, dados.criadaPorUsuarioId,
+    ]);
+    return rows[0].id;
+  };
+
+  responderExigencia = async (id: string, texto: string): Promise<void> => {
+    await pool.query(SQL.responderExigencia, [id, texto]);
+  };
+
+  cancelarExigencia = async (orgaoId: string, id: string, motivo: string): Promise<void> => {
+    await pool.query(SQL.cancelarExigencia, [orgaoId, id, motivo]);
   };
 
   acompanhar = async (

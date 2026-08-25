@@ -1,5 +1,6 @@
 import { apiRequest, ApiError } from "@/shared/api/http-client";
-import type { PublicTracking } from "@/features/protocol/types";
+import { RequirementReply } from "@/features/protocol/components/RequirementReply";
+import type { PublicTracking, Requirement } from "@/features/protocol/types";
 import { app } from "@/shared/config/app";
 import { Button } from "@/shared/ui/button";
 import { Alert, Badge, Card, PageHeader, Stack, SummaryGrid } from "@/shared/ui/layout";
@@ -33,6 +34,14 @@ export default async function ProtocoloPublicoPage({ searchParams }: ProtocoloPa
         throw erro;
       })
     : null;
+
+  // Mesma credencial da consulta: quem já provou o par vê as pendências dele.
+  const exigencias = acompanhamento
+    ? await apiRequest<Requirement[]>("/publico/pedidos/exigencias", {
+        method: "POST",
+        body: { protocolo: protocolo!.trim(), documento: documento!.trim() },
+      }).catch(() => [])
+    : [];
 
   const estado = acompanhamento
     ? situacao[acompanhamento.status as keyof typeof situacao] ?? { rotulo: "—", tone: "neutral" as const }
@@ -117,6 +126,12 @@ export default async function ProtocoloPublicoPage({ searchParams }: ProtocoloPa
                 ]}
               />
             </Card>
+
+            <RequirementReply
+              protocolo={acompanhamento.numeroProtocolo}
+              documento={documento!.trim()}
+              exigencias={exigencias}
+            />
 
             <Card title="Andamento">
               {acompanhamento.andamento.length === 0 ? (

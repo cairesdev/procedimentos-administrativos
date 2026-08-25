@@ -8,8 +8,8 @@ const COLUNAS = `
 const SQL = {
   criar: `
     INSERT INTO anexo (processo_id, despacho_id, tipo_documento, arquivo,
-                       enviado_por_usuario_id, enviado_por_requerente_id)
-    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+                       enviado_por_usuario_id, enviado_por_requerente_id, exigencia_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
   listar: `
     SELECT ${COLUNAS} FROM anexo a WHERE a.processo_id = $1 ORDER BY a.data`,
   buscar: `
@@ -25,6 +25,7 @@ export class PostgresAnexoRepository implements AnexoRepository {
     const { rows } = await pool.query(SQL.criar, [
       dados.processoId, dados.despachoId ?? null, dados.tipoDocumento, dados.arquivo,
       dados.enviadoPorUsuarioId ?? null, dados.enviadoPorRequerenteId ?? null,
+      dados.exigenciaId ?? null,
     ]);
     return rows[0].id;
   };

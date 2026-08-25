@@ -42,6 +42,7 @@ import { PostgresFrotaRepository } from "./infrastructure/db/PostgresFrotaReposi
 import { GerenciarFrota } from "./application/frota/GerenciarFrota";
 import { PostgresProtocoloRepository } from "./infrastructure/db/PostgresProtocoloRepository";
 import { AtenderProtocolo } from "./application/protocolo/AtenderProtocolo";
+import { ExigirDoRequerente } from "./application/protocolo/ExigirDoRequerente";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -65,6 +66,9 @@ export const container = {
   protocolo,
   atenderProtocolo: new AtenderProtocolo(
     protocolo, usuarios, numeracao, auditoria, executarEmTransacao,
+  ),
+  exigirDoRequerente: new ExigirDoRequerente(
+    protocolo, new PostgresAnexoRepository(), new MinioArmazenamento(), auditoria,
   ),
   documentos,
   manterModelos: new ManterModelos(documentos),

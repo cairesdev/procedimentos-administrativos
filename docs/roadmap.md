@@ -413,6 +413,33 @@ internos e ficam de fora. Uma verificação automática lê a rota e recusa camp
 A ponte `/api/publico/[cnpj]/pedidos` existe separada do `/api/proxy` porque aquela exige sessão —
 e repassa o IP real, sem o qual todo o país cairia no mesmo balde do limite (o do container do Next).
 
-### Pendente na próxima fatia
+## Protocolo Externo — 3ª fatia (exigência e resposta)
 
-3. Exigência com prazo, resposta do requerente e anexo pelo canal da consulta.
+Pedido que chega incompleto tinha dois caminhos: indeferir ou telefonar. A exigência dá um
+terceiro, e muda quem está devendo resposta — enquanto ela está pendente, o processo está parado
+esperando o **cidadão**, não o setor.
+
+**Uma exigência pendente por processo**, garantida por índice único parcial. Duas perguntas em
+aberto deixariam o requerente sem saber a qual responde e o servidor sem saber qual foi respondida.
+
+**O prazo é congelado na criação** (`prazo_limite`): mudar o padrão do assunto depois não pode
+encurtar retroativamente o prazo de quem já foi notificado.
+
+**O canal do requerente não tem sessão.** A credencial é o par protocolo + documento, conferido a
+cada chamada — o mesmo que abre o acompanhamento. Sessão para o cidadão traria expiração,
+recuperação de acesso e suporte por causa de duas ou três interações. Uma verificação automática
+confere que as três ações públicas (ver pendências, responder, anexar) exigem a credencial e passam
+pela mesma autorização.
+
+**Protocolo concluído não recebe mais nada.** Documento enviado a processo encerrado ficaria nos
+autos sem ninguém para ler, e o cidadão acharia que juntou.
+
+**Anexo do requerente**: PDF, PNG, JPEG ou WEBP até 10 MB, gravado no MinIO com a mesma
+compensação do anexo de servidor (arquivo primeiro, registro depois, remove se o insert falhar).
+Fica ligado à exigência que responde, e `anexo.enviado_por_requerente_id` — que existia desde 0001
+e nunca fora usado — finalmente distingue o que veio de fora.
+
+Na tela do processo, o servidor vê a exigência, a resposta e quantos documentos vieram, com aviso
+quando o prazo venceu sem resposta. No acompanhamento público, o cidadão vê o que falta, escreve a
+resposta e anexa no mesmo lugar — o texto é enviado antes do arquivo, para que uma falha no upload
+não faça ele perder o que escreveu.

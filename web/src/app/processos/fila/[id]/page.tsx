@@ -12,6 +12,8 @@ import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumen
 import { PROCESS_SCOPES } from "@/features/documents/types";
 import { findRequest } from "@/features/requests/queries";
 import { RequestDetailView } from "@/features/requests/components/RequestDetailView";
+import { listRequirements } from "@/features/protocol/queries";
+import { RequirementPanel } from "@/features/protocol/components/RequirementPanel";
 import { requirePermission } from "@/shared/auth/guards";
 import { deadlineOf } from "@/features/processes/deadline";
 import { humanize, toDate } from "@/shared/ui/labels";
@@ -42,6 +44,11 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
   const solicitacao = process.solicitacaoId
     ? await findRequest(process.solicitacaoId).catch(() => null)
     : null;
+
+  // Exigências só existem em atendimento externo: é o requerente quem responde.
+  const exigencias = process.tipoProcesso === "ATENDIMENTO_EXTERNO"
+    ? await listRequirements(process.id).catch(() => [])
+    : [];
 
   const currentSector = sectors.find((sector) => sector.id === process.setorAtualId);
   const isOpen = process.status === "ABERTO" || process.status === "TRAMITANDO";
@@ -125,6 +132,16 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
                 canGiveOpinion={viewer.can("processes:opinion")}
                 canEmitOrder={viewer.can("processes:order")}
                 allowManualDestination={workflow?.permiteOverrideUsuario ?? false}
+              />
+            </Card>
+          ) : null}
+
+          {process.tipoProcesso === "ATENDIMENTO_EXTERNO" ? (
+            <Card title="Exigências">
+              <RequirementPanel
+                processoId={process.id}
+                exigencias={exigencias}
+                podeExigir={isOpen && viewer.can("processes:dispatch")}
               />
             </Card>
           ) : null}

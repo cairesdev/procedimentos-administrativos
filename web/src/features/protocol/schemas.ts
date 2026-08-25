@@ -24,3 +24,19 @@ export const serviceSchema = z.object({
 });
 
 export type ServiceInput = z.infer<typeof serviceSchema>;
+
+export const requirementSchema = z.object({
+  texto: z
+    .string()
+    .min(10, "Descreva a exigência com pelo menos dez caracteres")
+    .max(4000),
+  prazoDias: z.coerce.number().int().min(1).max(365).optional(),
+});
+
+export type RequirementInput = z.infer<typeof requirementSchema>;
+
+export const cancelRequirementSchema = z.object({
+  motivo: z.string().min(3, "Explique o motivo").max(500),
+});
+
+export type CancelRequirementInput = z.infer<typeof cancelRequirementSchema>;

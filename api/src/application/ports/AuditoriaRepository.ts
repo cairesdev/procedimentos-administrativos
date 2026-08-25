@@ -29,6 +29,9 @@ export type TipoEvento =
   | "MANUTENCAO_ABERTA"
   | "MANUTENCAO_ENCERRADA"
   | "ATENDIMENTO_ABERTO"
+  | "EXIGENCIA_REGISTRADA"
+  | "EXIGENCIA_RESPONDIDA"
+  | "EXIGENCIA_CANCELADA"
   | "DOCUMENTO_EMITIDO"
   | "DOCUMENTO_CANCELADO"
   // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.

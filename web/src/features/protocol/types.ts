@@ -56,3 +56,18 @@ export type PublicTracking = {
   orgaoNome: string;
   andamento: { data: string; setorNome: string | null }[];
 };
+
+export type Requirement = {
+  id: string;
+  processoId: string;
+  texto: string;
+  prazoDias: number | null;
+  prazoLimite: string | null;
+  status: "PENDENTE" | "RESPONDIDA" | "CANCELADA";
+  criadaEm: string;
+  criadaPorNome: string;
+  respostaTexto: string | null;
+  respondidaEm: string | null;
+  canceladaMotivo: string | null;
+  anexos: number;
+};

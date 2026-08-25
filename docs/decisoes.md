@@ -430,3 +430,16 @@ ATENDIMENTO_EXTERNO` e anexo enviado por requerente existem e nunca foram usados
   não é infinito.
 - **Armadilha responde sucesso.** Dizer ao robô que ele foi detectado só ensina a contornar.
 - **A resposta pública não devolve id interno.** Na rua o que vale é o protocolo.
+
+### Exigência — decisões da 3ª fatia
+
+- **Uma pendente por processo**, por índice único parcial. Mais de uma pergunta aberta confunde os
+  dois lados.
+- **Prazo congelado na criação.** Alterar a configuração depois não retroage sobre quem já foi
+  notificado.
+- **Credencial por chamada, sem sessão para o cidadão.** Protocolo + documento a cada ação: menos
+  superfície, sem expiração nem recuperação de acesso para manter.
+- **Protocolo concluído é porta fechada.** Documento enviado ali não seria lido por ninguém.
+- **Resposta antes do anexo**, no envio: falha no upload não pode fazer o cidadão perder o texto.
+- **Cancelar exigência exige motivo** e fica na trilha — desistir de uma exigência é ato que
+  precisa de explicação, como qualquer outro.

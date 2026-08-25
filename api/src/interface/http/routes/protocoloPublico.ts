@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { z } from "zod";
 import { container } from "../../../container";
@@ -54,7 +55,91 @@ const limiteDeLeitura = rateLimit({
   message: { message: "Muitas consultas em pouco tempo. Aguarde um minuto." },
 });
 
+/**
+ * Ações do requerente sobre um pedido já aberto. Mais folgado que a abertura
+ * (responder exigência é o que a prefeitura quer que aconteça) e mais apertado
+ * que a leitura, porque grava.
+ */
+const limiteDeInteracao = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(ipDoCliente(req)),
+  message: { message: "Muitos envios deste dispositivo. Tente novamente mais tarde." },
+});
+
+/** Credencial do canal: o par vem no corpo de toda ação. */
+const credencialSchema = z.object({
+  protocolo: z.string().min(3).max(20),
+  documento: z.string().min(11).max(20),
+});
+
+const anexoDoRequerente = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 export const protocoloPublicoRouter = Router();
+
+/** Exigências dirigidas ao requerente, para ele ver o que falta. */
+protocoloPublicoRouter.post("/pedidos/exigencias", limiteDeLeitura, async (req, res, next) => {
+  try {
+    const dados = credencialSchema.parse(req.body);
+    res.json(
+      await container.exigirDoRequerente.exigenciasDoRequerente(
+        dados.protocolo, dados.documento,
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloPublicoRouter.post("/pedidos/responder", limiteDeInteracao, async (req, res, next) => {
+  try {
+    const dados = credencialSchema.extend({ texto: z.string().min(5).max(4000) }).parse(req.body);
+    await container.exigirDoRequerente.responder({
+      numeroProtocolo: dados.protocolo,
+      documento: dados.documento,
+      texto: dados.texto,
+    });
+    res.json({ message: "Resposta registrada" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloPublicoRouter.post(
+  "/pedidos/anexos",
+  limiteDeInteracao,
+  anexoDoRequerente.single("arquivo"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        res.status(422).json({ message: "Arquivo ausente — envie no campo 'arquivo'" });
+        return;
+      }
+      // Multipart chega como texto: a credencial vem nos campos do formulário.
+      const dados = credencialSchema
+        .extend({ exigenciaId: z.string().uuid().optional() })
+        .parse(req.body);
+
+      res.status(201).json(
+        await container.exigirDoRequerente.anexar({
+          numeroProtocolo: dados.protocolo,
+          documento: dados.documento,
+          exigenciaId: dados.exigenciaId,
+          nomeOriginal: req.file.originalname,
+          conteudo: req.file.buffer,
+          mimeType: req.file.mimetype,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /** O que a prefeitura atende — alimenta o formulário do portal. */
 protocoloPublicoRouter.get("/prefeituras/:cnpj", limiteDeLeitura, async (req, res, next) => {
