@@ -374,3 +374,59 @@ despesa, fonte, parcelas, nota fiscal), itens (tabela), totais (`{{valorTotal}}`
 
 - **Só o ADMIN da prefeitura lê a trilha.** É registro de conduta de cada servidor, em todos os
   módulos — ver o trabalho alheio não é atribuição de gestor nem de controladoria.
+
+## Módulo Protocolo Externo (levantamento consolidado)
+
+Porta de entrada para quem não é servidor: cidadão, fornecedor ou outro órgão. O modelo já previa
+isto desde a migration 0001 — `requerente`, `processo.requerente_id`, `tipo_processo =
+ATENDIMENTO_EXTERNO` e anexo enviado por requerente existem e nunca foram usados.
+
+### Decisões
+
+- **Duas portas de entrada.** Balcão (servidor do protocolo atende presencialmente) **e** página
+  pública onde o próprio cidadão abre requerimento. O balcão continua sendo o caminho de quem
+  chega na prefeitura; o portal alcança quem não vai até lá.
+- **Assunto é lista configurável pela prefeitura**, com o setor que resolve amarrado a cada um.
+  O processo nasce direto no setor certo, sem triagem manual, e dá para dizer quantas certidões
+  foram pedidas no mês. Lista fixa no sistema não serve: prefeitura nenhuma atende o mesmo que a
+  outra.
+- **Acompanhamento por protocolo + documento** (CPF/CNPJ) em página pública. Os dois juntos
+  existem para impedir que alguém varra protocolos sequenciais e leia pedido alheio — o número
+  sozinho é adivinhável por construção.
+- **A consulta pública mostra andamento, não os autos.** Situação, setor atual, datas e as
+  exigências dirigidas ao requerente. Despacho interno, parecer e anexo de servidor ficam de fora:
+  são peças de trabalho da administração, não resposta ao cidadão.
+- **O requerente acompanha, anexa documento e responde exigência.** O setor registra a exigência
+  com prazo; enquanto pendente, o processo fica visivelmente parado esperando o cidadão — não é o
+  servidor que está devendo resposta.
+- **Comprovante de abertura é documento emitido**, pelo motor que já existe: escopo novo
+  `PROTOCOLO`, modelo global editável pela prefeitura, com QR que leva à consulta pública.
+
+### Riscos assumidos, com as contramedidas
+
+| Risco | O que fazemos |
+| --- | --- |
+| Abertura pública vira spam | Limite por IP na abertura, além do teto geral |
+| Upload público de arquivo malicioso | Lista de tipos aceitos, teto de tamanho, storage privado (nunca servido direto) |
+| Varredura de protocolos | Consulta exige documento; limite por IP; resposta idêntica para inexistente e documento errado |
+| Dado pessoal exposto | A consulta devolve só o que é do próprio requerente; nada de terceiros, nada de peça interna |
+
+### Fatiamento
+
+1. **Balcão e consulta.** Assuntos configuráveis (com setor destino), abertura pelo servidor do
+   protocolo, requerente cadastrado no atendimento, comprovante emitido e consulta pública por
+   protocolo + documento.
+2. **Abertura pelo cidadão.** Formulário público, com as contramedidas de abuso.
+3. **Exigência e resposta.** Setor pergunta com prazo, requerente responde e anexa; processo
+   sinaliza que está parado esperando o cidadão.
+
+### Portal do cidadão — decisões da 2ª fatia
+
+- **Sem listagem de prefeituras.** O portal é acessado pelo CNPJ no endereço, divulgado pela
+  prefeitura. Uma lista pública entregaria a carteira de clientes do produto.
+- **Freio no portal, nunca no balcão.** Presencial tem um servidor conferindo quem está na frente
+  dele; travar o atendimento seria pior que o abuso.
+- **Limite por documento além do limite por IP.** Um sozinho não segura: IP se troca, e CPF válido
+  não é infinito.
+- **Armadilha responde sucesso.** Dizer ao robô que ele foi detectado só ensina a contornar.
+- **A resposta pública não devolve id interno.** Na rua o que vale é o protocolo.

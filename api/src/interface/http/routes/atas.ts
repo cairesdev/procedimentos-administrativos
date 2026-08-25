@@ -56,6 +56,20 @@ atasRouter.get("/", async (req, res, next) => {
   }
 });
 
+/** Detalhe: itens, licitação de origem e contratos gerados a partir dela. */
+atasRouter.get("/:id", async (req, res, next) => {
+  try {
+    const ata = await container.atas.buscarCompleta(req.sessao!.orgaoId, req.params.id!);
+    if (!ata) {
+      res.status(404).json({ message: "Ata não encontrada" });
+      return;
+    }
+    res.json(ata);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Itens da ata: base para copiar ao criar o contrato.
 atasRouter.get("/:id/itens", async (req, res, next) => {
   try {

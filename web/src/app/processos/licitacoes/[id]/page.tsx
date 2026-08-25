@@ -63,7 +63,7 @@ export default async function BidDetailPage({ params }: BidPageProps) {
               return (
                 <tr key={ata.id}>
                   <td>
-                    <Link href={`/processos/atas`} style={{ color: "var(--acao)" }}>
+                    <Link href={`/processos/atas/${ata.id}`} style={{ color: "var(--acao)" }}>
                       {ata.numero}
                     </Link>
                   </td>

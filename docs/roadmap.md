@@ -97,8 +97,8 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
    extras).
 2. **Link externo do fornecedor** — token de acesso para fornecedor completar cadastro/documentos
    sem login.
-3. **Atendimento externo de balcão** — busca por número de protocolo, anexar como requerente,
-   redespachar.
+3. **Protocolo externo** — 1ª fatia (balcão e consulta) entregue; faltam a abertura pelo cidadão
+   e o ciclo de exigência/resposta.
 4. **Documentos emitidos** — motor e modelos padrão prontos (fatias 1 e 2). Falta estender aos
    módulos de patrimônio, frotas e almoxarifado: como o motor é genérico, cada peça nova é um
    modelo global por migration, sem código.
@@ -301,7 +301,10 @@ valor por extenso esperado.
 
 ## Rodada de interface
 
-**Telas de detalhe.** Licitação (`/processos/licitacoes/[id]`) mostra as atas que ela gerou e
+**Telas de detalhe.** Ata (`/processos/atas/[id]`) mostra itens registrados, a licitação de
+origem e os contratos firmados a partir dela, com aviso quando a vigência venceu — ata vencida não
+origina contrato novo, mas os já firmados seguem pela vigência própria.
+Licitação (`/processos/licitacoes/[id]`) mostra as atas que ela gerou e
 todos os contratos vinculados — inclusive os que vieram por ata dela, que antes não apareciam em
 lugar nenhum. Contrato (`/processos/contratos/[id]`) traz itens com saldo, unidades destinadas,
 fiscal e a origem, com o rastro completo quando veio de ata: ata → licitação que a gerou. O
@@ -340,3 +343,76 @@ acesso na matriz de permissões e na rota (`exigirPapel("ADMIN")`).
   global que o painel do produto havia criado, a linha nova saía com `personalizado: true` — e a
   tela passava a oferecer "excluir" no lugar de "restaurar padrão", sem caminho de volta ao texto
   de fábrica. A linha criada por personalização sempre tem um padrão atrás dela.
+
+### Navegação entre licitação, ata e contrato
+
+Fechado o triângulo: da licitação chega-se às atas e aos contratos (inclusive os que vieram por
+ata dela); da ata, à licitação de origem e aos contratos gerados; do contrato, à ata e à licitação
+que originou a ata. O detalhe da solicitação linka para o contrato e para a origem dele.
+
+Uma verificação automática recusa link de detalhe que aponte para a listagem (exceto o "voltar"),
+que era o remendo usado enquanto a tela de ata não existia.
+
+## Módulo Protocolo Externo — 1ª fatia (balcão e consulta)
+
+Porta de entrada para quem não é servidor. O núcleo já previa isto desde a migration 0001 —
+`requerente`, `processo.requerente_id`, `tipo_processo = ATENDIMENTO_EXTERNO` e anexo enviado por
+requerente existiam e nunca haviam sido usados.
+
+**Assuntos configuráveis** (`assunto_protocolo`, migration 0017): cada prefeitura cadastra o que
+atende e amarra o setor que resolve. O atendimento nasce direto no setor certo, sem triagem. Sem
+setor no assunto, cai na primeira etapa do fluxo de atendimento externo; **sem nenhum dos dois a
+abertura é recusada** — o processo nasceria sem fila e ficaria invisível em toda tela.
+
+**Balcão** (`/processos/protocolo`): o atendente digita o documento primeiro, o sistema puxa o
+cadastro de quem já foi atendido antes e o resto do formulário vem preenchido. Requerente é
+reaproveitado pelo CPF/CNPJ — dois cadastros da mesma pessoa partiriam o histórico dela em dois.
+Papel `PROTOCOLO` ganhou a permissão `protocol:serve`.
+
+**Consulta pública** (`/protocolo`, fora do proxy de sessão): protocolo **mais** documento. O
+número é sequencial e adivinhável por construção; sozinho, deixaria qualquer um ler o pedido
+alheio. A resposta é a mesma para dado malformado, protocolo inexistente e documento que não
+confere — distinguir os três entregaria de graça, a quem varre, qual protocolo existe. Limite de
+20 consultas por minuto por IP, o mesmo da conferência de documento.
+
+**A consulta mostra andamento, não os autos.** Situação, setor atual, datas, prazo do assunto e a
+movimentação entre setores. Texto de despacho, parecer e anexo de servidor ficam de fora: são peças
+de trabalho da administração. Uma verificação automática lê o SQL e recusa coluna interna na lista
+de retorno das duas consultas públicas.
+
+**Validação de CPF/CNPJ** (`domain/protocolo/Documento.ts`) existe menos por rigor cadastral e mais
+porque o documento é metade da chave da consulta: documento errado no cadastro deixa o cidadão sem
+conseguir acompanhar o próprio pedido, e ele não tem a quem recorrer além de voltar ao balcão.
+
+Assunto com atendimento não pode ser excluído — desativar tira da lista sem apagar a classificação
+dos processos antigos.
+
+## Protocolo Externo — 2ª fatia (portal do cidadão)
+
+Abertura de pedido sem login em `/protocolo/abrir/{cnpj}`.
+
+**A prefeitura vem no endereço, e não existe listagem.** O portal é divulgado pela própria
+prefeitura no site dela; publicar a lista de quem usa o sistema entregaria a carteira de clientes
+do produto a qualquer visitante. O CNPJ serve de chave por ser público por natureza.
+
+**Três freios, porque cada um cobre o furo do outro:**
+
+| Freio | Onde | Por quê |
+| --- | --- | --- |
+| 3 aberturas/hora por IP | Rota pública | Cada pedido vira processo que alguém vai ter de ler |
+| 5 aberturas/dia por documento | Caso de uso | Robô que troca de IP esbarra aqui; CPF válido não é barato de girar |
+| Campo-armadilha escondido | Formulário e rota | Preenchedor automático cai nele; responde sucesso sem gravar, para não ensinar o autor a contornar |
+
+O balcão **não** tem freio nenhum: há um servidor olhando quem está na frente dele, e travar o
+atendimento presencial seria pior que o abuso que se evita.
+
+**A resposta pública devolve só protocolo e número do processo** — nem o id interno. O assunto
+listado no portal leva nome, descrição e prazo; setor responsável e contagem de atendimentos são
+internos e ficam de fora. Uma verificação automática lê a rota e recusa campo interno na resposta.
+
+A ponte `/api/publico/[cnpj]/pedidos` existe separada do `/api/proxy` porque aquela exige sessão —
+e repassa o IP real, sem o qual todo o país cairia no mesmo balde do limite (o do container do Next).
+
+### Pendente na próxima fatia
+
+3. Exigência com prazo, resposta do requerente e anexo pelo canal da consulta.

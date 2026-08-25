@@ -18,3 +18,20 @@ export type PriceRecordItem = {
   valorUnitario: number;
   valorTotal: number;
 };
+
+/** Contrato firmado a partir da ata. */
+export type PriceRecordContract = {
+  id: string;
+  numero: string;
+  fornecedorRazaoSocial: string;
+  dataInicio: string;
+  dataFim: string | null;
+  valorTotal: number;
+};
+
+export type PriceRecordDetail = PriceRecord & {
+  /** Número da licitação que originou a ata; nulo quando não há vínculo. */
+  licitacaoNumero: string | null;
+  itens: PriceRecordItem[];
+  contratos: PriceRecordContract[];
+};

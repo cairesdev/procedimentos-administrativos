@@ -40,6 +40,8 @@ import { PostgresPatrimonioRepository } from "./infrastructure/db/PostgresPatrim
 import { GerenciarPatrimonio } from "./application/patrimonio/GerenciarPatrimonio";
 import { PostgresFrotaRepository } from "./infrastructure/db/PostgresFrotaRepository";
 import { GerenciarFrota } from "./application/frota/GerenciarFrota";
+import { PostgresProtocoloRepository } from "./infrastructure/db/PostgresProtocoloRepository";
+import { AtenderProtocolo } from "./application/protocolo/AtenderProtocolo";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -57,8 +59,13 @@ const patrimonio = new PostgresPatrimonioRepository();
 const frota = new PostgresFrotaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 const documentos = new PostgresDocumentoRepository();
+const protocolo = new PostgresProtocoloRepository();
 
 export const container = {
+  protocolo,
+  atenderProtocolo: new AtenderProtocolo(
+    protocolo, usuarios, numeracao, auditoria, executarEmTransacao,
+  ),
   documentos,
   manterModelos: new ManterModelos(documentos),
   emitirDocumento: new EmitirDocumento(

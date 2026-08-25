@@ -5,7 +5,7 @@ import {
 } from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
-  AtaRepository, AtaResumo, EdicaoAta, ItemDeAta, NovaAta,
+  AtaCompleta, AtaRepository, AtaResumo, EdicaoAta, ItemDeAta, NovaAta,
 } from "../../application/ports/AtaRepository";
 
 const SQL = {
@@ -51,6 +51,22 @@ const SQL = {
      WHERE orgao_id = $1
      ORDER BY data_assinatura DESC, id
      LIMIT $2 OFFSET $3`,
+  buscarCompleta: `
+    SELECT a.id, a.numero, a.objeto, a.licitacao_id AS "licitacaoId",
+           a.data_assinatura AS "dataAssinatura", a.data_vigencia AS "dataVigencia",
+           a.valor_total AS "valorTotal",
+           l.numero AS "licitacaoNumero"
+      FROM ata_registro_precos a
+      LEFT JOIN licitacao l ON l.id = a.licitacao_id
+     WHERE a.orgao_id = $1 AND a.id = $2`,
+  contratosDaAta: `
+    SELECT c.id, c.numero, f.razao_social AS "fornecedorRazaoSocial",
+           c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",
+           c.valor_total AS "valorTotal"
+      FROM contrato c
+      JOIN fornecedor f ON f.id = c.fornecedor_id
+     WHERE c.orgao_id = $1 AND c.ata_id = $2
+     ORDER BY c.data_inicio DESC, c.numero`,
   listarItens: `
     SELECT i.id, i.produto, i.descricao, i.unidade_medida AS "unidadeMedida", i.marca,
            i.quantidade, i.valor_unitario AS "valorUnitario", i.valor_total AS "valorTotal"
@@ -125,6 +141,18 @@ export class PostgresAtaRepository implements AtaRepository {
       orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
     return montarPagina(rows, paginacao);
+  };
+
+  buscarCompleta = async (orgaoId: string, id: string): Promise<AtaCompleta | null> => {
+    const { rows } = await pool.query(SQL.buscarCompleta, [orgaoId, id]);
+    const ata = rows[0];
+    if (!ata) return null;
+
+    const [itens, contratos] = await Promise.all([
+      this.listarItens(orgaoId, id),
+      pool.query(SQL.contratosDaAta, [orgaoId, id]),
+    ]);
+    return { ...ata, itens, contratos: contratos.rows };
   };
 
   listarItens = async (orgaoId: string, ataId: string): Promise<ItemDeAta[]> => {

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
@@ -24,7 +25,11 @@ export const PriceRecordTable = ({
       const expired = new Date(record.dataVigencia) < new Date();
       return (
         <tr key={record.id}>
-          <td>{record.numero}</td>
+          <td>
+            <Link href={`/processos/atas/${record.id}`} style={{ color: "var(--acao)" }}>
+              {record.numero}
+            </Link>
+          </td>
           <td title={record.objeto}>{record.objeto.slice(0, 60)}</td>
           <td>{toDate(record.dataVigencia)}</td>
           <td className={numericCell}>{toCurrency(record.valorTotal)}</td>

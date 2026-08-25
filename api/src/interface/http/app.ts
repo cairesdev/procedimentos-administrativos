@@ -11,6 +11,8 @@ import { processosRouter } from "./routes/processos";
 import { auditoriaRouter } from "./routes/auditoria";
 import { documentosRouter } from "./routes/documentos";
 import { conferenciaRouter } from "./routes/conferencia";
+import { protocoloRouter } from "./routes/protocolo";
+import { protocoloPublicoRouter } from "./routes/protocoloPublico";
 import { setoresRouter, unidadesRouter } from "./routes/organizacao";
 import { fornecedoresRouter } from "./routes/fornecedores";
 import { fluxosRouter } from "./routes/fluxos";
@@ -38,6 +40,9 @@ export const criarApp = () => {
   // Conferência de documento: pública, sem token — é o destino do QR impresso.
   app.use("/conferencia", conferenciaRouter);
 
+  // Portal do cidadão: abertura de pedido sem login, com freios próprios.
+  app.use("/publico", protocoloPublicoRouter);
+
   // Painel do produto: escopo de token próprio, fora do isolamento por órgão.
   app.use("/admin", adminRouter);
 
@@ -49,6 +54,8 @@ export const criarApp = () => {
   app.use("/auditoria", ...sessao, resolveTenant(), auditoriaRouter);
   // Documentos atendem todos os módulos, então não exigem módulo específico.
   app.use("/documentos", ...sessao, resolveTenant(), documentosRouter);
+  // Protocolo é a porta de entrada genérica; não depende de módulo contratado.
+  app.use("/protocolo", ...sessao, resolveTenant(), protocoloRouter);
 
   // Fornecedor é cadastro global — autenticação basta.
   app.use("/fornecedores", ...sessao, fornecedoresRouter);

@@ -33,7 +33,9 @@ export type Permission =
   // Emitir peça é ato de quem conduz o processo; editar o modelo é
   // administração da prefeitura — por isso são duas permissões.
   | "documents:issue"
-  | "documents:template";
+  | "documents:template"
+  // Atender no balcão: abrir protocolo em nome de terceiro.
+  | "protocol:serve";
 
 const READ_ONLY: Permission[] = [
   "fleet:read",
@@ -63,6 +65,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
     "audit:read",
     "documents:issue", "documents:template",
+    "protocol:serve",
   ],
   GESTOR: [
     ...READ_ONLY,
@@ -76,10 +79,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "requests:create",
     "processes:dispatch",
     "documents:issue", "documents:template",
+    "protocol:serve",
   ],
   CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "assets:read", "documents:issue"],
   COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
-  PROTOCOLO: [...READ_ONLY, "processes:dispatch", "documents:issue"],
+  PROTOCOLO: [...READ_ONLY, "processes:dispatch", "documents:issue", "protocol:serve"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
   PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],

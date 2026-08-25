@@ -77,8 +77,8 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
               {
                 label: contrato.origem === "ATA" ? "Ata de registro de preços" : "Licitação",
                 value:
-                  contrato.origem === "ATA" ? (
-                    <Link href="/processos/atas" style={{ color: "var(--acao)" }}>
+                  contrato.origem === "ATA" && contrato.origemId ? (
+                    <Link href={`/processos/atas/${contrato.origemId}`} style={{ color: "var(--acao)" }}>
                       {contrato.origemNumero ?? "—"}
                     </Link>
                   ) : contrato.origemId ? (

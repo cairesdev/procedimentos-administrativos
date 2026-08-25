@@ -127,20 +127,21 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
                   ),
                 },
                 {
-                  // Ata não tem tela própria ainda; licitação tem, então só ela
-                  // vira link — texto que não leva a lugar nenhum frustra.
                   label: contrato.origem === "ATA" ? "Ata de registro" : "Licitação de origem",
-                  value:
-                    contrato.origem === "LICITACAO" && contrato.origemId ? (
-                      <Link
-                        href={`/processos/licitacoes/${contrato.origemId}`}
-                        style={{ color: "var(--acao)" }}
-                      >
-                        {contrato.origemNumero}
-                      </Link>
-                    ) : (
-                      contrato.origemNumero ?? "—"
-                    ),
+                  value: contrato.origemId ? (
+                    <Link
+                      href={
+                        contrato.origem === "ATA"
+                          ? `/processos/atas/${contrato.origemId}`
+                          : `/processos/licitacoes/${contrato.origemId}`
+                      }
+                      style={{ color: "var(--acao)" }}
+                    >
+                      {contrato.origemNumero}
+                    </Link>
+                  ) : (
+                    contrato.origemNumero ?? "—"
+                  ),
                 },
                 ...(contrato.licitacaoDaAtaId
                   ? [{

@@ -77,6 +77,13 @@ export const workspaces: Workspace[] = [
         ],
       },
       {
+        group: "Protocolo",
+        icon: "inbox",
+        links: [
+          { href: "/processos/protocolo", label: "Atendimento externo", permission: "processes:read" },
+        ],
+      },
+      {
         group: "Controle",
         icon: "shieldCheck",
         links: [
@@ -181,6 +188,7 @@ export const workspaces: Workspace[] = [
           { href: "/administracao/unidades", label: "Unidades", permission: "units:read" },
           { href: "/administracao/setores", label: "Setores", permission: "sectors:read" },
           { href: "/administracao/usuarios", label: "Usuários", permission: "users:read" },
+          { href: "/administracao/assuntos", label: "Assuntos do protocolo", permission: "sectors:write" },
         ],
       },
       {

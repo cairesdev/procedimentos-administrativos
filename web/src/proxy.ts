@@ -37,6 +37,6 @@ export const config = {
   // administração ficava fora da checagem de sessão do proxy — só as guardas
   // de página seguravam. Página nova que esquecesse a guarda ficaria aberta.
   matcher: [
-    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|protocolo(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|api/publico(?:/|$)|_next/static|_next/image|favicon.ico).*)",
   ],
 };

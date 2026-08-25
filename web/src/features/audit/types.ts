@@ -25,6 +25,7 @@ export const AUDIT_EVENTS = [
   "VIAGEM_FINALIZADA",
   "MANUTENCAO_ABERTA",
   "MANUTENCAO_ENCERRADA",
+  "ATENDIMENTO_ABERTO",
   "DOCUMENTO_EMITIDO",
   "DOCUMENTO_CANCELADO",
   "ADMIN_ENTIDADE_CRIADO",
@@ -71,6 +72,10 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
     ],
   },
   {
+    group: "Protocolo",
+    events: ["ATENDIMENTO_ABERTO"],
+  },
+  {
     group: "Documentos",
     events: ["DOCUMENTO_EMITIDO", "DOCUMENTO_CANCELADO"],
   },
@@ -110,6 +115,7 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   VIAGEM_FINALIZADA: "Viagem finalizada",
   MANUTENCAO_ABERTA: "Manutenção aberta",
   MANUTENCAO_ENCERRADA: "Manutenção encerrada",
+  ATENDIMENTO_ABERTO: "Atendimento externo aberto",
   DOCUMENTO_EMITIDO: "Documento emitido",
   DOCUMENTO_CANCELADO: "Documento cancelado",
   ADMIN_ENTIDADE_CRIADO: "Administrador criado",

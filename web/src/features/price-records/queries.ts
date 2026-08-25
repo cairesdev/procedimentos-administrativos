@@ -1,7 +1,7 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { allOf, withPage, POR_PAGINA_MAXIMO, type Page } from "@/shared/api/pagination";
-import type { PriceRecord, PriceRecordItem } from "./types";
+import type { PriceRecord, PriceRecordDetail, PriceRecordItem } from "./types";
 
 export const listPriceRecords = (pagina?: string) => {
   const query = withPage(new URLSearchParams(), pagina);
@@ -20,3 +20,6 @@ export const listAllPriceRecords = () =>
       `${endpoints.priceRecords}?${withPage(new URLSearchParams(), pagina, POR_PAGINA_MAXIMO)}`,
     ),
   );
+
+export const findPriceRecord = (id: string) =>
+  apiRequest<PriceRecordDetail>(`${endpoints.priceRecords}/${id}`);

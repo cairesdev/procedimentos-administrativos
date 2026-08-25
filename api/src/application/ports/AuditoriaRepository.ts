@@ -28,6 +28,7 @@ export type TipoEvento =
   | "VIAGEM_FINALIZADA"
   | "MANUTENCAO_ABERTA"
   | "MANUTENCAO_ENCERRADA"
+  | "ATENDIMENTO_ABERTO"
   | "DOCUMENTO_EMITIDO"
   | "DOCUMENTO_CANCELADO"
   // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.

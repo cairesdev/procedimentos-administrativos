@@ -1,0 +1,141 @@
+import { Router } from "express";
+import { z } from "zod";
+import { container } from "../../../container";
+import { exigirPapel } from "../middlewares/exigirPapel";
+import { paginacaoSchema } from "../schemas/paginacao";
+
+const TIPOS_DE_REQUERENTE = ["CIDADAO", "FORNECEDOR", "OUTRO_ORGAO", "SERVIDOR"] as const;
+
+const assuntoSchema = z.object({
+  nome: z.string().min(1).max(150),
+  descricao: z.string().max(2000).optional(),
+  setorId: z.string().uuid().optional(),
+  prazoDias: z.coerce.number().int().min(1).max(3650).optional(),
+  ativo: z.boolean().default(true),
+});
+
+const aberturaSchema = z.object({
+  assuntoId: z.string().uuid(),
+  descricaoPedido: z.string().min(10).max(4000),
+  requerente: z.object({
+    tipo: z.enum(TIPOS_DE_REQUERENTE),
+    // A validação de dígito fica no domínio: aqui só o formato bruto.
+    documento: z.string().min(11).max(20),
+    nome: z.string().min(3).max(200),
+    contatoEmail: z.string().email().optional(),
+    contatoTelefone: z.string().max(20).optional(),
+  }),
+});
+
+export const protocoloRouter = Router();
+
+// ---- Assuntos: cadastro da prefeitura ---------------------------------------
+
+protocoloRouter.get("/assuntos", async (req, res, next) => {
+  try {
+    const apenasAtivos = req.query.ativos === "true";
+    res.json(await container.protocolo.listarAssuntos(req.sessao!.orgaoId, apenasAtivos));
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.post("/assuntos", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+  try {
+    const dados = assuntoSchema.parse(req.body);
+    res.status(201).json({
+      id: await container.protocolo.criarAssunto({ ...dados, orgaoId: req.sessao!.orgaoId }),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.put("/assuntos/:id", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+  try {
+    const dados = assuntoSchema.parse(req.body);
+    await container.protocolo.atualizarAssunto(req.sessao!.orgaoId, req.params.id!, dados);
+    res.json({ message: "Assunto atualizado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.delete("/assuntos/:id", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+  try {
+    const assunto = await container.protocolo.buscarAssunto(req.sessao!.orgaoId, req.params.id!);
+    if (!assunto) {
+      res.status(404).json({ message: "Assunto não encontrado" });
+      return;
+    }
+    // Assunto com atendimento não some: os processos dele perderiam a
+    // classificação. Desativar tira da lista de abertura sem apagar história.
+    if (assunto.atendimentos > 0) {
+      res.status(409).json({
+        message: `Este assunto já tem ${assunto.atendimentos} atendimento(s) e não pode ser `
+          + "excluído. Desative-o para parar de oferecê-lo.",
+      });
+      return;
+    }
+    await container.protocolo.removerAssunto(req.sessao!.orgaoId, req.params.id!);
+    res.json({ message: "Assunto excluído" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ---- Balcão -----------------------------------------------------------------
+
+/** Consulta por documento: o atendente reaproveita o cadastro de quem volta. */
+protocoloRouter.get("/requerentes/:documento", async (req, res, next) => {
+  try {
+    const requerente = await container.protocolo.buscarRequerentePorDocumento(
+      req.sessao!.orgaoId,
+      req.params.documento!.replace(/\D/g, ""),
+    );
+    if (!requerente) {
+      res.status(404).json({ message: "Requerente não cadastrado" });
+      return;
+    }
+    res.json(requerente);
+  } catch (error) {
+    next(error);
+  }
+});
+
+protocoloRouter.post(
+  "/atendimentos",
+  exigirPapel("PROTOCOLO", "ADMIN", "GESTOR"),
+  async (req, res, next) => {
+    try {
+      const dados = aberturaSchema.parse(req.body);
+      res.status(201).json(
+        await container.atenderProtocolo.abrir({
+          ...dados,
+          orgaoId: req.sessao!.orgaoId,
+          usuarioId: req.sessao!.usuarioId,
+          origem: "BALCAO",
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+protocoloRouter.get("/atendimentos", async (req, res, next) => {
+  try {
+    const texto = (chave: string) =>
+      typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
+
+    res.json(
+      await container.protocolo.listarAtendimentos(
+        req.sessao!.orgaoId,
+        { status: texto("status"), assuntoId: texto("assunto"), busca: texto("busca") },
+        paginacaoSchema.parse(req.query),
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
