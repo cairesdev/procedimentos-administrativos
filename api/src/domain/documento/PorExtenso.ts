@@ -74,10 +74,14 @@ export const numeroPorExtenso = (inteiro: number): string => {
     escritos.push([prefixo, sufixo].filter(Boolean).join(" "));
   }
 
-  // A norma liga o último grupo com "e" quando ele é menor que cem ou múltiplo
-  // de cem — "mil e quinze", mas "mil cento e quinze".
-  const ultimo = grupos[0]!;
-  const ligaComE = escritos.length > 1 && ultimo > 0 && (ultimo < 100 || ultimo % 100 === 0);
+  // A norma liga o último grupo escrito com "e" quando ele é menor que cem ou
+  // múltiplo de cem — "mil e quinze", mas "mil, cento e quinze".
+  //
+  // É o último grupo NÃO NULO, não o das unidades: em 1.500.000 quem fecha a
+  // frase é "quinhentos mil", e olhar só as unidades (zero) produzia
+  // "um milhão, quinhentos mil" no lugar de "um milhão e quinhentos mil".
+  const ultimo = grupos.find((grupo) => grupo > 0) ?? 0;
+  const ligaComE = escritos.length > 1 && (ultimo < 100 || ultimo % 100 === 0);
   if (ligaComE) {
     const fim = escritos.pop()!;
     return `${escritos.join(", ")} e ${fim}`;

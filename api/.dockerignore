@@ -6,5 +6,7 @@ dist
 db/seed*.sql
 db/reset.sql
 scripts/smoke.ts
+# A suíte não entra na imagem: o Dockerfile copia só src e scripts.
+tests
 Dockerfile
 .dockerignore

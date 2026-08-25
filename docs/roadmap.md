@@ -102,7 +102,8 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
 4. **Documentos emitidos** — motor e modelos padrão prontos (fatias 1 e 2). Falta estender aos
    módulos de patrimônio, frotas e almoxarifado: como o motor é genérico, cada peça nova é um
    modelo global por migration, sem código.
-5. **Testes automatizados** — só o smoke test do módulo Processos.
+5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir
+   patrimônio e frotas, e o smoke test do módulo Processos continua exigindo ambiente de pé.
 6. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
    `docs/decisoes.md` + UML.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
@@ -478,3 +479,35 @@ nasceu dentro de Processos; sem essa linha, a separação tiraria do ar um recur
   e painel) e falha se divergirem.
 - **O harness do proxy acusou a inversão de rota** (`/protocolo` deixou de ser público,
   `/cidadao` passou a ser) — exatamente o que ele existe para pegar.
+
+## Suíte de testes
+
+`cd api && npm test` — executor nativo do Node (`node --test`) com `tsx`, que o projeto já usa no
+`npm run dev`. Sem Jest, sem Vitest: nenhuma dependência de teste além do `pgsql-ast-parser`, e
+nenhuma configuração fora do `package.json`. Roda no CI ao lado do typecheck, sem banco e sem rede;
+a suíte não entra na imagem Docker.
+
+| Pasta | Cobre |
+| --- | --- |
+| `dominio/` | Por extenso, marcadores e sanitização do modelo, CPF/CNPJ, paginação |
+| `aplicacao/` | Casos de uso com repositórios falsos: protocolo, exigência, modelos de documento, solicitação por unidade |
+| `estrutura/` | SQL dos repositórios e migrations, ordem das rotas, limites HTTP, contrato entre API e web |
+
+**A regra dos testes de aplicação**: todo caso que espera recusa também confere que **nada foi
+gravado**. Regra que valida e grava pela metade é pior que regra que não existe — o estado quebrado
+sobrevive à correção do código.
+
+**Por que os testes de estrutura existem**: três bugs desta base não seriam pegos por tipo nenhum —
+o papel que existia na API e não no web (`papelBase: invalid enum value`), a lista de módulos do
+painel do produto que não acompanhou o `CHECK` do banco, e a rota literal registrada depois da
+paramétrica. São checagens baratas que leem o próprio código.
+
+### Dois achados ao montar a suíte
+
+- **Bug real no valor por extenso.** `1.500.000` saía como "um milhão, quinhentos mil reais". A
+  regra do "e" olhava só o grupo das unidades (zero), quando quem fecha a frase é o último grupo
+  **não nulo** — "quinhentos mil". Corrigido; o caso está fixado no teste.
+- **Falso positivo no detector de rota engolida.** A primeira versão comparava só a quantidade de
+  segmentos e acusava `/relatorios/uso` por causa de `/viagens/:id`, que nunca a alcança. Agora o
+  detector monta o padrão do Express e testa se ele realmente casa — e tem dois testes próprios,
+  um de cada lado, porque detector que nunca dispara passa sensação de cobertura sem cobrir nada.

@@ -22,6 +22,8 @@ api/               Express + TypeScript, Clean Architecture (implementado)
   db/migrations/   0001..0012 SQL puro, numeradas; `npm run migrate` aplica as pendentes
   scripts/         migrate, bootstrap-admin, smoke
   Dockerfile       multi-stage → workcenterma/br-consultoria:api-*
+  tests/           node --test: dominio/, aplicacao/ (com repositórios falsos)
+                   e estrutura/ (SQL, rotas, contrato com o web)
   src/
     domain/        regras puras, sem I/O (ErroDeNegocio, CalculadoraValorItem)
     application/   casos de uso + ports (interfaces)
@@ -42,7 +44,8 @@ docker/postgres/   postgresql.conf — PGDATA versionado, ICU pt-BR, tuning de d
 ```
 cd api
 npm install
-npm run typecheck    # tsc --noEmit — rodar sempre antes de entregar
+npm run typecheck    # tsc --noEmit (src, scripts e tests) — rodar sempre antes de entregar
+npm test             # node --test + tsx; sem banco e sem rede
 npm run migrate      # migrations pendentes (tabela schema_migrations)
 npm run dev          # tsx watch
 npm run build

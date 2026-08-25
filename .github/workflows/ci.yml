@@ -12,7 +12,7 @@ env:
 
 jobs:
   verificar:
-    name: Typecheck e lint
+    name: Verificação
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,6 +33,13 @@ jobs:
       - run: npm ci
 
       - run: npm run typecheck
+
+      # A suíte roda sem banco e sem rede: domínio, casos de uso com
+      # repositórios falsos, e checagens que leem o próprio código (SQL, ordem
+      # das rotas, contrato entre a API e o web).
+      - name: Testes
+        if: matrix.projeto == 'api'
+        run: npm test
 
       - name: Lint
         if: matrix.projeto == 'web'
