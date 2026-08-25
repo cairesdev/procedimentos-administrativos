@@ -67,4 +67,10 @@ export const SECTOR_TYPES = [
   "ALIMENTACAO_ESCOLAR", "FROTAS", "PATRIMONIO", "OPERACIONAL",
 ];
 
-export const MODULES: ModuleName[] = ["PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO"];
+export const MODULES: ModuleName[] = [
+  "PROCESSOS",
+  "PROTOCOLO",
+  "FROTAS",
+  "PATRIMONIO",
+  "ALMOXARIFADO",
+];

@@ -12,7 +12,7 @@ type ProtocolPageProps = {
 };
 
 export default async function ProtocolPage({ searchParams }: ProtocolPageProps) {
-  const viewer = await requirePermission("processes:read", "PROCESSOS");
+  const viewer = await requirePermission("protocol:read", "PROTOCOLO");
   const { status, assunto, busca, pagina } = await searchParams;
 
   const [atendimentos, assuntos] = await Promise.all([
@@ -27,7 +27,7 @@ export default async function ProtocolPage({ searchParams }: ProtocolPageProps) 
         subtitle="Atendimentos abertos no balcão e pelo portal do cidadão"
         action={
           viewer.can("protocol:serve") ? (
-            <Link href="/processos/protocolo/novo">
+            <Link href="/protocolo/atendimentos/novo">
               <Button type="button">
                 <Plus size={15} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "6px" }} />
                 Novo atendimento
@@ -75,7 +75,7 @@ export default async function ProtocolPage({ searchParams }: ProtocolPageProps) 
         <ServiceTable records={atendimentos.itens} />
         <Pagination
           info={atendimentos}
-          base="/processos/protocolo"
+          base="/protocolo/atendimentos"
           filtros={{ status, assunto, busca }}
         />
       </Card>

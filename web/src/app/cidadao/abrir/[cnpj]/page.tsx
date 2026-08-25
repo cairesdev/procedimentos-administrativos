@@ -39,7 +39,7 @@ export default async function AbrirPedidoPage({ params }: AberturaPublicaProps) 
 
       <p style={{ marginTop: "18px", fontSize: "12.5px", color: "var(--texto_suave)" }}>
         Já tem um protocolo?{" "}
-        <Link href="/protocolo" style={{ color: "var(--acao)" }}>
+        <Link href="/cidadao" style={{ color: "var(--acao)" }}>
           Acompanhe o andamento
         </Link>
         .

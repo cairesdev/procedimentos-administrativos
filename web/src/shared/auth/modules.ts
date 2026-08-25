@@ -25,7 +25,12 @@ export type NavSection = {
   links: NavLink[];
 };
 
-export type WorkspaceId = "processos" | "patrimonio" | "frotas" | "administracao";
+export type WorkspaceId =
+  | "processos"
+  | "protocolo"
+  | "patrimonio"
+  | "frotas"
+  | "administracao";
 
 export type Workspace = {
   id: WorkspaceId;
@@ -77,18 +82,43 @@ export const workspaces: Workspace[] = [
         ],
       },
       {
-        group: "Protocolo",
-        icon: "inbox",
-        links: [
-          { href: "/processos/protocolo", label: "Atendimento externo", permission: "processes:read" },
-        ],
-      },
-      {
         group: "Controle",
         icon: "shieldCheck",
         links: [
           { href: "/processos/fluxos", label: "Fluxo de tramitação", permission: "workflows:read" },
           { href: "/processos/auditoria", label: "Auditoria", permission: "audit:read" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "protocolo",
+    name: "Protocolo",
+    description: "Atendimento de balcão e pedidos abertos pelo cidadão",
+    basePath: "/protocolo",
+    icon: "inbox",
+    accent: "#a76a00",
+    accentSoft: "#fdf3e2",
+    module: "PROTOCOLO",
+    permission: "protocol:read",
+    sections: [
+      {
+        group: "Atendimento",
+        icon: "inbox",
+        links: [
+          { href: "/protocolo/atendimentos", label: "Atendimentos", permission: "protocol:read" },
+          {
+            href: "/protocolo/atendimentos/novo",
+            label: "Novo atendimento",
+            permission: "protocol:serve",
+          },
+        ],
+      },
+      {
+        group: "Configuração",
+        icon: "shieldCheck",
+        links: [
+          { href: "/protocolo/assuntos", label: "Assuntos atendidos", permission: "protocol:manage" },
         ],
       },
     ],
@@ -188,7 +218,6 @@ export const workspaces: Workspace[] = [
           { href: "/administracao/unidades", label: "Unidades", permission: "units:read" },
           { href: "/administracao/setores", label: "Setores", permission: "sectors:read" },
           { href: "/administracao/usuarios", label: "Usuários", permission: "users:read" },
-          { href: "/administracao/assuntos", label: "Assuntos do protocolo", permission: "sectors:write" },
         ],
       },
       {

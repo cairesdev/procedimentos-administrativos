@@ -12,7 +12,7 @@ import {
   editarSetorSchema, editarUnidadeSchema, editarUsuarioSchema,
 } from "../schemas/cadastros";
 
-const MODULOS = ["PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO"] as const;
+const MODULOS = ["PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO", "PROTOCOLO"] as const;
 
 const loginSchema = z.object({
   email: z.string().email(),

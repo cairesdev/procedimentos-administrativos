@@ -30,7 +30,12 @@ export type Role =
   | "PATRIMONIO"
   | "FROTAS";
 
-export type ModuleName = "PROCESSOS" | "FROTAS" | "PATRIMONIO" | "ALMOXARIFADO";
+export type ModuleName =
+  | "PROCESSOS"
+  | "FROTAS"
+  | "PATRIMONIO"
+  | "ALMOXARIFADO"
+  | "PROTOCOLO";
 
 export type LoginResponse = {
   token: string;

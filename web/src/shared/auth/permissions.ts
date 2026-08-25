@@ -34,8 +34,11 @@ export type Permission =
   // administração da prefeitura — por isso são duas permissões.
   | "documents:issue"
   | "documents:template"
-  // Atender no balcão: abrir protocolo em nome de terceiro.
-  | "protocol:serve";
+  // Protocolo é sistema próprio: quem atende no balcão não precisa de
+  // licitação, contrato nem solicitação para fazer o trabalho dele.
+  | "protocol:read"
+  | "protocol:serve"
+  | "protocol:manage";
 
 const READ_ONLY: Permission[] = [
   "fleet:read",
@@ -65,7 +68,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
     "audit:read",
     "documents:issue", "documents:template",
-    "protocol:serve",
+    "protocol:read", "protocol:serve", "protocol:manage",
   ],
   GESTOR: [
     ...READ_ONLY,
@@ -79,11 +82,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "requests:create",
     "processes:dispatch",
     "documents:issue", "documents:template",
-    "protocol:serve",
+    "protocol:read", "protocol:serve", "protocol:manage",
   ],
   CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "assets:read", "documents:issue"],
   COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
-  PROTOCOLO: [...READ_ONLY, "processes:dispatch", "documents:issue", "protocol:serve"],
+  // Só o protocolo. Sem READ_ONLY: aquele conjunto carrega contratos,
+  // licitações e solicitações, que não são atribuição de quem atende no balcão.
+  PROTOCOLO: ["protocol:read", "protocol:serve", "documents:issue"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
   PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],

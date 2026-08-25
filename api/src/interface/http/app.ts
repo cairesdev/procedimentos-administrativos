@@ -54,8 +54,7 @@ export const criarApp = () => {
   app.use("/auditoria", ...sessao, resolveTenant(), auditoriaRouter);
   // Documentos atendem todos os módulos, então não exigem módulo específico.
   app.use("/documentos", ...sessao, resolveTenant(), documentosRouter);
-  // Protocolo é a porta de entrada genérica; não depende de módulo contratado.
-  app.use("/protocolo", ...sessao, resolveTenant(), protocoloRouter);
+
 
   // Fornecedor é cadastro global — autenticação basta.
   app.use("/fornecedores", ...sessao, fornecedoresRouter);
@@ -69,6 +68,10 @@ export const criarApp = () => {
 
   // Módulo de patrimônio: independente do módulo de processos.
   app.use("/patrimonio", ...sessao, resolveTenant("PATRIMONIO"), patrimonioRouter);
+
+  // Protocolo é sistema próprio: quem atende no balcão não precisa do módulo
+  // de processos, e o inverso também vale.
+  app.use("/protocolo", ...sessao, resolveTenant("PROTOCOLO"), protocoloRouter);
   app.use("/frotas", ...sessao, resolveTenant("FROTAS"), frotasRouter);
 
   app.use(errorHandler);

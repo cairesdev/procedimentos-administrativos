@@ -41,6 +41,16 @@ export type ServiceRecord = {
   requerenteDocumento: string;
 };
 
+/** Detalhe do atendimento visto de dentro do próprio protocolo. */
+export type ServiceDetail = ServiceRecord & {
+  descricaoPedido: string | null;
+  prazoDias: number | null;
+  dataEncerramento: string | null;
+  requerenteEmail: string | null;
+  requerenteTelefone: string | null;
+  requerenteTipo: string;
+};
+
 /** O que a consulta pública devolve — menos que o processo, de propósito. */
 export type PublicTracking = {
   numeroProtocolo: string;

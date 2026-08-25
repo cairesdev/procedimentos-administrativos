@@ -443,3 +443,14 @@ ATENDIMENTO_EXTERNO` e anexo enviado por requerente existem e nunca foram usados
 - **Resposta antes do anexo**, no envio: falha no upload não pode fazer o cidadão perder o texto.
 - **Cancelar exigência exige motivo** e fica na trilha — desistir de uma exigência é ato que
   precisa de explicação, como qualquer outro.
+
+### Protocolo como módulo próprio
+
+- **Contratável em separado.** Prefeitura pode ter protocolo sem processos, e vice-versa.
+- **O balcão não vê processos.** O papel perdeu `READ_ONLY` inteiro; a função dele é o atendimento.
+- **Detalhe do atendimento vive no protocolo**, não na fila de processos — senão o atendente
+  perderia de vista o que abriu.
+- **Exigir é do setor que analisa, não do balcão.** O atendente vê a exigência e a resposta, mas
+  quem pergunta é quem está resolvendo o pedido.
+- **`/cidadao` para o público, `/protocolo` para o balcão.** Os dois nomes dizem para quem a tela
+  é; usar o mesmo caminho para os dois confundiria a rota pública com o sistema interno.

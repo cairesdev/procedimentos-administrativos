@@ -140,6 +140,22 @@ protocoloRouter.get("/atendimentos", async (req, res, next) => {
   }
 });
 
+/** Detalhe do atendimento, para quem só tem o sistema de protocolo. */
+protocoloRouter.get("/atendimentos/:id", async (req, res, next) => {
+  try {
+    const atendimento = await container.protocolo.buscarAtendimento(
+      req.sessao!.orgaoId, req.params.id!,
+    );
+    if (!atendimento) {
+      res.status(404).json({ message: "Atendimento não encontrado" });
+      return;
+    }
+    res.json(atendimento);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ---- Exigência: o setor pergunta --------------------------------------------
 
 const exigenciaSchema = z.object({

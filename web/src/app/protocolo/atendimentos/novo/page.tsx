@@ -4,7 +4,7 @@ import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
 
 export default async function NewServicePage() {
-  await requirePermission("protocol:serve", "PROCESSOS");
+  await requirePermission("protocol:serve", "PROTOCOLO");
   const assuntos = await listSubjects(true);
 
   return (

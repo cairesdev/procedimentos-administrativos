@@ -28,7 +28,7 @@ export const ServiceTable = ({ records }: { records: ServiceRecord[] }) => (
     {records.map((record) => (
       <tr key={record.id}>
         <td>
-          <Link href={`/processos/fila/${record.id}`} style={{ color: "var(--acao)" }}>
+          <Link href={`/protocolo/atendimentos/${record.id}`} style={{ color: "var(--acao)" }}>
             {record.numeroProtocolo}
           </Link>
           <br />

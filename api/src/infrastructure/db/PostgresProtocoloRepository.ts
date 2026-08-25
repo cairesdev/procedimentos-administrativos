@@ -5,7 +5,8 @@ import {
 } from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
-  AcompanhamentoPublico, AssuntoDeProtocolo, AtendimentoResumo, NovoAssunto, NovoAtendimento,
+  AcompanhamentoPublico, AssuntoDeProtocolo, AtendimentoDetalhe, AtendimentoResumo,
+  NovoAssunto, NovoAtendimento,
   Exigencia, NovaExigencia, NovoRequerente, PrefeituraPublica, ProtocoloRepository, Requerente,
 } from "../../application/ports/ProtocoloRepository";
 
@@ -83,6 +84,24 @@ const SQL = {
             OR r.documento LIKE $6 || '%')
      ORDER BY p.data_abertura DESC, p.id
      LIMIT $2 OFFSET $3`,
+
+  buscarAtendimento: `
+    SELECT p.id, p.numero_protocolo AS "numeroProtocolo",
+           p.numero_processo_adm AS "numeroProcessoAdm", p.status,
+           p.data_abertura AS "dataAbertura", p.data_encerramento AS "dataEncerramento",
+           p.origem_atendimento AS "origemAtendimento",
+           p.descricao_pedido AS "descricaoPedido",
+           a.nome AS "assuntoNome", a.prazo_dias AS "prazoDias",
+           s.nome AS "setorAtualNome",
+           r.nome AS "requerenteNome", r.documento AS "requerenteDocumento",
+           r.tipo AS "requerenteTipo",
+           r.contato_email AS "requerenteEmail", r.contato_telefone AS "requerenteTelefone"
+      FROM processo p
+      JOIN requerente r ON r.id = p.requerente_id
+      LEFT JOIN assunto_protocolo a ON a.id = p.assunto_id
+      LEFT JOIN setor s ON s.id = p.setor_atual_id
+     WHERE p.orgao_id = $1 AND p.id = $2
+       AND p.tipo_processo = 'ATENDIMENTO_EXTERNO'`,
 
   prefeituraPorCnpj: `
     SELECT id, nome, municipio, uf FROM orgao WHERE cnpj = $1 AND ativo`,
@@ -279,6 +298,11 @@ export class PostgresProtocoloRepository implements ProtocoloRepository {
 
   processoDoRequerente = async (numeroProtocolo: string, documento: string) => {
     const { rows } = await pool.query(SQL.processoDoRequerente, [numeroProtocolo, documento]);
+    return rows[0] ?? null;
+  };
+
+  buscarAtendimento = async (orgaoId: string, id: string): Promise<AtendimentoDetalhe | null> => {
+    const { rows } = await pool.query(SQL.buscarAtendimento, [orgaoId, id]);
     return rows[0] ?? null;
   };
 

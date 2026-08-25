@@ -88,7 +88,7 @@ export const PublicRequestForm = ({
           />
           <div style={{ marginTop: "14px" }}>
             <Link
-              href={`/protocolo?protocolo=${encodeURIComponent(aberto.protocolo)}&documento=${encodeURIComponent(aberto.documento)}`}
+              href={`/cidadao?protocolo=${encodeURIComponent(aberto.protocolo)}&documento=${encodeURIComponent(aberto.documento)}`}
             >
               <Button type="button">Acompanhar este pedido</Button>
             </Link>

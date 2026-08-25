@@ -5,6 +5,7 @@ import type { ModuleName } from "@/features/auth/types";
 // Rotas que só existem quando o módulo está habilitado para a prefeitura.
 const moduleRoutes: Record<string, ModuleName> = {
   "/processos": "PROCESSOS",
+  "/protocolo": "PROTOCOLO",
   "/patrimonio": "PATRIMONIO",
   "/frotas": "FROTAS",
   "/almoxarifado": "ALMOXARIFADO",
@@ -29,14 +30,15 @@ export default auth((request) => {
 });
 
 export const config = {
-  // `conferencia` fora do matcher: é a página que o QR do documento abre, e
-  // quem confere é o cidadão ou o fornecedor, que não tem login aqui.
+  // `conferencia` e `cidadao` fora do matcher: são as páginas que o cidadão
+  // abre — o QR do documento e o acompanhamento do protocolo. Ninguém ali tem
+  // login. `/protocolo` é o sistema interno do balcão e exige sessão.
   //
   // Cada exceção termina em `(?:/|$)` de propósito. Sem isso, o prefixo solto
   // `admin` também casava `/administracao/...`, e o sistema inteiro de
   // administração ficava fora da checagem de sessão do proxy — só as guardas
   // de página seguravam. Página nova que esquecesse a guarda ficaria aberta.
   matcher: [
-    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|protocolo(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|api/publico(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|cidadao(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|api/publico(?:/|$)|_next/static|_next/image|favicon.ico).*)",
   ],
 };

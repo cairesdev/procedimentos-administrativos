@@ -443,3 +443,38 @@ Na tela do processo, o servidor vê a exigência, a resposta e quantos documento
 quando o prazo venceu sem resposta. No acompanhamento público, o cidadão vê o que falta, escreve a
 resposta e anexa no mesmo lugar — o texto é enviado antes do arquivo, para que uma falha no upload
 não faça ele perder o que escreveu.
+
+## Protocolo virou sistema próprio
+
+Quem atende no balcão não precisa — e não deve — enxergar licitação, contrato e solicitação. O
+protocolo saiu de dentro de Processos e virou o quinto módulo contratável, ao lado de Frotas,
+Patrimônio e Almoxarifado (migration `0019`).
+
+| Antes | Agora |
+| --- | --- |
+| `/processos/protocolo` | `/protocolo/atendimentos` (workspace próprio) |
+| `/administracao/assuntos` | `/protocolo/assuntos` |
+| `/protocolo` (público) | `/cidadao` — acompanhar e abrir |
+| Rota da API sem módulo | `resolveTenant("PROTOCOLO")` |
+
+**O papel `PROTOCOLO` foi enxugado** para `protocol:read`, `protocol:serve` e `documents:issue`.
+Ele usava `READ_ONLY`, que carrega contratos, licitações, fornecedores e solicitações junto — tudo
+fora da atribuição de quem atende. Uma verificação automática recusa qualquer permissão de outro
+módulo nesse papel.
+
+**Detalhe do atendimento dentro do protocolo** (`/protocolo/atendimentos/[id]`): sem ele, o
+atendente abriria o pedido e nunca mais o veria, já que a tela do processo pertence ao módulo que
+ele não tem. Mostra o pedido, o requerente, as exigências e os documentos emitidos — a tramitação
+interna continua sendo do setor, no módulo de Processos.
+
+**Prefeitura que já usa Processos ganha Protocolo habilitado na migration.** O atendimento externo
+nasceu dentro de Processos; sem essa linha, a separação tiraria do ar um recurso em uso.
+
+### Pego na verificação
+
+- **O painel do produto não oferecia o módulo novo.** `MODULES` no `/admin` tinha sua própria
+  lista, que não acompanhou o `CHECK` do banco nem o `ModuleName` — nenhuma prefeitura conseguiria
+  contratar Protocolo. Agora há uma checagem que compara as quatro listas (banco, API, tipo do web
+  e painel) e falha se divergirem.
+- **O harness do proxy acusou a inversão de rota** (`/protocolo` deixou de ser público,
+  `/cidadao` passou a ser) — exatamente o que ele existe para pegar.

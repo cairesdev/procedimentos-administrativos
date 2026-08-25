@@ -1,6 +1,6 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { withPage, type Page } from "@/shared/api/pagination";
-import type { ProtocolSubject, Requirement, ServiceRecord } from "./types";
+import type { ProtocolSubject, Requirement, ServiceDetail, ServiceRecord } from "./types";
 
 export const listSubjects = (apenasAtivos = false) =>
   apiRequest<ProtocolSubject[]>(`/protocolo/assuntos${apenasAtivos ? "?ativos=true" : ""}`);
@@ -20,3 +20,6 @@ export const listServiceRecords = (
 
 export const listRequirements = (processoId: string) =>
   apiRequest<Requirement[]>(`/protocolo/processos/${processoId}/exigencias`);
+
+export const findServiceRecord = (id: string) =>
+  apiRequest<ServiceDetail>(`/protocolo/atendimentos/${id}`);

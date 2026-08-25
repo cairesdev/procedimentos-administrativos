@@ -18,7 +18,7 @@ export const createSubject = async (input: SubjectInput) =>
       method: "POST",
       body: { ...dados, descricao: vazio(dados.descricao), setorId: vazio(dados.setorId) },
     });
-    revalidatePath("/administracao/assuntos");
+    revalidatePath("/protocolo/assuntos");
   }, "Assunto criado");
 
 export const updateSubject = async (id: string, input: SubjectInput) =>
@@ -28,13 +28,13 @@ export const updateSubject = async (id: string, input: SubjectInput) =>
       method: "PUT",
       body: { ...dados, descricao: vazio(dados.descricao), setorId: vazio(dados.setorId) },
     });
-    revalidatePath("/administracao/assuntos");
+    revalidatePath("/protocolo/assuntos");
   }, "Assunto atualizado");
 
 export const deleteSubject = async (id: string) =>
   runAction(async () => {
     await apiRequest(`/protocolo/assuntos/${id}`, { method: "DELETE" });
-    revalidatePath("/administracao/assuntos");
+    revalidatePath("/protocolo/assuntos");
   }, "Assunto excluído");
 
 /**
@@ -63,8 +63,8 @@ export const openService = async (input: ServiceInput) => {
         },
       },
     );
-    revalidatePath("/processos/protocolo");
-    destino = `/processos/fila/${id}`;
+    revalidatePath("/protocolo/atendimentos");
+    destino = `/protocolo/atendimentos/${id}`;
   }, "Atendimento aberto");
 
   // Fora do runAction: `redirect` funciona lançando e viraria falha da ação.
@@ -79,6 +79,7 @@ export const createRequirement = async (processoId: string, input: RequirementIn
       method: "POST",
       body: dados,
     });
+    revalidatePath(`/protocolo/atendimentos/${processoId}`);
     revalidatePath(`/processos/fila/${processoId}`);
   }, "Exigência registrada");
 
@@ -93,5 +94,6 @@ export const cancelRequirement = async (
       method: "POST",
       body: dados,
     });
+    revalidatePath(`/protocolo/atendimentos/${processoId}`);
     revalidatePath(`/processos/fila/${processoId}`);
   }, "Exigência cancelada");

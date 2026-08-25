@@ -90,6 +90,16 @@ export type NovoAtendimento = {
   departamentoAtualId?: string;
 };
 
+/** Detalhe do atendimento visto de dentro do próprio protocolo. */
+export type AtendimentoDetalhe = AtendimentoResumo & {
+  descricaoPedido: string | null;
+  prazoDias: number | null;
+  dataEncerramento: string | null;
+  requerenteEmail: string | null;
+  requerenteTelefone: string | null;
+  requerenteTipo: string;
+};
+
 export type Exigencia = {
   id: string;
   processoId: string;
@@ -177,6 +187,7 @@ export interface ProtocoloRepository {
     documento: string,
   ): Promise<ProcessoDoRequerente | null>;
 
+  buscarAtendimento(orgaoId: string, id: string): Promise<AtendimentoDetalhe | null>;
   listarExigencias(orgaoId: string, processoId: string): Promise<Exigencia[]>;
   buscarExigencia(id: string): Promise<Exigencia | null>;
   criarExigencia(dados: NovaExigencia, prazoLimite: string | null): Promise<string>;

@@ -7,7 +7,7 @@ import { Alert, Badge, Card, PageHeader, Table } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
 
 export default async function SubjectsPage() {
-  const viewer = await requirePermission("sectors:write");
+  const viewer = await requirePermission("protocol:manage", "PROTOCOLO");
   const [assuntos, setores] = await Promise.all([listSubjects(), listSectors()]);
 
   return (
@@ -61,7 +61,7 @@ export default async function SubjectsPage() {
                 <SubjectRowActions
                   assunto={assunto}
                   setores={setores}
-                  canWrite={viewer.can("sectors:write")}
+                  canWrite={viewer.can("protocol:manage")}
                 />
               </td>
             </tr>
