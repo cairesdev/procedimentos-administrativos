@@ -1,12 +1,15 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { calcularValorSolicitado } from "../../domain/solicitacao/CalculadoraValorItem";
+import type { ContratoRepository } from "../ports/ContratoRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
+import type { UsuarioRepository } from "../ports/UsuarioRepository";
 import type { ItemSolicitado, SolicitacaoRepository } from "../ports/SolicitacaoRepository";
 
 export type MontarRascunhoEntrada = {
   orgaoId: string;
   solicitacaoId?: string;
   unidadeSolicitanteId: string;
+  usuarioId: string;
   itens: ItemSolicitado[];
 };
 
@@ -14,6 +17,8 @@ export type MontarRascunhoEntrada = {
 export class MontarRascunhoSolicitacao {
   constructor(
     private readonly solicitacoes: SolicitacaoRepository,
+    private readonly contratos: ContratoRepository,
+    private readonly usuarios: UsuarioRepository,
     private readonly transacao: ExecutorDeTransacao,
   ) {}
 
@@ -21,6 +26,8 @@ export class MontarRascunhoSolicitacao {
     if (dados.itens.length === 0) {
       throw new ErroDeNegocio("Solicitação precisa de ao menos um item");
     }
+
+    await this.garantirQuePodePelaUnidade(dados.usuarioId, dados.unidadeSolicitanteId);
 
     const id =
       dados.solicitacaoId ??
@@ -40,6 +47,21 @@ export class MontarRascunhoSolicitacao {
         dados.itens.map((i) => i.itemId),
         tx,
       );
+      // O contrato precisa estar destinado à unidade que pede. A tela já
+      // filtra, mas quem chama a API direto passaria por cima e consumiria
+      // saldo de contrato de outra unidade.
+      const contratos = [...new Set(itensContrato.map((item) => item.contratoId))];
+      const foraDaUnidade = await this.contratos.contratosForaDaUnidade(
+        dados.orgaoId, contratos, dados.unidadeSolicitanteId,
+      );
+      if (foraDaUnidade.length > 0) {
+        throw new ErroDeNegocio(
+          `Contrato não destinado a esta unidade: ${foraDaUnidade.join(", ")}`,
+          422,
+          { contratos: foraDaUnidade },
+        );
+      }
+
       return dados.itens.map((pedido) => {
         const item = itensContrato.find((c) => c.id === pedido.itemId);
         if (!item) throw new NaoEncontrado(`Item ${pedido.itemId} não encontrado nos contratos do órgão`);
@@ -53,5 +75,30 @@ export class MontarRascunhoSolicitacao {
 
     await this.solicitacoes.substituirItens(id, itensComValor);
     return { id };
+  };
+
+  /**
+   * Quem tem lotação de unidade só pede pela unidade dele. Quem é de setor
+   * (compras, protocolo) segue pedindo por qualquer uma — é o trabalho deles
+   * atender várias unidades.
+   */
+  private garantirQuePodePelaUnidade = async (
+    usuarioId: string,
+    unidadeSolicitanteId: string,
+  ): Promise<void> => {
+    const perfil = await this.usuarios.buscarPerfil(usuarioId);
+    if (!perfil) throw new NaoEncontrado("Usuário não encontrado");
+
+    const unidadesDaLotacao = perfil.lotacoes
+      .map((lotacao) => lotacao.unidadeId)
+      .filter((id): id is string => Boolean(id));
+
+    if (unidadesDaLotacao.length === 0) return;
+    if (unidadesDaLotacao.includes(unidadeSolicitanteId)) return;
+
+    throw new ErroDeNegocio(
+      "Você só pode solicitar em nome da unidade em que está lotado",
+      403,
+    );
   };
 }

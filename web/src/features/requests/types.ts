@@ -51,6 +51,9 @@ export type RequestContract = {
   fornecedorTelefone: string | null;
   origem: "LICITACAO" | "ATA";
   origemNumero: string | null;
+  origemId: string | null;
+  licitacaoDaAtaId: string | null;
+  licitacaoDaAtaNumero: string | null;
 };
 
 export type RequestDetail = RequestSummary & {

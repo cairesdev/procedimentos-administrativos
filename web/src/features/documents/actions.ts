@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { apiRequest } from "@/shared/api/http-client";
 import { runAction } from "@/shared/api/action-result";
 import {
-  cancelDocumentSchema, templateSchema,
-  type CancelDocumentInput, type TemplateInput,
+  cancelDocumentSchema, newTemplateSchema, templateSchema,
+  type CancelDocumentInput, type NewTemplateInput, type TemplateInput,
 } from "./schemas";
 
 /**
@@ -56,3 +56,29 @@ export const restoreDefaultTemplate = async (tipo: string) =>
     revalidatePath("/administracao/documentos");
     revalidatePath(`/administracao/documentos/${tipo}`);
   }, "Modelo padrão restaurado");
+
+/** Peça nova, criada pela prefeitura. O tipo sai do nome, na API. */
+export const createTemplate = async (input: NewTemplateInput) => {
+  let destino = "";
+
+  const resultado = await runAction(async () => {
+    const body = newTemplateSchema.parse(input);
+    const { tipo } = await apiRequest<{ id: string; tipo: string }>("/documentos/modelos", {
+      method: "POST",
+      body,
+    });
+    revalidatePath("/administracao/documentos");
+    destino = `/administracao/documentos/${tipo}`;
+  }, "Documento criado");
+
+  // Fora do runAction: `redirect` funciona lançando e seria lido como falha.
+  if (destino) redirect(destino);
+  return resultado;
+};
+
+/** Exclui de vez — só peça criada pela própria prefeitura. */
+export const deleteTemplate = async (tipo: string) =>
+  runAction(async () => {
+    await apiRequest(`/documentos/modelos/${tipo}/excluir`, { method: "DELETE" });
+    revalidatePath("/administracao/documentos");
+  }, "Documento excluído");

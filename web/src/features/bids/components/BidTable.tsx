@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge, Table, numericCell } from "@/shared/ui/layout";
 import { humanize, toCurrency, toDate } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
@@ -26,7 +27,11 @@ export const BidTable = ({
   >
     {bids.map((bid) => (
       <tr key={bid.id}>
-        <td>{bid.numero}</td>
+        <td>
+          <Link href={`/processos/licitacoes/${bid.id}`} style={{ color: "var(--acao)" }}>
+            {bid.numero}
+          </Link>
+        </td>
         <td title={bid.objeto}>{bid.objeto.slice(0, 60)}</td>
         <td>
           <Badge tone="accent">{humanize(bid.modalidade)}</Badge>

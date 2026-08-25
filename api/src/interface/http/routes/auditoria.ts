@@ -13,8 +13,11 @@ const filtroSchema = z.object({
 
 export const auditoriaRouter = Router();
 
-// Trilha de auditoria: leitura restrita a quem fiscaliza ou administra.
-auditoriaRouter.get("/", exigirPapel("ADMIN", "GESTOR", "CONTROLADORIA"), async (req, res, next) => {
+// Trilha de auditoria: só o ADMIN da prefeitura. A trilha mostra o que cada
+// servidor fez, em todos os módulos — é registro de conduta, não relatório
+// operacional, e ver o trabalho alheio não é atribuição de gestor nem de
+// controladoria.
+auditoriaRouter.get("/", exigirPapel("ADMIN"), async (req, res, next) => {
   try {
     const filtro = filtroSchema.parse(req.query);
     res.json(

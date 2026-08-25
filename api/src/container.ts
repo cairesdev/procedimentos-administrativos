@@ -90,7 +90,9 @@ export const container = {
   editarContrato: new EditarContrato(contratos, executarEmTransacao),
   criarLicitacao: new CriarLicitacao(licitacoes),
   criarContrato: new CriarContrato(contratos, auditoria, executarEmTransacao),
-  montarRascunho: new MontarRascunhoSolicitacao(solicitacoes, executarEmTransacao),
+  montarRascunho: new MontarRascunhoSolicitacao(
+    solicitacoes, contratos, usuarios, executarEmTransacao,
+  ),
   enviarSolicitacao: new EnviarSolicitacao(solicitacoes, processos, usuarios, numeracao, auditoria, executarEmTransacao),
   cancelarSolicitacao: new CancelarSolicitacao(solicitacoes, processos, auditoria, executarEmTransacao),
   tramitacao,

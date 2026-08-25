@@ -344,3 +344,33 @@ despesa, fonte, parcelas, nota fiscal), itens (tabela), totais (`{{valorTotal}}`
    manter os padrões.
 3. **Pendente.** Demais módulos: como o motor é genérico, entra modelo global novo por
    migration — sem código.
+
+## Solicitação por unidade
+
+- **Lotação de unidade prende o pedido à unidade.** Lotação de setor não prende: compras e
+  protocolo atendem várias unidades, e travá-los quebraria o trabalho que já fazem hoje.
+- **Contrato só aparece para a unidade a que foi destinado** (`contrato_unidade`). O vínculo estava
+  modelado desde o começo e nunca era consultado — a tela prometia o filtro e não o aplicava.
+- **A regra vale na API, não só na tela.** Quem chama a API direto consumiria saldo de contrato de
+  outra unidade.
+- **Contrato antes dos itens.** Nada de listar item de contrato que o usuário nem escolheu:
+  a montagem é unidade → contrato → itens.
+
+## Documento criado pela prefeitura
+
+- **`escopo` separado de `tipo`.** O escopo (processo, processo+contrato, ordem, solicitação) diz
+  de onde a peça fala e determina marcadores e busca de dados; o tipo é só a identidade. Sem essa
+  separação, peça nova exigiria código — era o `tipo` que decidia tudo.
+- **O escopo é escolhido na criação e não muda depois.** Trocá-lo invalidaria os marcadores já
+  escritos no corpo e, pior, mudaria silenciosamente o significado de peças já emitidas naquele
+  modelo.
+- **O identificador sai do nome** ("Termo de recebimento" → `TERMO_DE_RECEBIMENTO`), com conflito
+  barrado contra o global e contra os da própria prefeitura.
+- **Personalizada exclui; padrão restaura.** Peça criada pela prefeitura não tem texto de fábrica
+  atrás — restaurar não faz sentido e excluir é o caminho. Já a personalização de um modelo
+  existente sempre pode voltar ao padrão.
+
+## Auditoria
+
+- **Só o ADMIN da prefeitura lê a trilha.** É registro de conduta de cada servidor, em todos os
+  módulos — ver o trabalho alheio não é atribuição de gestor nem de controladoria.

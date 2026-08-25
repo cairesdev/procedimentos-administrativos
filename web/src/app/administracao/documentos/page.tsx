@@ -1,18 +1,29 @@
 import Link from "next/link";
-import { listTemplates } from "@/features/documents/queries";
+import { listScopes, listTemplates } from "@/features/documents/queries";
+import { NewTemplateForm } from "@/features/documents/components/NewTemplateForm";
 import { requirePermission } from "@/shared/auth/guards";
 import { Alert, Badge, Card, PageHeader, Table } from "@/shared/ui/layout";
+import { ModalTrigger } from "@/shared/ui/Modal";
 import { toDateTime } from "@/shared/ui/labels";
 
 export default async function DocumentTemplatesPage() {
   await requirePermission("documents:template");
-  const modelos = await listTemplates();
+  const [modelos, escopos] = await Promise.all([listTemplates(), listScopes()]);
 
   return (
     <>
       <PageHeader
         title="Modelos de documento"
         subtitle="O texto de cada peça emitida pelos sistemas desta prefeitura"
+        action={
+          <ModalTrigger
+            label="Novo documento"
+            title="Novo documento"
+            description="Uma peça própria desta prefeitura, além das que já vêm prontas."
+          >
+            <NewTemplateForm escopos={escopos} />
+          </ModalTrigger>
+        }
       />
 
       <div style={{ marginBottom: "14px" }}>
@@ -44,8 +55,10 @@ export default async function DocumentTemplatesPage() {
               </td>
               <td>{modelo.titulo}</td>
               <td>
-                {modelo.origem === "PREFEITURA" ? (
-                  <Badge tone="accent">personalizado</Badge>
+                {modelo.personalizado ? (
+                  <Badge tone="accent">criado aqui</Badge>
+                ) : modelo.origem === "PREFEITURA" ? (
+                  <Badge tone="accent">texto alterado</Badge>
                 ) : (
                   <Badge tone="neutral">padrão do sistema</Badge>
                 )}

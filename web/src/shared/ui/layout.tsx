@@ -138,10 +138,18 @@ export const Steps = ({
   </ol>
 );
 
-export const SummaryGrid = ({ items }: { items: { label: string; value: ReactNode }[] }) => (
+export const SummaryGrid = ({
+  items,
+}: {
+  /** `wide` ocupa a linha inteira — objeto de contrato não cabe numa coluna. */
+  items: { label: string; value: ReactNode; wide?: boolean }[];
+}) => (
   <div className={styles.summary}>
     {items.map((item) => (
-      <div key={item.label} className={styles.summary_item}>
+      <div
+        key={item.label}
+        className={`${styles.summary_item} ${item.wide ? styles.summary_wide : ""}`}
+      >
         <p className={styles.summary_label}>{item.label}</p>
         <p className={styles.summary_value}>{item.value}</p>
       </div>

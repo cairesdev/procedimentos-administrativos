@@ -6,10 +6,14 @@ export type ModeloDeDocumento = {
   orgaoId: string | null;
   modulo: string;
   tipo: string;
+  /** De onde a peça fala: decide marcadores e busca de dados. */
+  escopo: string;
   nome: string;
   titulo: string;
   corpo: string;
   ativo: boolean;
+  /** Criado pela prefeitura, sem padrão do produto por trás. */
+  personalizado: boolean;
   atualizadoEm: string;
 };
 
@@ -22,10 +26,12 @@ export type NovoModelo = {
   orgaoId: string | null;
   modulo: string;
   tipo: string;
+  escopo: string;
   nome: string;
   titulo: string;
   corpo: string;
   ativo: boolean;
+  personalizado: boolean;
 };
 
 export type DocumentoEmitido = {
@@ -80,10 +86,15 @@ export interface DocumentoRepository {
   resolverModelo(orgaoId: string, tipo: string): Promise<ModeloResolvido | null>;
   /** Todos os tipos disponíveis para o órgão, já resolvidos. */
   listarModelosResolvidos(orgaoId: string, modulo?: string): Promise<ModeloResolvido[]>;
+  /** Um tipo já existe para este órgão (global ou próprio)? */
+  tipoEmUso(orgaoId: string | null, tipo: string): Promise<boolean>;
   listarModelosGlobais(): Promise<ModeloDeDocumento[]>;
   buscarModelo(id: string): Promise<ModeloDeDocumento | null>;
   criarModelo(dados: NovoModelo): Promise<string>;
-  atualizarModelo(id: string, dados: Omit<NovoModelo, "orgaoId" | "modulo" | "tipo">): Promise<void>;
+  atualizarModelo(
+    id: string,
+    dados: Pick<NovoModelo, "nome" | "titulo" | "corpo" | "ativo">,
+  ): Promise<void>;
   /** Apagar a linha da prefeitura devolve o tipo ao modelo global. */
   removerModelo(id: string): Promise<void>;
 

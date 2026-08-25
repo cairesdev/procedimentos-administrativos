@@ -1,9 +1,7 @@
 "use client";
 
-import { Card } from "@/shared/ui/layout";
 import { humanize, toCurrency } from "@/shared/ui/labels";
 import type { ContractItem } from "@/features/contracts/types";
-import type { ContractWithItems } from "./RequestBuilder";
 import styles from "./ItemPicker.module.css";
 
 const unitLabel = (item: ContractItem) =>
@@ -15,16 +13,21 @@ const lineValue = (item: ContractItem, quantity: number) => {
   return quantity * item.valorUnitario;
 };
 
+/**
+ * Itens de UM contrato. O cabeçalho com número e fornecedor fica na linha do
+ * contrato, que é quem abre esta lista — repetir aqui só empurraria a tabela
+ * para baixo.
+ */
 export const ItemPicker = ({
-  contract,
-  chosen,
+  itens,
+  escolhas,
   onChange,
 }: {
-  contract: ContractWithItems;
-  chosen: Record<string, number>;
-  onChange: (itemId: string, quantity: number) => void;
+  itens: ContractItem[];
+  escolhas: Record<string, number>;
+  onChange: (item: ContractItem, quantidade: number) => void;
 }) => (
-  <Card title={`Contrato ${contract.numero} · ${contract.fornecedor}`} padded={false}>
+  <div className={styles.wrapper}>
     <table className={styles.table}>
       <thead>
         <tr>
@@ -36,8 +39,8 @@ export const ItemPicker = ({
         </tr>
       </thead>
       <tbody>
-        {contract.itens.map((item) => {
-          const quantity = chosen[item.id] ?? 0;
+        {itens.map((item) => {
+          const quantity = escolhas[item.id] ?? 0;
           const exceeded = quantity > item.saldoDisponivel;
 
           return (
@@ -72,7 +75,7 @@ export const ItemPicker = ({
                   className={`${styles.quantity} ${exceeded ? styles.quantity_invalid : ""}`}
                   value={quantity || ""}
                   placeholder="0"
-                  onChange={(event) => onChange(item.id, Number(event.target.value))}
+                  onChange={(event) => onChange(item, Number(event.target.value))}
                 />
                 {exceeded ? <span className={styles.error}>Acima do saldo</span> : null}
               </td>
@@ -84,5 +87,5 @@ export const ItemPicker = ({
         })}
       </tbody>
     </table>
-  </Card>
+  </div>
 );

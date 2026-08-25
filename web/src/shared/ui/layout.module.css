@@ -228,3 +228,8 @@
   font-size: 14px;
   margin-top: 2px;
 }
+
+/* Campo longo (objeto, resumo) ocupa a linha toda do resumo. */
+.summary_wide {
+  grid-column: 1 / -1;
+}

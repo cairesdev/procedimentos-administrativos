@@ -1,14 +1,26 @@
-export const DOCUMENT_TYPES = [
-  "TERMO_AUTORIZACAO",
-  "DESPACHO",
-  "DESPACHO_FISCAL",
-  "RELATORIO_CONTROLADORIA",
-  "PARECER",
+/**
+ * O tipo deixou de ser lista fechada: a prefeitura cria peças próprias. Quem
+ * decide os marcadores e a origem dos dados é o escopo.
+ */
+export type DocumentType = string;
+
+export const DOCUMENT_SCOPES = [
+  "PROCESSO",
+  "PROCESSO_CONTRATO",
   "ORDEM_FORNECIMENTO",
-  "COMPROVANTE_SOLICITACAO",
+  "SOLICITACAO",
 ] as const;
 
-export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+export type DocumentScope = (typeof DOCUMENT_SCOPES)[number];
+
+export type ScopeOption = {
+  escopo: DocumentScope;
+  rotulo: string;
+  marcadores: MarkerCatalog;
+};
+
+/** Escopos cuja referência é o processo — são os emitidos na tela dele. */
+export const PROCESS_SCOPES: DocumentScope[] = ["PROCESSO", "PROCESSO_CONTRATO"];
 
 /** Modelo em vigor para um tipo, com a origem para a tela mostrar. */
 export type DocumentTemplate = {
@@ -16,10 +28,13 @@ export type DocumentTemplate = {
   orgaoId: string | null;
   modulo: string;
   tipo: DocumentType;
+  escopo: DocumentScope;
   nome: string;
   titulo: string;
   corpo: string;
   ativo: boolean;
+  /** Criado pela prefeitura: não há padrão do produto para restaurar. */
+  personalizado: boolean;
   atualizadoEm: string;
   origem: "GLOBAL" | "PREFEITURA";
 };
@@ -58,14 +73,4 @@ export type MarkerCatalog = {
   listas: Record<string, string[]>;
 };
 
-/**
- * Tipos que o usuário emite a partir da tela do processo. A referência é o
- * próprio processo; ordem e comprovante saem das telas deles.
- */
-export const PROCESS_DOCUMENT_TYPES: DocumentType[] = [
-  "TERMO_AUTORIZACAO",
-  "DESPACHO",
-  "DESPACHO_FISCAL",
-  "RELATORIO_CONTROLADORIA",
-  "PARECER",
-];
+

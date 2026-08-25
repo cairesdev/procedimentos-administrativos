@@ -51,7 +51,11 @@ const COLUNAS_PROCESSO = `
   END AS "diasParaVencer"`;
 
 const SQL = {
-  buscarProcesso: `SELECT ${COLUNAS_PROCESSO} FROM processo p WHERE p.orgao_id = $1 AND p.id = $2`,
+  buscarProcesso: `
+    SELECT ${COLUNAS_PROCESSO},
+           -- O detalhe do processo mostra a solicitação que o originou.
+           (SELECT s.id FROM solicitacao s WHERE s.processo_id = p.id) AS "solicitacaoId"
+      FROM processo p WHERE p.orgao_id = $1 AND p.id = $2`,
   // Os contadores saem por janela sobre a fila inteira, na mesma ida ao
   // banco: a página traz 25 linhas, mas o alerta fala da fila toda.
   listarFila: `

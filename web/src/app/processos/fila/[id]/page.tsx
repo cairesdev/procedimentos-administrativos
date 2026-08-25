@@ -9,11 +9,13 @@ import { listSectors } from "@/features/sectors/queries";
 import { getWorkflow } from "@/features/workflows/queries";
 import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
 import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
-import { PROCESS_DOCUMENT_TYPES } from "@/features/documents/types";
+import { PROCESS_SCOPES } from "@/features/documents/types";
+import { findRequest } from "@/features/requests/queries";
+import { RequestDetailView } from "@/features/requests/components/RequestDetailView";
 import { requirePermission } from "@/shared/auth/guards";
 import { deadlineOf } from "@/features/processes/deadline";
 import { humanize, toDate } from "@/shared/ui/labels";
-import { Badge, Card, Columns, PageHeader, Stack, SummaryGrid } from "@/shared/ui/layout";
+import { Alert, Badge, Card, Columns, PageHeader, Stack, SummaryGrid } from "@/shared/ui/layout";
 
 type ProcessPageProps = { params: Promise<{ id: string }> };
 
@@ -34,6 +36,12 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
 
   // O override de destino é configurado por tipo de processo.
   const workflow = await getWorkflow(process.tipoProcesso);
+
+  // O processo nasce de uma solicitação: quem despacha precisa ver o que foi
+  // pedido, de qual contrato e por qual valor — sem sair da tela.
+  const solicitacao = process.solicitacaoId
+    ? await findRequest(process.solicitacaoId).catch(() => null)
+    : null;
 
   const currentSector = sectors.find((sector) => sector.id === process.setorAtualId);
   const isOpen = process.status === "ABERTO" || process.status === "TRAMITANDO";
@@ -64,9 +72,22 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
       />
 
       <Columns>
-        <Card title="Tramitação">
-          <ProcessTimeline dispatches={process.despachos} />
-        </Card>
+        <Stack>
+          <Card title="Tramitação">
+            <ProcessTimeline dispatches={process.despachos} />
+          </Card>
+
+          {solicitacao ? (
+            <RequestDetailView request={solicitacao} />
+          ) : (
+            <Card title="Solicitação">
+              <Alert tone="info">
+                Este processo não veio de uma solicitação de itens — foi aberto direto no
+                protocolo.
+              </Alert>
+            </Card>
+          )}
+        </Stack>
 
         <Stack>
           <Card title="Situação">
@@ -114,9 +135,9 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
               <IssueDocumentPanel
                 referenciaId={process.id}
                 voltarPara={`/processos/fila/${process.id}`}
-                modelos={modelos.filter((modelo) =>
-                  PROCESS_DOCUMENT_TYPES.includes(modelo.tipo),
-                )}
+                // Só peças cujo escopo fala do processo: ordem e comprovante
+                // são emitidos nas telas deles, com outra referência.
+                modelos={modelos.filter((modelo) => PROCESS_SCOPES.includes(modelo.escopo))}
                 emitidos={emitidos}
                 podeEmitir={isOpen && viewer.can("documents:issue")}
               />

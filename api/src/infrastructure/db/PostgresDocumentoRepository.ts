@@ -9,8 +9,8 @@ import type {
 } from "../../application/ports/DocumentoRepository";
 
 const COLUNAS_MODELO = `
-  id, orgao_id AS "orgaoId", modulo, tipo, nome, titulo, corpo, ativo,
-  updated_at AS "atualizadoEm"`;
+  id, orgao_id AS "orgaoId", modulo, tipo, escopo, nome, titulo, corpo, ativo,
+  personalizado, updated_at AS "atualizadoEm"`;
 
 const COLUNAS_EMITIDO = `
   id, orgao_id AS "orgaoId", modulo, tipo, codigo, titulo, corpo,
@@ -42,8 +42,12 @@ const SQL = {
      WHERE orgao_id IS NULL ORDER BY modulo, nome`,
   buscarModelo: `SELECT ${COLUNAS_MODELO} FROM documento_modelo WHERE id = $1`,
   criarModelo: `
-    INSERT INTO documento_modelo (orgao_id, modulo, tipo, nome, titulo, corpo, ativo)
-    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    INSERT INTO documento_modelo
+      (orgao_id, modulo, tipo, escopo, nome, titulo, corpo, ativo, personalizado)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+  tipoEmUso: `
+    SELECT 1 FROM documento_modelo
+     WHERE tipo = $2 AND ($1::uuid IS NULL OR orgao_id = $1 OR orgao_id IS NULL)`,
   atualizarModelo: `
     UPDATE documento_modelo
        SET nome = $2, titulo = $3, corpo = $4, ativo = $5, updated_at = now()
@@ -108,14 +112,20 @@ export class PostgresDocumentoRepository implements DocumentoRepository {
 
   criarModelo = async (dados: NovoModelo): Promise<string> => {
     const { rows } = await pool.query(SQL.criarModelo, [
-      dados.orgaoId, dados.modulo, dados.tipo, dados.nome, dados.titulo, dados.corpo, dados.ativo,
+      dados.orgaoId, dados.modulo, dados.tipo, dados.escopo,
+      dados.nome, dados.titulo, dados.corpo, dados.ativo, dados.personalizado,
     ]);
     return rows[0].id;
   };
 
+  tipoEmUso = async (orgaoId: string | null, tipo: string): Promise<boolean> => {
+    const { rowCount } = await pool.query(SQL.tipoEmUso, [orgaoId, tipo]);
+    return (rowCount ?? 0) > 0;
+  };
+
   atualizarModelo = async (
     id: string,
-    dados: Omit<NovoModelo, "orgaoId" | "modulo" | "tipo">,
+    dados: Pick<NovoModelo, "nome" | "titulo" | "corpo" | "ativo">,
   ): Promise<void> => {
     await pool.query(SQL.atualizarModelo, [id, dados.nome, dados.titulo, dados.corpo, dados.ativo]);
   };

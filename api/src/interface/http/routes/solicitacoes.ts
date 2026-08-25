@@ -13,6 +13,7 @@ solicitacoesRouter.post("/", async (req, res, next) => {
     const resultado = await container.montarRascunho.executar({
       ...dados,
       orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
     });
     res.status(201).json(resultado);
   } catch (error) {
@@ -26,6 +27,7 @@ solicitacoesRouter.put("/:id/itens", async (req, res, next) => {
     const resultado = await container.montarRascunho.executar({
       ...dados,
       orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
       solicitacaoId: req.params.id,
     });
     res.json(resultado);

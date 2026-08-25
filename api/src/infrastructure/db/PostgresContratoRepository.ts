@@ -5,6 +5,8 @@ import {
 } from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
+  ContratoCompleto,
+  ContratoParaSolicitacao,
   ContratoDetalhe,
   ContratoRepository,
   ContratoResumo,
@@ -29,11 +31,78 @@ const SQL = {
     SELECT id, numero, fornecedor_id AS "fornecedorId",
            data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal",
            ${TOTAL_DA_JANELA}
-      FROM contrato
-     WHERE orgao_id = $1
+      FROM contrato c
+     WHERE c.orgao_id = $1
+       AND ($4::uuid IS NULL OR EXISTS (
+             SELECT 1 FROM contrato_unidade cu
+              WHERE cu.contrato_id = c.id AND cu.unidade_id = $4))
      ORDER BY data_inicio DESC, id
      LIMIT $2 OFFSET $3`,
+
+  // Detalhe: contrato, fornecedor e a origem (licitação direta ou ata, e a
+  // licitação que gerou a ata) numa consulta só.
+  buscarCompleto: `
+    SELECT c.id, c.numero, c.fornecedor_id AS "fornecedorId",
+           c.processo_id AS "processoId",
+           c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",
+           c.valor_total AS "valorTotal",
+           c.fiscal_nome_matricula AS "fiscalNomeMatricula",
+           f.razao_social AS "fornecedorRazaoSocial", f.documento AS "fornecedorDocumento",
+           CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS origem,
+           coalesce(c.ata_id, c.licitacao_id) AS "origemId",
+           coalesce(a.numero, l.numero) AS "origemNumero",
+           coalesce(a.objeto, l.objeto) AS "origemObjeto",
+           la.id AS "licitacaoDaAtaId", la.numero AS "licitacaoDaAtaNumero",
+           (SELECT count(DISTINCT si.solicitacao_id)
+              FROM solicitacao_item si
+              JOIN item i ON i.id = si.item_id
+             WHERE i.contrato_id = c.id) AS solicitacoes
+      FROM contrato c
+      JOIN fornecedor f ON f.id = c.fornecedor_id
+      LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
+      LEFT JOIN licitacao l ON l.id = c.licitacao_id
+      LEFT JOIN licitacao la ON la.id = a.licitacao_id
+     WHERE c.orgao_id = $1 AND c.id = $2`,
+
+  unidadesDoContrato: `
+    SELECT u.id, u.nome
+      FROM contrato_unidade cu
+      JOIN unidade u ON u.id = cu.unidade_id
+     WHERE cu.contrato_id = $1
+     ORDER BY u.nome`,
+
+  // Montagem da solicitação: vigente, com saldo e destinado à unidade. Sem
+  // isso, a tela oferecia contrato de outra unidade e o pedido só falhava na
+  // hora do envio.
+  listarParaSolicitacao: `
+    SELECT c.id, c.numero,
+           f.razao_social AS "fornecedorRazaoSocial",
+           c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",
+           CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS origem,
+           coalesce(a.numero, l.numero) AS "origemNumero",
+           count(i.id) FILTER (WHERE i.saldo_disponivel > 0) AS "itensDisponiveis"
+      FROM contrato c
+      JOIN fornecedor f ON f.id = c.fornecedor_id
+      LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
+      LEFT JOIN licitacao l ON l.id = c.licitacao_id
+      JOIN item i ON i.contrato_id = c.id
+     WHERE c.orgao_id = $1
+       AND (c.data_fim IS NULL OR c.data_fim >= current_date)
+       AND ($2::uuid IS NULL OR EXISTS (
+             SELECT 1 FROM contrato_unidade cu
+              WHERE cu.contrato_id = c.id AND cu.unidade_id = $2))
+     GROUP BY c.id, c.numero, f.razao_social, c.data_inicio, c.data_fim, a.numero, l.numero
+    HAVING count(i.id) FILTER (WHERE i.saldo_disponivel > 0) > 0
+     ORDER BY c.numero`,
   unidadeTemAcesso: `SELECT 1 FROM contrato_unidade WHERE contrato_id = $1 AND unidade_id = $2`,
+  contratosForaDaUnidade: `
+    SELECT c.numero
+      FROM contrato c
+     WHERE c.orgao_id = $1 AND c.id = ANY($2::uuid[])
+       AND NOT EXISTS (
+             SELECT 1 FROM contrato_unidade cu
+              WHERE cu.contrato_id = c.id AND cu.unidade_id = $3)
+     ORDER BY c.numero`,
   buscar: `
     SELECT id, numero, fornecedor_id AS "fornecedorId", processo_id AS "processoId",
            data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal"
@@ -109,11 +178,52 @@ export class PostgresContratoRepository implements ContratoRepository {
     return id;
   };
 
-  listar = async (orgaoId: string, paginacao: Paginacao): Promise<Pagina<ContratoResumo>> => {
+  listar = async (
+    orgaoId: string,
+    paginacao: Paginacao,
+    filtros: { unidadeId?: string } = {},
+  ): Promise<Pagina<ContratoResumo>> => {
     const { rows } = await pool.query(SQL.listar, [
-      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
+      orgaoId, paginacao.porPagina, deslocamentoDe(paginacao), filtros.unidadeId ?? null,
     ]);
     return montarPagina(rows, paginacao);
+  };
+
+  buscarCompleto = async (orgaoId: string, id: string): Promise<ContratoCompleto | null> => {
+    const { rows } = await pool.query(SQL.buscarCompleto, [orgaoId, id]);
+    const contrato = rows[0];
+    if (!contrato) return null;
+
+    const [unidades, itens] = await Promise.all([
+      pool.query(SQL.unidadesDoContrato, [id]),
+      this.listarItens(orgaoId, id),
+    ]);
+    return {
+      ...contrato,
+      solicitacoes: Number(contrato.solicitacoes),
+      unidades: unidades.rows,
+      itens,
+    };
+  };
+
+  listarParaSolicitacao = async (
+    orgaoId: string,
+    unidadeId?: string,
+  ): Promise<ContratoParaSolicitacao[]> => {
+    const { rows } = await pool.query(SQL.listarParaSolicitacao, [orgaoId, unidadeId ?? null]);
+    return rows.map((linha) => ({ ...linha, itensDisponiveis: Number(linha.itensDisponiveis) }));
+  };
+
+  contratosForaDaUnidade = async (
+    orgaoId: string,
+    contratoIds: string[],
+    unidadeId: string,
+  ): Promise<string[]> => {
+    if (contratoIds.length === 0) return [];
+    const { rows } = await pool.query(SQL.contratosForaDaUnidade, [
+      orgaoId, contratoIds, unidadeId,
+    ]);
+    return rows.map((linha) => String(linha.numero));
   };
 
   unidadeTemAcesso = async (contratoId: string, unidadeId: string): Promise<boolean> => {

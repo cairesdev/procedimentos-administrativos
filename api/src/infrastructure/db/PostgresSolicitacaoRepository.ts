@@ -95,13 +95,17 @@ const SQL = {
            f.documento AS "fornecedorDocumento", f.email AS "fornecedorEmail",
            f.telefone AS "fornecedorTelefone",
            CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS origem,
-           coalesce(a.numero, l.numero) AS "origemNumero"
+           coalesce(a.numero, l.numero) AS "origemNumero",
+           coalesce(c.ata_id, c.licitacao_id) AS "origemId",
+           -- Contrato por ata guarda o rastro até a licitação que a originou.
+           la.id AS "licitacaoDaAtaId", la.numero AS "licitacaoDaAtaNumero"
       FROM solicitacao_item si
       JOIN item i ON i.id = si.item_id
       JOIN contrato c ON c.id = i.contrato_id
       JOIN fornecedor f ON f.id = c.fornecedor_id
       LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
       LEFT JOIN licitacao l ON l.id = c.licitacao_id
+      LEFT JOIN licitacao la ON la.id = a.licitacao_id
      WHERE si.solicitacao_id = $1
      ORDER BY c.numero`,
   apagarItens: `DELETE FROM solicitacao_item WHERE solicitacao_id = $1`,

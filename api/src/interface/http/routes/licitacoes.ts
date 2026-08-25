@@ -45,3 +45,19 @@ licitacoesRouter.delete("/:id", async (req, res, next) => {
     next(error);
   }
 });
+
+/** Detalhe: a licitação e o que ela originou — atas e contratos. */
+licitacoesRouter.get("/:id", async (req, res, next) => {
+  try {
+    const licitacao = await container.licitacoes.buscarCompleta(
+      req.sessao!.orgaoId, req.params.id!,
+    );
+    if (!licitacao) {
+      res.status(404).json({ message: "Licitação não encontrada" });
+      return;
+    }
+    res.json(licitacao);
+  } catch (error) {
+    next(error);
+  }
+});

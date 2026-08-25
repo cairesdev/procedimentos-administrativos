@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import type { Supplier } from "@/features/suppliers/types";
@@ -43,7 +44,11 @@ export const ContractTable = ({
         const validity = validityTone(contract.dataFim);
         return (
           <tr key={contract.id}>
-            <td>{contract.numero}</td>
+            <td>
+              <Link href={`/processos/contratos/${contract.id}`} style={{ color: "var(--acao)" }}>
+                {contract.numero}
+              </Link>
+            </td>
             <td>{supplierName(contract.fornecedorId)}</td>
             <td>
               {toDate(contract.dataInicio)}

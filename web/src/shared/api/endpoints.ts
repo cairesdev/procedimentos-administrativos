@@ -11,6 +11,7 @@ export const endpoints = {
   priceRecordItems: (recordId: string) => `/atas/${recordId}/itens`,
   contracts: "/contratos",
   contractItems: (contractId: string) => `/contratos/${contractId}/itens`,
+  contractsForRequest: "/contratos/para-solicitacao",
   workflows: (processType: string) => `/fluxos/${processType}`,
   requests: "/solicitacoes",
   processes: "/processos",

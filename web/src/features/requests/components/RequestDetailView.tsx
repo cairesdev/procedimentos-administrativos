@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Alert, Badge, Card, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate, toDateTime, toDocument, humanize } from "@/shared/ui/labels";
 import { MEASUREMENT_LABELS, type RequestDetail } from "../types";
@@ -118,11 +119,42 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
                 { label: "CNPJ/CPF", value: toDocument(contrato.fornecedorDocumento) },
                 { label: "Contato", value: contrato.fornecedorEmail ?? contrato.fornecedorTelefone ?? "—" },
                 {
-                  label: "Origem",
-                  value: `${contrato.origem === "ATA" ? "Ata" : "Licitação"} ${
-                    contrato.origemNumero ?? ""
-                  }`.trim(),
+                  label: "Contrato",
+                  value: (
+                    <Link href={`/processos/contratos/${contrato.id}`} style={{ color: "var(--acao)" }}>
+                      {contrato.numero}
+                    </Link>
+                  ),
                 },
+                {
+                  // Ata não tem tela própria ainda; licitação tem, então só ela
+                  // vira link — texto que não leva a lugar nenhum frustra.
+                  label: contrato.origem === "ATA" ? "Ata de registro" : "Licitação de origem",
+                  value:
+                    contrato.origem === "LICITACAO" && contrato.origemId ? (
+                      <Link
+                        href={`/processos/licitacoes/${contrato.origemId}`}
+                        style={{ color: "var(--acao)" }}
+                      >
+                        {contrato.origemNumero}
+                      </Link>
+                    ) : (
+                      contrato.origemNumero ?? "—"
+                    ),
+                },
+                ...(contrato.licitacaoDaAtaId
+                  ? [{
+                      label: "Licitação que gerou a ata",
+                      value: (
+                        <Link
+                          href={`/processos/licitacoes/${contrato.licitacaoDaAtaId}`}
+                          style={{ color: "var(--acao)" }}
+                        >
+                          {contrato.licitacaoDaAtaNumero}
+                        </Link>
+                      ),
+                    }]
+                  : []),
                 {
                   label: "Vigência",
                   value: (

@@ -13,9 +13,10 @@ import type { UsuarioRepository } from "../ports/UsuarioRepository";
  * uso não precisa saber de nenhuma delas.
  */
 export interface FonteDeContexto {
+  /** `escopo` diz o que buscar; `referenciaId` é a entidade daquele escopo. */
   montar(
     orgaoId: string,
-    tipo: string,
+    escopo: string,
     referenciaId: string,
   ): Promise<ContextoDeDocumento | null>;
 }
@@ -54,7 +55,7 @@ export class EmitirDocumento {
     const perfil = await this.usuarios.buscarPerfil(entrada.usuarioId);
     if (!perfil) throw new NaoEncontrado("Usuário não encontrado");
 
-    const dados = await this.contexto.montar(entrada.orgaoId, entrada.tipo, entrada.referenciaId);
+    const dados = await this.contexto.montar(entrada.orgaoId, modelo.escopo, entrada.referenciaId);
     if (!dados) throw new NaoEncontrado("Registro não encontrado para emitir o documento");
 
     const agora = new Date();

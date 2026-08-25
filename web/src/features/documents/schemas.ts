@@ -9,6 +9,12 @@ export const templateSchema = z.object({
 
 export type TemplateInput = z.infer<typeof templateSchema>;
 
+export const newTemplateSchema = templateSchema.extend({
+  escopo: z.enum(["PROCESSO", "PROCESSO_CONTRATO", "ORDEM_FORNECIMENTO", "SOLICITACAO"]),
+});
+
+export type NewTemplateInput = z.infer<typeof newTemplateSchema>;
+
 export const cancelDocumentSchema = z.object({
   motivo: z.string().min(3, "Explique o motivo").max(500),
 });

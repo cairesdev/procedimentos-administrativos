@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { RotateCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { InputField, TextareaField } from "@/shared/ui/form-field";
 import { Alert } from "@/shared/ui/layout";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { restoreDefaultTemplate, saveTemplate } from "../actions";
+import { deleteTemplate, restoreDefaultTemplate, saveTemplate } from "../actions";
 import { templateSchema, type TemplateInput } from "../schemas";
 import type { DocumentTemplate, MarkerCatalog } from "../types";
 import styles from "./TemplateForm.module.css";
@@ -25,6 +26,7 @@ export const TemplateForm = ({
   catalogo: MarkerCatalog;
 }) => {
   const [restaurando, iniciarRestauracao] = useTransition();
+  const router = useRouter();
   const [corpo, setCorpo] = useState(modelo.corpo);
 
   const { form, onSubmit, isSubmitting } = useResourceForm<TemplateInput>({
@@ -38,6 +40,18 @@ export const TemplateForm = ({
     resetOnSuccess: false,
     action: (values) => saveTemplate(modelo.tipo, values),
   });
+
+  const excluir = () => {
+    iniciarRestauracao(async () => {
+      const resultado = await deleteTemplate(modelo.tipo);
+      if (resultado.error) {
+        toast.error(resultado.error);
+        return;
+      }
+      toast.success(resultado.success);
+      router.push("/administracao/documentos");
+    });
+  };
 
   const restaurar = () => {
     iniciarRestauracao(async () => {
@@ -53,7 +67,12 @@ export const TemplateForm = ({
   return (
     <div className={styles.layout}>
       <form onSubmit={onSubmit} className={styles.formulario}>
-        {modelo.origem === "GLOBAL" ? (
+        {modelo.personalizado ? (
+          <Alert tone="info">
+            Documento criado por esta prefeitura. Não existe padrão do sistema por trás dele: para
+            tirá-lo de circulação, desative; para apagar de vez, exclua.
+          </Alert>
+        ) : modelo.origem === "GLOBAL" ? (
           <Alert tone="info">
             Esta prefeitura usa o modelo padrão do sistema. Ao salvar, passa a ter uma versão
             própria — e o padrão deixa de valer aqui.
@@ -100,10 +119,17 @@ export const TemplateForm = ({
             {isSubmitting ? "Salvando…" : "Salvar modelo"}
           </Button>
 
-          {modelo.origem === "PREFEITURA" ? (
+          {modelo.origem === "PREFEITURA" && !modelo.personalizado ? (
             <Button type="button" variant="secondary" onClick={restaurar} disabled={restaurando}>
               <RotateCcw size={15} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "6px" }} />
               {restaurando ? "Restaurando…" : "Restaurar padrão"}
+            </Button>
+          ) : null}
+
+          {modelo.personalizado ? (
+            <Button type="button" variant="secondary" onClick={excluir} disabled={restaurando}>
+              <Trash2 size={15} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "6px" }} />
+              {restaurando ? "Excluindo…" : "Excluir documento"}
             </Button>
           ) : null}
         </div>

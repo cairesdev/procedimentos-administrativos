@@ -1,29 +1,41 @@
 /**
- * O que cada tipo de documento oferece ao modelo.
+ * De onde cada documento fala — e, por consequência, quais marcadores tem.
  *
- * É contrato com quem edita o modelo: a tela lista estes marcadores, e salvar
- * um modelo que use outro é recusado na hora — em vez de estourar meses
- * depois, na frente de quem precisa imprimir.
+ * O escopo existe para o administrador poder criar peça nova sem código: ele
+ * escolhe de onde o documento fala, e o catálogo de marcadores e a busca dos
+ * dados vêm daí. O `tipo` voltou a ser só a identidade da peça.
  */
 
-export const TIPOS_DE_DOCUMENTO = [
-  "TERMO_AUTORIZACAO",
-  "DESPACHO",
-  "DESPACHO_FISCAL",
-  "RELATORIO_CONTROLADORIA",
-  "PARECER",
+export const ESCOPOS = [
+  "PROCESSO",
+  "PROCESSO_CONTRATO",
   "ORDEM_FORNECIMENTO",
-  "COMPROVANTE_SOLICITACAO",
+  "SOLICITACAO",
 ] as const;
 
-export type TipoDeDocumento = (typeof TIPOS_DE_DOCUMENTO)[number];
+export type EscopoDeDocumento = (typeof ESCOPOS)[number];
+
+export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
+  PROCESSO: "Processo em tramitação",
+  PROCESSO_CONTRATO: "Processo com contrato e fornecedor",
+  ORDEM_FORNECIMENTO: "Ordem de fornecimento, com itens",
+  SOLICITACAO: "Solicitação de itens",
+};
+
+/** O que a tela de emissão passa como referência em cada escopo. */
+export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
+  PROCESSO: "processo",
+  PROCESSO_CONTRATO: "processo",
+  ORDEM_FORNECIMENTO: "ordem de fornecimento",
+  SOLICITACAO: "solicitação",
+};
 
 export type CatalogoDeMarcadores = {
   valores: string[];
   listas: Record<string, string[]>;
 };
 
-/** Presentes em toda peça, de qualquer módulo. */
+/** Presentes em toda peça, de qualquer escopo. */
 const COMUNS = [
   "orgao.nome", "orgao.cnpj", "orgao.municipio", "orgao.uf", "orgao.endereco",
   "data.porExtenso", "data.curta", "data.hora",
@@ -35,6 +47,12 @@ const PROCESSO = [
   "processo.numeroProtocolo", "processo.numeroProcessoAdm", "processo.tipo",
   "processo.status", "processo.dataAbertura", "processo.setorAtual",
   "processo.unidadeSolicitante",
+];
+
+/** Último despacho e parecer do processo — servem a qualquer peça de trâmite. */
+const TRAMITE = [
+  "despacho.texto", "despacho.setorDestino",
+  "parecer.favoravel", "parecer.justificativa",
 ];
 
 const CONTRATO = [
@@ -56,54 +74,47 @@ const ORDEM = [
   "ordem.valor", "ordem.valorPorExtenso",
 ];
 
-const ITENS_DA_ORDEM = [
+const ITENS = [
   "produto", "descricao", "unidadeMedida", "marca",
   "quantidade", "valorUnitario", "valorTotal",
 ];
 
-/**
- * Catálogo por tipo. Peça de tramitação vê o processo; peça de execução vê
- * também o contrato, o fornecedor e os itens.
- */
-export const CATALOGO_POR_TIPO: Record<TipoDeDocumento, CatalogoDeMarcadores> = {
-  TERMO_AUTORIZACAO: { valores: [...COMUNS, ...PROCESSO], listas: {} },
-  DESPACHO: {
-    valores: [...COMUNS, ...PROCESSO, "despacho.texto", "despacho.setorDestino"],
+export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
+  PROCESSO: {
+    valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
     listas: {},
   },
-  DESPACHO_FISCAL: {
-    valores: [...COMUNS, ...PROCESSO, ...CONTRATO, ...FORNECEDOR],
-    listas: {},
-  },
-  RELATORIO_CONTROLADORIA: {
-    valores: [...COMUNS, ...PROCESSO, ...CONTRATO, ...FORNECEDOR, "parecer.favoravel", "parecer.justificativa"],
-    listas: {},
-  },
-  PARECER: {
-    valores: [...COMUNS, ...PROCESSO, "parecer.favoravel", "parecer.justificativa"],
+  PROCESSO_CONTRATO: {
+    valores: [...COMUNS, ...PROCESSO, ...TRAMITE, ...CONTRATO, ...FORNECEDOR],
     listas: {},
   },
   ORDEM_FORNECIMENTO: {
     valores: [...COMUNS, ...PROCESSO, ...CONTRATO, ...FORNECEDOR, ...ORDEM],
-    listas: { itens: ITENS_DA_ORDEM },
+    listas: { itens: ITENS },
   },
-  COMPROVANTE_SOLICITACAO: {
+  SOLICITACAO: {
     valores: [
       ...COMUNS, ...PROCESSO,
       "solicitacao.situacao", "solicitacao.criadaEm",
       "solicitacao.valorTotal", "solicitacao.valorTotalPorExtenso",
     ],
-    listas: { itens: ITENS_DA_ORDEM },
+    listas: { itens: ITENS },
   },
 };
 
-/** Módulo dono de cada tipo — a 1ª fatia só tem Processos. */
-export const MODULO_DO_TIPO: Record<TipoDeDocumento, string> = {
-  TERMO_AUTORIZACAO: "PROCESSOS",
-  DESPACHO: "PROCESSOS",
-  DESPACHO_FISCAL: "PROCESSOS",
-  RELATORIO_CONTROLADORIA: "PROCESSOS",
-  PARECER: "PROCESSOS",
-  ORDEM_FORNECIMENTO: "PROCESSOS",
-  COMPROVANTE_SOLICITACAO: "PROCESSOS",
-};
+export const ehEscopo = (valor: string): valor is EscopoDeDocumento =>
+  (ESCOPOS as readonly string[]).includes(valor);
+
+/**
+ * Identificador do tipo a partir do nome que o administrador digitou.
+ * "Termo de recebimento" vira TERMO_DE_RECEBIMENTO — precisa caber no CHECK
+ * da tabela e na URL da tela de edição.
+ */
+export const tipoAPartirDoNome = (nome: string): string =>
+  nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);

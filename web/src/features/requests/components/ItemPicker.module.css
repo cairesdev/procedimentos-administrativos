@@ -87,3 +87,10 @@
   color: var(--perigo);
   margin-top: 2px;
 }
+
+/* A tabela agora vive dentro da linha do contrato, não num card próprio. */
+.wrapper {
+  border-top: 1px solid var(--borda);
+  background: var(--superficie_alt);
+  overflow-x: auto;
+}

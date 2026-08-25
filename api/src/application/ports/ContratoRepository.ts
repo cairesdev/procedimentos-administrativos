@@ -60,11 +60,64 @@ export type EdicaoContrato = {
 
 export type ContratoDetalhe = ContratoResumo & { processoId: string | null };
 
+/** Contrato com tudo que a tela de detalhe mostra numa vez só. */
+export type ContratoCompleto = ContratoResumo & {
+  processoId: string | null;
+  fornecedorRazaoSocial: string;
+  fornecedorDocumento: string;
+  fiscalNomeMatricula: string | null;
+  /** De onde o contrato nasceu: licitação ou ata de registro de preços. */
+  origem: "LICITACAO" | "ATA";
+  origemId: string | null;
+  origemNumero: string | null;
+  origemObjeto: string | null;
+  /** Ata sempre nasce de uma licitação; guarda o rastro até ela. */
+  licitacaoDaAtaId: string | null;
+  licitacaoDaAtaNumero: string | null;
+  unidades: { id: string; nome: string }[];
+  itens: ItemComSaldo[];
+  /** Quantas solicitações já consumiram este contrato. */
+  solicitacoes: number;
+};
+
+/** Contrato oferecido na montagem da solicitação, já filtrado pela unidade. */
+export type ContratoParaSolicitacao = {
+  id: string;
+  numero: string;
+  fornecedorRazaoSocial: string;
+  dataInicio: string;
+  dataFim: string | null;
+  origem: "LICITACAO" | "ATA";
+  origemNumero: string | null;
+  /** Só itens com saldo entram na conta. */
+  itensDisponiveis: number;
+};
+
 export interface ContratoRepository {
   existeNumero(orgaoId: string, numero: string): Promise<boolean>;
   criar(dados: NovoContrato, tx: Tx): Promise<string>;
-  listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<ContratoResumo>>;
+  listar(
+    orgaoId: string,
+    paginacao: Paginacao,
+    filtros?: { unidadeId?: string },
+  ): Promise<Pagina<ContratoResumo>>;
+  buscarCompleto(orgaoId: string, id: string): Promise<ContratoCompleto | null>;
+  /**
+   * Contratos que a unidade pode usar: vigentes, com item em saldo e
+   * destinados a ela. Sem `unidadeId`, todos os vigentes do órgão.
+   */
+  listarParaSolicitacao(orgaoId: string, unidadeId?: string): Promise<ContratoParaSolicitacao[]>;
   unidadeTemAcesso(contratoId: string, unidadeId: string): Promise<boolean>;
+  /**
+   * Números dos contratos que NÃO estão destinados à unidade. Em uma consulta
+   * só: a solicitação mistura vários contratos e uma pergunta por contrato
+   * multiplicaria idas ao banco no caminho mais quente do sistema.
+   */
+  contratosForaDaUnidade(
+    orgaoId: string,
+    contratoIds: string[],
+    unidadeId: string,
+  ): Promise<string[]>;
   listarItens(orgaoId: string, contratoId: string): Promise<ItemComSaldo[]>;
   buscar(orgaoId: string, id: string): Promise<ContratoDetalhe | null>;
   atualizar(orgaoId: string, id: string, dados: EdicaoContrato): Promise<void>;

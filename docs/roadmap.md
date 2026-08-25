@@ -298,3 +298,45 @@ valor por extenso esperado.
   novo. A base voltaria sem modelo nenhum e a emissão pararia sem erro visível até alguém tentar.
   (Nem adiantaria excluir `documento_modelo` da lista: `TRUNCATE ... CASCADE` em `orgao` alcança
   a tabela pela FK.) O reset agora copia os globais para uma tabela temporária e os devolve depois.
+
+## Rodada de interface
+
+**Telas de detalhe.** Licitação (`/processos/licitacoes/[id]`) mostra as atas que ela gerou e
+todos os contratos vinculados — inclusive os que vieram por ata dela, que antes não apareciam em
+lugar nenhum. Contrato (`/processos/contratos/[id]`) traz itens com saldo, unidades destinadas,
+fiscal e a origem, com o rastro completo quando veio de ata: ata → licitação que a gerou. O
+detalhe da solicitação agora aparece dentro da tela do processo, para quem despacha ver o que foi
+pedido sem sair dali, e os contratos dele linkam para contrato e licitação de origem.
+
+**Montagem da solicitação em dois passos.** Escolhe a unidade, vê os contratos *dela*, e só então
+abre os itens do contrato que interessa. A tela antiga carregava todos os contratos com todos os
+itens de uma vez: numa prefeitura com dezenas de contratos, uma parede de produtos onde era fácil
+pedir do contrato errado.
+
+A regra por unidade passou a valer de verdade, nos dois lados:
+
+- Quem tem lotação de **unidade** só solicita em nome dela. Quem é de **setor** (compras,
+  protocolo) segue escolhendo qualquer unidade — é o trabalho deles atender várias.
+- `GET /contratos/para-solicitacao` devolve só contrato vigente, com saldo e **destinado à
+  unidade**. `contrato_unidade` existia desde a migration 0002 e nunca havia sido consultado: a
+  dica na tela dizia "só aparecem contratos destinados à unidade escolhida" e isso era falso.
+- `MontarRascunhoSolicitacao` recusa item de contrato fora da unidade e recusa pedido em nome de
+  unidade onde o servidor não é lotado. A trava do navegador sozinha seria cosmética.
+
+**Documento criado pelo administrador.** Migration `0016` separou `escopo` de `tipo`. O escopo diz
+de onde a peça fala — processo, processo com contrato, ordem ou solicitação — e é ele que decide
+os marcadores e a busca dos dados. O `tipo` virou só a identidade, incluindo peça inventada pela
+prefeitura: o administrador escolhe o escopo, dá um nome, e o identificador sai do nome. Peça
+criada assim é marcada como `personalizado` e oferece **excluir** em vez de "restaurar padrão" —
+não há padrão atrás dela.
+
+**Auditoria só para o ADMIN da prefeitura.** A trilha mostra o que cada servidor fez em todos os
+módulos: é registro de conduta, não relatório operacional. GESTOR e CONTROLADORIA perderam o
+acesso na matriz de permissões e na rota (`exigirPapel("ADMIN")`).
+
+### Pego na verificação
+
+- **Cópia do padrão herdava a marca de personalizada.** Quando a prefeitura editava um modelo
+  global que o painel do produto havia criado, a linha nova saía com `personalizado: true` — e a
+  tela passava a oferecer "excluir" no lugar de "restaurar padrão", sem caminho de volta ao texto
+  de fábrica. A linha criada por personalização sempre tem um padrão atrás dela.

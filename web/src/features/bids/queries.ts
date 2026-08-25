@@ -1,7 +1,7 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { allOf, withPage, POR_PAGINA_MAXIMO, type Page } from "@/shared/api/pagination";
-import type { Bid } from "./types";
+import type { Bid, BidDetail } from "./types";
 
 export const listBids = (pagina?: string) => {
   const query = withPage(new URLSearchParams(), pagina);
@@ -15,3 +15,5 @@ export const listAllBids = () =>
       `${endpoints.bids}?${withPage(new URLSearchParams(), pagina, POR_PAGINA_MAXIMO)}`,
     ),
   );
+
+export const findBid = (id: string) => apiRequest<BidDetail>(`${endpoints.bids}/${id}`);

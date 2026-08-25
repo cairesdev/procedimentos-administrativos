@@ -4,6 +4,7 @@ import {
   type Pagina, type Paginacao,
 } from "../../application/shared/Paginacao";
 import type {
+  LicitacaoCompleta,
   EdicaoLicitacao,
   LicitacaoRepository,
   LicitacaoResumo,
@@ -42,6 +43,24 @@ const SQL = {
      WHERE orgao_id = $1
      ORDER BY data_assinatura DESC, id
      LIMIT $2 OFFSET $3`,
+  // Contratos da licitação: os assinados direto e os que vieram por ata dela.
+  contratosDaLicitacao: `
+    SELECT c.id, c.numero, f.razao_social AS "fornecedorRazaoSocial",
+           c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",
+           c.valor_total AS "valorTotal",
+           a.numero AS "viaAta"
+      FROM contrato c
+      JOIN fornecedor f ON f.id = c.fornecedor_id
+      LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
+     WHERE c.orgao_id = $1
+       AND (c.licitacao_id = $2 OR a.licitacao_id = $2)
+     ORDER BY c.data_inicio DESC, c.numero`,
+  atasDaLicitacao: `
+    SELECT a.id, a.numero, a.data_vigencia AS "dataVigencia", a.valor_total AS "valorTotal",
+           (SELECT count(*) FROM contrato c WHERE c.ata_id = a.id) AS contratos
+      FROM ata_registro_precos a
+     WHERE a.orgao_id = $1 AND a.licitacao_id = $2
+     ORDER BY a.numero`,
   buscarPorId: `
     SELECT id, numero, resumo, objeto, modalidade,
            data_assinatura AS "dataAssinatura", valor_total AS "valorTotal"
@@ -115,5 +134,20 @@ export class PostgresLicitacaoRepository implements LicitacaoRepository {
   buscarPorId = async (orgaoId: string, id: string): Promise<LicitacaoResumo | null> => {
     const { rows } = await pool.query(SQL.buscarPorId, [orgaoId, id]);
     return rows[0] ?? null;
+  };
+
+  buscarCompleta = async (orgaoId: string, id: string): Promise<LicitacaoCompleta | null> => {
+    const licitacao = await this.buscarPorId(orgaoId, id);
+    if (!licitacao) return null;
+
+    const [contratos, atas] = await Promise.all([
+      pool.query(SQL.contratosDaLicitacao, [orgaoId, id]),
+      pool.query(SQL.atasDaLicitacao, [orgaoId, id]),
+    ]);
+    return {
+      ...licitacao,
+      contratos: contratos.rows,
+      atas: atas.rows.map((linha) => ({ ...linha, contratos: Number(linha.contratos) })),
+    };
   };
 }

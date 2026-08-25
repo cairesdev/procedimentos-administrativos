@@ -21,8 +21,44 @@ contratosRouter.post("/", async (req, res, next) => {
 
 contratosRouter.get("/", async (req, res, next) => {
   try {
-    const contratos = await container.contratos.listar(req.sessao!.orgaoId, paginacaoSchema.parse(req.query));
-    res.json(contratos);
+    res.json(
+      await container.contratos.listar(
+        req.sessao!.orgaoId,
+        paginacaoSchema.parse(req.query),
+        { unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined },
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Contratos que a unidade pode usar ao montar uma solicitação: vigentes, com
+ * item em saldo e destinados a ela. A tela pede este recorte antes de mostrar
+ * item nenhum — oferecer contrato de outra unidade só adiava o erro para o
+ * momento do envio.
+ */
+contratosRouter.get("/para-solicitacao", async (req, res, next) => {
+  try {
+    const unidadeId = typeof req.query.unidade === "string" ? req.query.unidade : undefined;
+    res.json(await container.contratos.listarParaSolicitacao(req.sessao!.orgaoId, unidadeId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Detalhe do contrato: itens, unidades destinadas e a origem. */
+contratosRouter.get("/:id", async (req, res, next) => {
+  try {
+    const contrato = await container.contratos.buscarCompleto(
+      req.sessao!.orgaoId, req.params.id!,
+    );
+    if (!contrato) {
+      res.status(404).json({ message: "Contrato não encontrado" });
+      return;
+    }
+    res.json(contrato);
   } catch (error) {
     next(error);
   }

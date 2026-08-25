@@ -23,6 +23,7 @@ export type Permission =
   | "processes:dispatch"
   | "processes:opinion"
   | "processes:order"
+  // Trilha de conduta dos servidores: só o ADMIN da prefeitura.
   | "audit:read"
   | "assets:read"
   | "assets:write"
@@ -74,10 +75,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "workflows:read",
     "requests:create",
     "processes:dispatch",
-    "audit:read",
     "documents:issue", "documents:template",
   ],
-  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "audit:read", "assets:read", "documents:issue"],
+  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "assets:read", "documents:issue"],
   COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
   PROTOCOLO: [...READ_ONLY, "processes:dispatch", "documents:issue"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],

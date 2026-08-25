@@ -17,6 +17,8 @@ export type Process = {
   prazoLimite: string | null;
   /** Negativo = atrasado. Nulo quando não há prazo. */
   diasParaVencer: number | null;
+  /** Solicitação que abriu o processo; nulo quando não veio de pedido. */
+  solicitacaoId?: string | null;
 };
 
 export type Dispatch = {

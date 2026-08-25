@@ -1,6 +1,6 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { withPage, type Page } from "@/shared/api/pagination";
-import type { DocumentTemplate, IssuedDocument, MarkerCatalog } from "./types";
+import type { DocumentTemplate, IssuedDocument, MarkerCatalog, ScopeOption } from "./types";
 
 export const listTemplates = (modulo?: string) =>
   apiRequest<DocumentTemplate[]>(
@@ -26,3 +26,6 @@ export const listDocuments = (pagina?: string) => {
 
 export const findDocument = (id: string) =>
   apiRequest<IssuedDocument>(`/documentos/${id}`);
+
+/** Escopos possíveis para uma peça nova, com os marcadores de cada um. */
+export const listScopes = () => apiRequest<ScopeOption[]>("/documentos/escopos");

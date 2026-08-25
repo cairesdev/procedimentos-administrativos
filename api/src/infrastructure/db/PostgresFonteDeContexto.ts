@@ -168,64 +168,58 @@ const contratoParaContexto = (linha: Record<string, unknown>) => ({
   },
 });
 
-/** Tipos cuja referência é o processo; o resto aponta para a própria entidade. */
-const REFERENCIA_E_PROCESSO = new Set([
-  "TERMO_AUTORIZACAO", "DESPACHO", "DESPACHO_FISCAL", "RELATORIO_CONTROLADORIA", "PARECER",
-]);
-
 export class PostgresFonteDeContexto implements FonteDeContexto {
+  /**
+   * O escopo do modelo decide o que buscar e o que o `referenciaId` significa.
+   * Antes isso era decidido pelo `tipo`, o que impedia peça nova sem código.
+   */
   montar = async (
     orgaoId: string,
-    tipo: string,
+    escopo: string,
     referenciaId: string,
   ): Promise<ContextoDeDocumento | null> => {
     const orgao = (await pool.query(ORGAO, [orgaoId])).rows[0];
     if (!orgao) return null;
 
-    if (REFERENCIA_E_PROCESSO.has(tipo)) {
-      return this.doProcesso(orgaoId, tipo, referenciaId, orgao);
+    if (escopo === "PROCESSO" || escopo === "PROCESSO_CONTRATO") {
+      return this.doProcesso(orgaoId, escopo, referenciaId, orgao);
     }
-    if (tipo === "ORDEM_FORNECIMENTO") return this.daOrdem(orgaoId, referenciaId, orgao);
-    if (tipo === "COMPROVANTE_SOLICITACAO") {
-      return this.daSolicitacao(orgaoId, referenciaId, orgao);
-    }
+    if (escopo === "ORDEM_FORNECIMENTO") return this.daOrdem(orgaoId, referenciaId, orgao);
+    if (escopo === "SOLICITACAO") return this.daSolicitacao(orgaoId, referenciaId, orgao);
     return null;
   };
 
   private doProcesso = async (
     orgaoId: string,
-    tipo: string,
+    escopo: string,
     processoId: string,
     orgao: Record<string, unknown>,
   ): Promise<ContextoDeDocumento | null> => {
     const processo = (await pool.query(PROCESSO, [orgaoId, processoId])).rows[0];
     if (!processo) return null;
 
-    const contexto: ContextoDeDocumento = { orgao, processo };
+    // Último despacho: serve de texto ao despacho e de justificativa ao
+    // parecer. Vem sempre, porque qualquer peça de trâmite pode citá-lo.
+    const ultimo = (await pool.query(PARECER, [processoId])).rows[0];
+    const contexto: ContextoDeDocumento = {
+      orgao,
+      processo,
+      despacho: {
+        texto: String(ultimo?.texto ?? ""),
+        setorDestino: String(ultimo?.setorDestino ?? "—"),
+      },
+      parecer: {
+        favoravel: ultimo?.tipo === "PARECER" ? "favorável" : "—",
+        justificativa: String(ultimo?.texto ?? ""),
+      },
+    };
 
-    // Peça do fiscal e da controladoria falam do contrato; termo e despacho não.
-    if (tipo === "DESPACHO_FISCAL" || tipo === "RELATORIO_CONTROLADORIA") {
+    if (escopo === "PROCESSO_CONTRATO") {
       const contrato = (await pool.query(CONTRATO_DO_PROCESSO, [orgaoId, processoId])).rows[0];
       // Sem contrato ligado, os marcadores viriam vazios e o documento sairia
       // afirmando coisa sobre um contrato que não existe.
       if (!contrato) return null;
       Object.assign(contexto, contratoParaContexto(contrato));
-    }
-
-    if (tipo === "PARECER" || tipo === "RELATORIO_CONTROLADORIA") {
-      const despacho = (await pool.query(PARECER, [processoId])).rows[0];
-      contexto.parecer = {
-        favoravel: despacho?.tipo === "PARECER" ? "favorável" : "—",
-        justificativa: String(despacho?.texto ?? ""),
-      };
-    }
-
-    if (tipo === "DESPACHO") {
-      const despacho = (await pool.query(PARECER, [processoId])).rows[0];
-      contexto.despacho = {
-        texto: String(despacho?.texto ?? ""),
-        setorDestino: String(despacho?.setorDestino ?? "—"),
-      };
     }
 
     return contexto;

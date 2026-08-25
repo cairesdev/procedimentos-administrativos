@@ -4,7 +4,7 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { authenticateAdmin, emitirTokenAdmin } from "../middlewares/authenticateAdmin";
 import { enviarArquivo } from "../enviarArquivo";
-import { CATALOGO_POR_TIPO } from "../../../domain/documento/Catalogo";
+import { ESCOPOS, ROTULO_DO_ESCOPO } from "../../../domain/documento/Catalogo";
 import { limiteDeLogin, limiteGlobal } from "../middlewares/rateLimit";
 import { garantirExiste, garantirSemVinculos } from "../../../application/shared/ExclusaoSegura";
 import {
@@ -200,14 +200,35 @@ adminRouter.get("/modelos", async (_req, res, next) => {
   }
 });
 
-adminRouter.get("/modelos/:tipo/marcadores", (req, res, next) => {
+adminRouter.get("/escopos", (_req, res) => {
+  res.json(
+    ESCOPOS.map((escopo) => ({
+      escopo,
+      rotulo: ROTULO_DO_ESCOPO[escopo],
+      marcadores: container.manterModelos.catalogoDe(escopo),
+    })),
+  );
+});
+
+adminRouter.post("/modelos", async (req, res, next) => {
   try {
-    const catalogo = CATALOGO_POR_TIPO[req.params.tipo as keyof typeof CATALOGO_POR_TIPO];
-    if (!catalogo) {
-      res.status(404).json({ message: "Tipo de documento desconhecido" });
+    const dados = modeloSchema.extend({ escopo: z.enum(ESCOPOS) }).parse(req.body);
+    // orgaoId nulo: peça nova nasce como padrão do produto, para todas.
+    res.status(201).json(await container.manterModelos.criarPersonalizado(null, dados));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/modelos/:tipo/marcadores", async (req, res, next) => {
+  try {
+    const modelo = (await container.manterModelos.listarGlobais())
+      .find((item) => item.tipo === req.params.tipo);
+    if (!modelo) {
+      res.status(404).json({ message: "Modelo não encontrado" });
       return;
     }
-    res.json(catalogo);
+    res.json(container.manterModelos.catalogoDe(modelo.escopo));
   } catch (error) {
     next(error);
   }
