@@ -2,16 +2,20 @@ erDiagram
     %% ============ MODULO ALMOXARIFADO / ALIMENTACAO ESCOLAR ============
     %% Estoque generico com tipos personalizaveis (alimentacao escolar, limpeza...)
     %% Saida por lote FEFO sugerido com ajuste manual; validade so alerta, nunca bloqueia
-    %% Reserva de estoque com expiracao configuravel (liga/desliga + prazo)
-    %% Toda etapa gera comprovante documental
+    %% Reserva nasce no ENVIO, no banco, e a liberacao a baixa junto com o saldo
+    %% O LOTE sobrevive a entrega: a unidade guarda lote com validade, nao saldo agregado
+    %% PRODUTO e catalogo GLOBAL entre prefeituras (como FORNECEDOR), sem orgao_id
+    %% Recebimento a menor vira PERDA com motivo, nao volta ao almoxarifado
+    %% Toda etapa gera comprovante via documento_emitido (escopo proprio)
     %% LOCAL e cadastro compartilhado (ver uml-entidades.mermaid)
+    %% Decisoes revisadas apos ler o legado: ver legado-almoxarifado.md
 
     ORGAO ||--o{ ALMOXARIFADO : possui
     ORGAO ||--o{ TIPO_ESTOQUE : personaliza
     ALMOXARIFADO ||--o{ LOCAL : atende "escola/hospital vinculado a um almoxarifado"
     ALMOXARIFADO ||--o{ REMESSA_ESTOQUE : recebe
     TIPO_ESTOQUE ||--o{ REMESSA_ESTOQUE : classifica
-    ORGAO ||--o{ PRODUTO : cataloga
+    %% PRODUTO nao pende de ORGAO: e catalogo global do produto
     REMESSA_ESTOQUE ||--o{ LOTE : gera
     PRODUTO ||--o{ LOTE : agrupa
     LOCAL ||--o{ SOLICITACAO_ESTOQUE : solicita
@@ -52,10 +56,10 @@ erDiagram
         uuid tipo_estoque_id FK
     }
     PRODUTO {
-        uuid id PK "agregador - saldo total soma lotes"
-        uuid orgao_id FK
+        uuid id PK "catalogo GLOBAL, sem orgao_id"
         string nome
         string unidade_medida "KG LITRO PCT..."
+        bool ativo
     }
     LOTE {
         uuid id PK "importado por planilha ou manual"
@@ -72,6 +76,7 @@ erDiagram
         uuid tipo_estoque_id FK "filtro por categoria"
         enum status "SOLICITADA | LIBERADA | EM_TRANSITO | RECEBIDA | RECUSADA | CANCELADA | EXPIRADA"
         datetime data
+        datetime enviada_em "so aqui nasce a reserva"
         datetime reserva_expira_em "configuravel liga/desliga + prazo"
     }
     SOLICITACAO_ESTOQUE_ITEM {
@@ -82,18 +87,28 @@ erDiagram
         decimal saldo_da_unidade_no_momento "exibido ao responsavel"
         decimal quantidade_liberada "decisao do responsavel"
         decimal quantidade_recebida "confirmacao da unidade - pode divergir"
+        decimal quantidade_reservada "baixada na liberacao, nao no rascunho"
     }
     LIBERACAO_LOTE {
         uuid id PK "FEFO sugerido, ajustavel"
         uuid solicitacao_item_id FK
-        uuid lote_id FK
+        uuid lote_id FK "origem no almoxarifado"
         decimal quantidade
+        decimal quantidade_confirmada "o que a unidade recebeu"
+        decimal quantidade_perdida "diferenca vira perda, nao volta"
+        enum motivo_perda "QUEBRA_TRANSPORTE | AVARIA | VENCIDO | OUTRO"
+        text observacao_perda
     }
     ESTOQUE_LOCAL {
-        uuid id PK "saldo por produto na unidade"
+        uuid id PK "LOTE na unidade, nao saldo agregado"
         uuid local_id FK
         uuid produto_id FK
+        uuid lote_origem_id FK "de qual lote do almoxarifado veio"
+        uuid liberacao_lote_id FK "a entrega que o criou"
+        decimal quantidade_recebida
         decimal saldo
+        date data_validade "copiada do lote de origem"
+        date data_entrada
     }
     CONSUMO {
         uuid id PK
@@ -141,3 +156,5 @@ erDiagram
         string arquivo
         datetime data
     }
+
+    LIBERACAO_LOTE ||--o| ESTOQUE_LOCAL : gera "rastro lote a lote, ida e volta"

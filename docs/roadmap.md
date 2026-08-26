@@ -104,8 +104,9 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
 5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
    casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
    ambiente de pé.
-6. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
-   `docs/decisoes.md` + UML.
+6. **Módulo Almoxarifado** — levantamento revisado contra o sistema legado
+   (`docs/legado-almoxarifado.md`), decisões consolidadas em `decisoes.md` e UML atualizada.
+   Schema e API não iniciados. 1ª fatia: ciclo completo até o recebimento.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura

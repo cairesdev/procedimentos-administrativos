@@ -195,7 +195,79 @@ transferência — não existe vínculo entre usuário e local no modelo, então
 "é do destino". Na prática o patrimônio da prefeitura é operado por poucas pessoas; se virar
 problema, exige modelar responsável por local.
 
-## Módulo Almoxarifado / Alimentação Escolar (modelado, não implementado)
+## Almoxarifado — decisões após ler o legado (consolidado)
+
+Leitura completa do sistema antigo em `legado-almoxarifado.md`. As decisões
+abaixo revisam ou confirmam o levantamento original, e **valem sobre ele** onde
+divergirem.
+
+1. **N almoxarifados por prefeitura**, com locais vinculados a um — confirmado,
+   ainda que o legado nunca tenha usado a tabela dele. Transferência entre
+   almoxarifados continua no escopo.
+2. **Tipo de estoque é categoria dentro do almoxarifado**, cadastrável pela
+   prefeitura: o almoxarifado separa por secretaria, o tipo separa alimentação,
+   limpeza e expediente. A solicitação filtra por ele.
+3. **Produto é catálogo GLOBAL**, compartilhado entre prefeituras, como
+   `fornecedor`. "CORANTE NATURAL / KG" é o mesmo item em qualquer município, e
+   o legado já tratava assim com `UNIQUE (nome, und_medida)`. Sem `orgao_id`.
+4. **Quantidade é decimal.** O legado usa `integer` e não representa 2,5 kg de
+   arroz — para alimentação escolar isso não é formatação, é o dado.
+5. **O lote sobrevive à entrega.** A unidade guarda lotes com validade própria,
+   não um saldo agregado por produto: a escola precisa saber o que vence
+   primeiro no armário dela, e o consumo baixa em FEFO. Corrige uma lacuna do
+   nosso UML original, que o legado acertava.
+6. **Reserva no envio, no banco, dentro da transação.** Rascunho não reserva
+   nada. O prazo de expiração é configurável pela prefeitura, e **a liberação
+   baixa a reserva junto com o saldo** — no legado a reserva vivia no Redis com
+   TTL fixo e nunca era baixada, deixando material reservado e debitado ao mesmo
+   tempo por até 48h.
+7. **Recebimento a menor vira perda, com motivo obrigatório.** A diferença entre
+   liberado e confirmado sai do estoque como quebra, não volta ao almoxarifado.
+   O total da prefeitura diminui e a perda fica rastreável até quem recebeu.
+8. **Quem solicita segue a regra de Processos**: lotação de unidade só pede pela
+   unidade dela, lotação de setor escolhe qualquer uma. Sem vínculo novo entre
+   usuário e tipo de unidade.
+9. **Base nova, sem migração de movimento.** Só cadastros (unidades, produtos)
+   são trazidos. O histórico do legado tem campos que não fecham —
+   `qnt_entrada` contando linhas em vez de itens, saldo que pode ir a negativo —
+   e carregá-lo importaria o problema junto.
+10. **Registro de qualidade do lote fica para depois.** Existe no legado
+    (`qualidade_produto_estocado`), não entra agora; o ajuste de estoque com
+    motivo já cobre o caso urgente.
+
+### Fatiamento
+
+**1ª fatia — ciclo completo até o recebimento**, que é o que substitui o legado:
+almoxarifados, tipos, remessa com importação de planilha, lotes com validade,
+solicitação com reserva, liberação FEFO ajustável e confirmação da unidade com
+perda registrada.
+
+Ficam para depois: consumo item a item e declaração periódica, devolução com
+aceite, transferência entre almoxarifados, ajuste de estoque e relatórios do
+PNAE.
+
+### Regras que o legado ensinou pelo erro
+
+Cada uma vira teste antes de virar código:
+
+- Liberação é **uma transação só**. No legado são N inserts e updates soltos:
+  uma falha no meio deixa saldo debitado sem lote de destino.
+- Reserva e disponibilidade têm de olhar **o mesmo escopo**. No legado a reserva
+  era por unidade e a disponibilidade somava o órgão inteiro, então duas
+  unidades pedindo o mesmo produto não se enxergavam.
+- **Consumo nunca deixa saldo negativo** — o legado subtrai sem conferir.
+- **FEFO em todas as consultas**, não só na liberação: no legado duas das três
+  ordenam por validade decrescente e mostram primeiro o que vence por último.
+- Nada de endpoint de exclusão em massa por órgão ou unidade.
+
+### Comprovante
+
+Usa o motor de `documento_emitido`, com escopo novo por peça. O legado gera um
+número aleatório de 7 a 12 dígitos sem unicidade garantida; o nosso já tem
+código verificador único no produto, conferência pública e cancelamento sem
+apagar.
+
+## Módulo Almoxarifado / Alimentação Escolar (levantamento original)
 
 N almoxarifados por prefeitura; locais vinculados a um almoxarifado. Tipos de estoque
 personalizáveis. Remessa (código pesquisável) → lotes (validade opcional). Produto é agregador de
