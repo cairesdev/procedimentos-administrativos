@@ -186,6 +186,130 @@ export type ConfiguracaoDoAlmoxarifado = {
   alertaValidadeDias: number;
 };
 
+export type FormaDeConsumo = "ITEM_A_ITEM" | "DECLARACAO_PERIODICA";
+
+export type MotivoDeAjuste =
+  | "PERDA" | "AVARIA" | "VENCIDO" | "ERRO_LANCAMENTO" | "SOBRA" | "CONTAGEM";
+
+/**
+ * Lote travado para escrita, dos dois lados do estoque.
+ *
+ * O mesmo formato serve ao lote do almoxarifado e ao lote no armário da
+ * escola: o ajuste e a devolução tratam os dois igual, e um tipo por lado só
+ * duplicaria o caso de uso.
+ */
+export type LoteBloqueado = {
+  id: string;
+  produtoId: string;
+  produtoNome: string;
+  saldo: number;
+  /** Nulo no lote do almoxarifado; na unidade, o que ela recebeu. */
+  tetoDoLote: number | null;
+  localId: string;
+  almoxarifadoId: string;
+};
+
+export type NovoConsumo = {
+  localId: string;
+  produtoId: string;
+  quantidade: number;
+  forma: FormaDeConsumo;
+  periodoInicio: string | null;
+  periodoFim: string | null;
+  usuarioId: string;
+  observacao: string | null;
+  /** De qual lote da unidade saiu quanto — a distribuição FEFO já resolvida. */
+  retiradas: { estoqueLocalId: string; quantidade: number }[];
+};
+
+export type ConsumoRegistrado = {
+  id: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  forma: FormaDeConsumo;
+  periodoInicio: string | null;
+  periodoFim: string | null;
+  data: string;
+  usuarioNome: string;
+  observacao: string | null;
+  lotes: number;
+};
+
+export type NovaDevolucao = {
+  localId: string;
+  almoxarifadoId: string;
+  produtoId: string;
+  estoqueLocalId: string;
+  quantidade: number;
+  motivo: string;
+  solicitadaPorUsuarioId: string;
+};
+
+export type DevolucaoResumo = {
+  id: string;
+  localNome: string;
+  almoxarifadoNome: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  status: string;
+  motivo: string | null;
+  recusaMotivo: string | null;
+  solicitadaPor: string;
+  aceitaPor: string | null;
+  dataValidade: string | null;
+  data: string;
+  respondidaEm: string | null;
+};
+
+export type NovaTransferencia = {
+  loteId: string;
+  almoxarifadoOrigemId: string;
+  almoxarifadoDestinoId: string;
+  quantidade: number;
+  usuarioId: string;
+  motivo: string | null;
+};
+
+export type TransferenciaResumo = {
+  id: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  origemNome: string;
+  destinoNome: string;
+  usuarioNome: string;
+  motivo: string | null;
+  dataValidade: string | null;
+  data: string;
+};
+
+export type NovoAjuste = {
+  almoxarifadoId: string | null;
+  loteId: string | null;
+  estoqueLocalId: string | null;
+  saldoAnterior: number;
+  saldoCorrigido: number;
+  motivo: MotivoDeAjuste;
+  observacao: string | null;
+  usuarioId: string;
+};
+
+export type AjusteResumo = {
+  id: string;
+  onde: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  saldoAnterior: number;
+  saldoCorrigido: number;
+  diferenca: number;
+  motivo: string;
+  observacao: string | null;
+  usuarioNome: string;
+  data: string;
+};
+
 export interface AlmoxarifadoRepository {
   // ---- Cadastros -----------------------------------------------------------
   listarAlmoxarifados(orgaoId: string): Promise<Almoxarifado[]>;
@@ -316,6 +440,65 @@ export interface AlmoxarifadoRepository {
 
   /** Solicitações cuja reserva venceu — devolve o saldo e marca EXPIRADA. */
   expirarReservasVencidas(): Promise<number>;
+
+  // ---- Movimento: consumo, devolução, transferência e ajuste ----------------
+
+  buscarAlmoxarifado(orgaoId: string, id: string): Promise<Almoxarifado | null>;
+
+  /**
+   * Todos os lotes com saldo de um almoxarifado, para a tela de transferência.
+   *
+   * Existe como consulta única porque a alternativa era o navegador buscar as
+   * remessas e depois o detalhe de cada uma — uma dúzia de idas ao servidor
+   * para montar um `<select>`.
+   */
+  listarLotesDoAlmoxarifado(orgaoId: string, almoxarifadoId: string): Promise<(LoteDaRemessa & {
+    remessaCodigo: string;
+  })[]>;
+
+  /** Lotes da unidade com saldo, travados para escrita, em ordem FEFO. */
+  bloquearEstoqueLocal(
+    orgaoId: string,
+    localId: string,
+    produtoId: string,
+    tx: Tx,
+  ): Promise<{ id: string; saldo: number; dataValidade: string | null }[]>;
+
+  bloquearLoteDaUnidade(orgaoId: string, id: string, tx: Tx): Promise<LoteBloqueado | null>;
+  bloquearLotePorId(orgaoId: string, id: string, tx: Tx): Promise<LoteBloqueado | null>;
+
+  registrarConsumo(dados: NovoConsumo, tx: Tx): Promise<string>;
+  listarConsumo(orgaoId: string, filtros: Paginacao & {
+    local?: string; produto?: string; de?: string; ate?: string;
+  }): Promise<Pagina<ConsumoRegistrado>>;
+
+  criarDevolucao(dados: NovaDevolucao, tx: Tx): Promise<string>;
+  bloquearDevolucao(orgaoId: string, id: string, tx: Tx): Promise<DevolucaoResumo | null>;
+  /** Aceite credita o lote de origem; recusa devolve o saldo à unidade. */
+  responderDevolucao(
+    id: string,
+    usuarioId: string,
+    aceitar: boolean,
+    motivoRecusa: string | null,
+    tx: Tx,
+  ): Promise<void>;
+  listarDevolucoes(orgaoId: string, filtros: Paginacao & {
+    status?: string; almoxarifado?: string; local?: string;
+  }): Promise<Pagina<DevolucaoResumo>>;
+
+  /** Debita a origem e cria a remessa de transferência no destino. */
+  transferirLote(
+    dados: NovaTransferencia,
+    tx: Tx,
+  ): Promise<{ id: string; remessaDestinoId: string }>;
+  listarTransferencias(orgaoId: string, filtros: Paginacao & {
+    almoxarifado?: string;
+  }): Promise<Pagina<TransferenciaResumo>>;
+
+  registrarAjuste(dados: NovoAjuste, tx: Tx): Promise<string>;
+  listarAjustes(orgaoId: string, filtros: Paginacao & {
+    almoxarifado?: string; local?: string;
+  }): Promise<Pagina<AjusteResumo>>;
 
   // ---- Estoque da unidade --------------------------------------------------
   listarEstoqueDoLocal(orgaoId: string, localId: string): Promise<{

@@ -10,6 +10,8 @@ import type {
   LocalDeEstoque, LoteComSaldo, LoteDaRemessa, NovaLiberacao, NovaRemessa,
   NovaSolicitacaoEstoque, NovoLote, Produto, RemessaResumo, SolicitacaoEstoque,
   SolicitacaoResumo, TipoDeEstoque,
+  AjusteResumo, ConsumoRegistrado, DevolucaoResumo, LoteBloqueado,
+  NovaDevolucao, NovaTransferencia, NovoAjuste, NovoConsumo, TransferenciaResumo,
 } from "../../application/ports/AlmoxarifadoRepository";
 
 /**
@@ -414,6 +416,254 @@ const SQL = {
       JOIN local l ON l.id = el.local_id
      WHERE l.orgao_id = $1 AND el.local_id = $2 AND el.saldo > 0
      ORDER BY p.nome, el.data_validade NULLS LAST`,
+
+  // ---- Movimento -----------------------------------------------------------
+  buscarAlmoxarifado: `
+    SELECT a.id, a.nome, a.ativo,
+           (SELECT count(*) FROM local l WHERE l.almoxarifado_id = a.id) AS locais,
+           (SELECT count(*) FROM remessa_estoque r WHERE r.almoxarifado_id = a.id) AS remessas
+      FROM almoxarifado a
+     WHERE a.orgao_id = $1 AND a.id = $2`,
+
+  lotesDoAlmoxarifado: `
+    SELECT lo.id, lo.produto_id AS "produtoId", p.nome AS "produtoNome",
+           p.unidade_medida AS "unidadeMedida",
+           lo.quantidade, lo.saldo, lo.data_validade AS "dataValidade",
+           r.codigo AS "remessaCodigo"
+      FROM lote lo
+      JOIN remessa_estoque r ON r.id = lo.remessa_id
+      JOIN almoxarifado a ON a.id = r.almoxarifado_id
+      JOIN produto p ON p.id = lo.produto_id
+     WHERE a.orgao_id = $1 AND a.id = $2 AND lo.saldo > 0
+     ORDER BY p.nome, lo.data_validade NULLS LAST`,
+
+  // FEFO no armário da escola, travado para escrita. `FOR UPDATE OF el` trava
+  // só a linha do estoque; sem o `OF`, o local e o produto entrariam junto.
+  bloquearEstoqueLocal: `
+    SELECT el.id, el.saldo, el.data_validade AS "dataValidade"
+      FROM estoque_local el
+      JOIN local l ON l.id = el.local_id
+     WHERE l.orgao_id = $1 AND el.local_id = $2 AND el.produto_id = $3
+       AND el.saldo > 0
+     ORDER BY el.data_validade NULLS LAST, el.id
+       FOR UPDATE OF el`,
+
+  bloquearLoteDaUnidade: `
+    SELECT el.id, el.produto_id AS "produtoId", p.nome AS "produtoNome",
+           el.saldo, el.quantidade_recebida AS "tetoDoLote",
+           el.local_id AS "localId", l.almoxarifado_id AS "almoxarifadoId"
+      FROM estoque_local el
+      JOIN local l ON l.id = el.local_id
+      JOIN produto p ON p.id = el.produto_id
+     WHERE l.orgao_id = $1 AND el.id = $2
+       FOR UPDATE OF el`,
+
+  bloquearLotePorId: `
+    SELECT lo.id, lo.produto_id AS "produtoId", p.nome AS "produtoNome",
+           lo.saldo, NULL::numeric AS "tetoDoLote",
+           NULL::uuid AS "localId", a.id AS "almoxarifadoId"
+      FROM lote lo
+      JOIN remessa_estoque r ON r.id = lo.remessa_id
+      JOIN almoxarifado a ON a.id = r.almoxarifado_id
+      JOIN produto p ON p.id = lo.produto_id
+     WHERE a.orgao_id = $1 AND lo.id = $2
+       FOR UPDATE OF lo`,
+
+  criarConsumo: `
+    INSERT INTO consumo
+      (local_id, produto_id, quantidade, forma, periodo_inicio, periodo_fim,
+       usuario_id, observacao)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id`,
+  criarConsumoLote: `
+    INSERT INTO consumo_lote (consumo_id, estoque_local_id, quantidade)
+    VALUES ($1, $2, $3)`,
+  debitarEstoqueLocal: `
+    UPDATE estoque_local SET saldo = saldo - $2 WHERE id = $1`,
+
+  listarConsumo: `
+    SELECT c.id, p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           c.quantidade, c.forma,
+           c.periodo_inicio AS "periodoInicio", c.periodo_fim AS "periodoFim",
+           c.data, coalesce(u.nome, '—') AS "usuarioNome", c.observacao,
+           (SELECT count(*) FROM consumo_lote cl WHERE cl.consumo_id = c.id) AS lotes,
+           ${TOTAL_DA_JANELA}
+      FROM consumo c
+      JOIN local l ON l.id = c.local_id
+      JOIN produto p ON p.id = c.produto_id
+      LEFT JOIN usuario u ON u.id = c.usuario_id
+     WHERE l.orgao_id = $1
+       AND ($4::uuid IS NULL OR c.local_id = $4)
+       AND ($5::uuid IS NULL OR c.produto_id = $5)
+       AND ($6::date IS NULL OR c.data >= $6)
+       AND ($7::date IS NULL OR c.data <= $7)
+     ORDER BY c.data DESC, c.id
+     LIMIT $2 OFFSET $3`,
+
+  criarDevolucao: `
+    INSERT INTO devolucao
+      (local_id, almoxarifado_id, produto_id, estoque_local_id, quantidade,
+       motivo, solicitada_por_usuario_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id`,
+
+  bloquearDevolucao: `
+    SELECT d.id, l.nome AS "localNome", a.nome AS "almoxarifadoNome",
+           p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           d.quantidade, d.status, d.motivo, d.recusa_motivo AS "recusaMotivo",
+           coalesce(us.nome, '—') AS "solicitadaPor",
+           ua.nome AS "aceitaPor",
+           el.data_validade AS "dataValidade",
+           d.data, d.respondida_em AS "respondidaEm",
+           d.estoque_local_id AS "estoqueLocalId"
+      FROM devolucao d
+      JOIN local l ON l.id = d.local_id
+      JOIN almoxarifado a ON a.id = d.almoxarifado_id
+      JOIN produto p ON p.id = d.produto_id
+      LEFT JOIN estoque_local el ON el.id = d.estoque_local_id
+      LEFT JOIN usuario us ON us.id = d.solicitada_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = d.aceito_por_usuario_id
+     WHERE l.orgao_id = $1 AND d.id = $2
+       FOR UPDATE OF d`,
+
+  // Só o que a resposta precisa saber, travado. A consulta completa serve à
+  // tela; esta serve à escrita.
+  bloquearDevolucaoSimples: `
+    SELECT d.estoque_local_id AS "estoqueLocalId", d.quantidade, d.status,
+           el.lote_origem_id AS "loteOrigemId"
+      FROM devolucao d
+      LEFT JOIN estoque_local el ON el.id = d.estoque_local_id
+     WHERE d.id = $1
+       FOR UPDATE OF d`,
+
+  devolverSaldoAUnidade: `
+    UPDATE estoque_local SET saldo = saldo + $2 WHERE id = $1`,
+
+  responderDevolucao: `
+    UPDATE devolucao
+       SET status = CASE WHEN $3 THEN 'ACEITA' ELSE 'RECUSADA' END,
+           aceito_por_usuario_id = $2,
+           recusa_motivo = $4,
+           respondida_em = now()
+     WHERE id = $1 AND status = 'PENDENTE'`,
+
+  // Aceite: o material volta ao lote de ORIGEM no almoxarifado, preservando a
+  // validade. Criar lote novo duplicaria a mesma caixa no estoque.
+  //
+  // Um UPDATE simples, e não um `UPDATE ... FROM ... JOIN`: o id do lote já
+  // veio travado na leitura, e a versão com join precisava qualificar
+  // `lote.saldo` para não colidir com o `saldo` de `estoque_local`.
+  creditarLoteDeOrigem: `UPDATE lote SET saldo = saldo + $2 WHERE id = $1`,
+
+  listarDevolucoes: `
+    SELECT d.id, l.nome AS "localNome", a.nome AS "almoxarifadoNome",
+           p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           d.quantidade, d.status, d.motivo, d.recusa_motivo AS "recusaMotivo",
+           coalesce(us.nome, '—') AS "solicitadaPor",
+           ua.nome AS "aceitaPor",
+           el.data_validade AS "dataValidade",
+           d.data, d.respondida_em AS "respondidaEm",
+           ${TOTAL_DA_JANELA}
+      FROM devolucao d
+      JOIN local l ON l.id = d.local_id
+      JOIN almoxarifado a ON a.id = d.almoxarifado_id
+      JOIN produto p ON p.id = d.produto_id
+      LEFT JOIN estoque_local el ON el.id = d.estoque_local_id
+      LEFT JOIN usuario us ON us.id = d.solicitada_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = d.aceito_por_usuario_id
+     WHERE l.orgao_id = $1
+       AND ($4::text IS NULL OR d.status = $4)
+       AND ($5::uuid IS NULL OR d.almoxarifado_id = $5)
+       AND ($6::uuid IS NULL OR d.local_id = $6)
+     ORDER BY d.data DESC, d.id
+     LIMIT $2 OFFSET $3`,
+
+  criarTransferencia: `
+    INSERT INTO transferencia_almoxarifado
+      (almoxarifado_origem_id, almoxarifado_destino_id, lote_id, quantidade,
+       usuario_id, motivo)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id`,
+
+  // A remessa de transferência nasce no destino com o tipo de estoque do lote
+  // de origem: mudar de categoria no caminho esconderia o material da tela que
+  // o procura.
+  criarRemessaDeTransferencia: `
+    INSERT INTO remessa_estoque
+      (almoxarifado_id, codigo, titulo, data, tipo_estoque_id,
+       responsavel_usuario_id, transferencia_id, local_armazenado)
+    SELECT $2::uuid,
+           -- Cast explícito nos dois lugares: $1 aparece como valor de uma
+           -- coluna uuid E dentro de substr, e sem ele o Postgres o deduz como
+           -- texto e recusa a gravação.
+           'TR-' || upper(substr($1::uuid::text, 1, 8)),
+           'Transferência de ' || ao.nome,
+           current_date,
+           r.tipo_estoque_id,
+           $3::uuid,
+           $1::uuid,
+           'Recebido por transferência'
+      FROM lote lo
+      JOIN remessa_estoque r ON r.id = lo.remessa_id
+      JOIN almoxarifado ao ON ao.id = r.almoxarifado_id
+     WHERE lo.id = $4
+    RETURNING id`,
+
+  criarLoteDeTransferencia: `
+    INSERT INTO lote (remessa_id, produto_id, quantidade, saldo, data_validade, lote_origem_id)
+    SELECT $1, lo.produto_id, $3, $3, lo.data_validade, lo.id
+      FROM lote lo WHERE lo.id = $2
+    RETURNING id`,
+
+  listarTransferencias: `
+    SELECT t.id, p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           t.quantidade, ao.nome AS "origemNome", ad.nome AS "destinoNome",
+           coalesce(u.nome, '—') AS "usuarioNome", t.motivo,
+           lo.data_validade AS "dataValidade", t.data,
+           ${TOTAL_DA_JANELA}
+      FROM transferencia_almoxarifado t
+      JOIN almoxarifado ao ON ao.id = t.almoxarifado_origem_id
+      JOIN almoxarifado ad ON ad.id = t.almoxarifado_destino_id
+      JOIN lote lo ON lo.id = t.lote_id
+      JOIN produto p ON p.id = lo.produto_id
+      LEFT JOIN usuario u ON u.id = t.usuario_id
+     WHERE ao.orgao_id = $1
+       AND ($4::uuid IS NULL
+            OR t.almoxarifado_origem_id = $4 OR t.almoxarifado_destino_id = $4)
+     ORDER BY t.data DESC, t.id
+     LIMIT $2 OFFSET $3`,
+
+  criarAjuste: `
+    INSERT INTO ajuste_estoque
+      (almoxarifado_id, lote_id, estoque_local_id, saldo_anterior, saldo_corrigido,
+       motivo, observacao, usuario_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id`,
+
+  aplicarAjusteNoLote: `UPDATE lote SET saldo = $2 WHERE id = $1`,
+  aplicarAjusteNaUnidade: `UPDATE estoque_local SET saldo = $2 WHERE id = $1`,
+
+  listarAjustes: `
+    SELECT aj.id,
+           CASE WHEN aj.lote_id IS NULL THEN 'unidade' ELSE 'almoxarifado' END AS onde,
+           p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           aj.saldo_anterior AS "saldoAnterior", aj.saldo_corrigido AS "saldoCorrigido",
+           aj.saldo_corrigido - aj.saldo_anterior AS diferenca,
+           aj.motivo, aj.observacao,
+           coalesce(u.nome, '—') AS "usuarioNome", aj.data,
+           ${TOTAL_DA_JANELA}
+      FROM ajuste_estoque aj
+      LEFT JOIN lote lo ON lo.id = aj.lote_id
+      LEFT JOIN estoque_local el ON el.id = aj.estoque_local_id
+      LEFT JOIN local l ON l.id = el.local_id
+      LEFT JOIN almoxarifado a ON a.id = aj.almoxarifado_id
+      JOIN produto p ON p.id = coalesce(lo.produto_id, el.produto_id)
+      LEFT JOIN usuario u ON u.id = aj.usuario_id
+     WHERE coalesce(a.orgao_id, l.orgao_id) = $1
+       AND ($4::uuid IS NULL OR aj.almoxarifado_id = $4)
+       AND ($5::uuid IS NULL OR el.local_id = $5)
+     ORDER BY aj.data DESC, aj.id
+     LIMIT $2 OFFSET $3`,
 };
 
 const numero = (valor: unknown) => Number(valor ?? 0);
@@ -826,4 +1076,222 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
 
     return [...porProduto.values()];
   };
+
+  // ---- Movimento -----------------------------------------------------------
+
+  buscarAlmoxarifado = async (orgaoId: string, id: string): Promise<Almoxarifado | null> => {
+    const { rows } = await pool.query(SQL.buscarAlmoxarifado, [orgaoId, id]);
+    const linha = rows[0];
+    return linha
+      ? { ...linha, locais: numero(linha.locais), remessas: numero(linha.remessas) }
+      : null;
+  };
+
+  listarLotesDoAlmoxarifado = async (orgaoId: string, almoxarifadoId: string) => {
+    const { rows } = await pool.query(SQL.lotesDoAlmoxarifado, [orgaoId, almoxarifadoId]);
+    return rows.map((linha) => ({
+      ...linha,
+      quantidade: numero(linha.quantidade),
+      saldo: numero(linha.saldo),
+    })) as (LoteDaRemessa & { remessaCodigo: string })[];
+  };
+
+  bloquearEstoqueLocal = async (
+    orgaoId: string, localId: string, produtoId: string, tx: Tx,
+  ) => {
+    const { rows } = await tx.query(SQL.bloquearEstoqueLocal, [orgaoId, localId, produtoId]);
+    return rows.map((linha) => ({
+      id: linha.id as string,
+      saldo: numero(linha.saldo),
+      dataValidade: linha.dataValidade as string | null,
+    }));
+  };
+
+  bloquearLoteDaUnidade = async (
+    orgaoId: string, id: string, tx: Tx,
+  ): Promise<LoteBloqueado | null> => {
+    const { rows } = await tx.query(SQL.bloquearLoteDaUnidade, [orgaoId, id]);
+    return rows[0] ? comSaldoNumerico(rows[0]) : null;
+  };
+
+  bloquearLotePorId = async (
+    orgaoId: string, id: string, tx: Tx,
+  ): Promise<LoteBloqueado | null> => {
+    const { rows } = await tx.query(SQL.bloquearLotePorId, [orgaoId, id]);
+    return rows[0] ? comSaldoNumerico(rows[0]) : null;
+  };
+
+  registrarConsumo = async (dados: NovoConsumo, tx: Tx): Promise<string> => {
+    const { rows } = await tx.query(SQL.criarConsumo, [
+      dados.localId, dados.produtoId, dados.quantidade, dados.forma,
+      dados.periodoInicio, dados.periodoFim, dados.usuarioId, dados.observacao,
+    ]);
+    const id = rows[0].id as string;
+
+    for (const retirada of dados.retiradas) {
+      await tx.query(SQL.criarConsumoLote, [id, retirada.estoqueLocalId, retirada.quantidade]);
+      await tx.query(SQL.debitarEstoqueLocal, [retirada.estoqueLocalId, retirada.quantidade]);
+    }
+    return id;
+  };
+
+  listarConsumo = async (
+    orgaoId: string,
+    filtros: Paginacao & { local?: string; produto?: string; de?: string; ate?: string },
+  ): Promise<Pagina<ConsumoRegistrado>> => {
+    const { rows } = await pool.query(SQL.listarConsumo, [
+      orgaoId, filtros.porPagina, deslocamentoDe(filtros),
+      filtros.local ?? null, filtros.produto ?? null,
+      filtros.de ?? null, filtros.ate ?? null,
+    ]);
+    return montarPagina<ConsumoRegistrado>(
+      rows.map((linha) => ({
+        ...linha,
+        quantidade: numero(linha.quantidade),
+        lotes: numero(linha.lotes),
+      })) as never,
+      filtros,
+    );
+  };
+
+  criarDevolucao = async (dados: NovaDevolucao, tx: Tx): Promise<string> => {
+    const { rows } = await tx.query(SQL.criarDevolucao, [
+      dados.localId, dados.almoxarifadoId, dados.produtoId, dados.estoqueLocalId,
+      dados.quantidade, dados.motivo, dados.solicitadaPorUsuarioId,
+    ]);
+    // O saldo da escola baixa AQUI, não no aceite: enquanto a devolução espera
+    // resposta, aquele material não pode ser consumido nem devolvido de novo.
+    await tx.query(SQL.debitarEstoqueLocal, [dados.estoqueLocalId, dados.quantidade]);
+    return rows[0].id as string;
+  };
+
+  bloquearDevolucao = async (
+    orgaoId: string, id: string, tx: Tx,
+  ): Promise<DevolucaoResumo | null> => {
+    const { rows } = await tx.query(SQL.bloquearDevolucao, [orgaoId, id]);
+    return rows[0] ? { ...rows[0], quantidade: numero(rows[0].quantidade) } as DevolucaoResumo : null;
+  };
+
+  responderDevolucao = async (
+    id: string, usuarioId: string, aceitar: boolean, motivoRecusa: string | null, tx: Tx,
+  ): Promise<void> => {
+    const alvo = (await tx.query(SQL.bloquearDevolucaoSimples, [id])).rows[0] as
+      | {
+          estoqueLocalId: string;
+          quantidade: string;
+          status: string;
+          loteOrigemId: string | null;
+        }
+      | undefined;
+    if (!alvo) return;
+
+    await tx.query(SQL.responderDevolucao, [id, usuarioId, aceitar, motivoRecusa]);
+
+    if (aceitar) {
+      // Volta ao lote de ORIGEM, preservando a validade: criar lote novo
+      // duplicaria a mesma caixa no estoque do almoxarifado. Sem lote de
+      // origem — material que chegou por ajuste, não por entrega — não há para
+      // onde creditar, e o saldo simplesmente sai da unidade.
+      if (alvo.loteOrigemId) {
+        await tx.query(SQL.creditarLoteDeOrigem, [alvo.loteOrigemId, alvo.quantidade]);
+      }
+    } else {
+      // Recusa devolve o material à unidade — ele nunca saiu de lá de fato.
+      await tx.query(SQL.devolverSaldoAUnidade, [alvo.estoqueLocalId, alvo.quantidade]);
+    }
+  };
+
+  listarDevolucoes = async (
+    orgaoId: string,
+    filtros: Paginacao & { status?: string; almoxarifado?: string; local?: string },
+  ): Promise<Pagina<DevolucaoResumo>> => {
+    const { rows } = await pool.query(SQL.listarDevolucoes, [
+      orgaoId, filtros.porPagina, deslocamentoDe(filtros),
+      filtros.status ?? null, filtros.almoxarifado ?? null, filtros.local ?? null,
+    ]);
+    return montarPagina<DevolucaoResumo>(
+      rows.map((linha) => ({ ...linha, quantidade: numero(linha.quantidade) })) as never,
+      filtros,
+    );
+  };
+
+  transferirLote = async (
+    dados: NovaTransferencia, tx: Tx,
+  ): Promise<{ id: string; remessaDestinoId: string }> => {
+    const { rows } = await tx.query(SQL.criarTransferencia, [
+      dados.almoxarifadoOrigemId, dados.almoxarifadoDestinoId, dados.loteId,
+      dados.quantidade, dados.usuarioId, dados.motivo,
+    ]);
+    const id = rows[0].id as string;
+
+    await tx.query(SQL.debitarLote, [dados.loteId, dados.quantidade]);
+
+    const remessa = await tx.query(SQL.criarRemessaDeTransferencia, [
+      id, dados.almoxarifadoDestinoId, dados.usuarioId, dados.loteId,
+    ]);
+    const remessaDestinoId = remessa.rows[0].id as string;
+
+    await tx.query(SQL.criarLoteDeTransferencia, [
+      remessaDestinoId, dados.loteId, dados.quantidade,
+    ]);
+
+    return { id, remessaDestinoId };
+  };
+
+  listarTransferencias = async (
+    orgaoId: string, filtros: Paginacao & { almoxarifado?: string },
+  ): Promise<Pagina<TransferenciaResumo>> => {
+    const { rows } = await pool.query(SQL.listarTransferencias, [
+      orgaoId, filtros.porPagina, deslocamentoDe(filtros), filtros.almoxarifado ?? null,
+    ]);
+    return montarPagina<TransferenciaResumo>(
+      rows.map((linha) => ({ ...linha, quantidade: numero(linha.quantidade) })) as never,
+      filtros,
+    );
+  };
+
+  registrarAjuste = async (dados: NovoAjuste, tx: Tx): Promise<string> => {
+    const { rows } = await tx.query(SQL.criarAjuste, [
+      dados.almoxarifadoId, dados.loteId, dados.estoqueLocalId,
+      dados.saldoAnterior, dados.saldoCorrigido, dados.motivo,
+      dados.observacao, dados.usuarioId,
+    ]);
+
+    // O ajuste GRAVA o saldo, não soma a diferença: é uma contagem física
+    // substituindo o que o sistema achava que tinha.
+    if (dados.loteId) {
+      await tx.query(SQL.aplicarAjusteNoLote, [dados.loteId, dados.saldoCorrigido]);
+    } else {
+      await tx.query(SQL.aplicarAjusteNaUnidade, [dados.estoqueLocalId, dados.saldoCorrigido]);
+    }
+    return rows[0].id as string;
+  };
+
+  listarAjustes = async (
+    orgaoId: string, filtros: Paginacao & { almoxarifado?: string; local?: string },
+  ): Promise<Pagina<AjusteResumo>> => {
+    const { rows } = await pool.query(SQL.listarAjustes, [
+      orgaoId, filtros.porPagina, deslocamentoDe(filtros),
+      filtros.almoxarifado ?? null, filtros.local ?? null,
+    ]);
+    return montarPagina<AjusteResumo>(
+      rows.map((linha) => ({
+        ...linha,
+        saldoAnterior: numero(linha.saldoAnterior),
+        saldoCorrigido: numero(linha.saldoCorrigido),
+        diferenca: numero(linha.diferenca),
+      })) as never,
+      filtros,
+    );
+  };
 }
+
+const comSaldoNumerico = (linha: Record<string, unknown>): LoteBloqueado => ({
+  id: String(linha.id),
+  produtoId: String(linha.produtoId),
+  produtoNome: String(linha.produtoNome),
+  saldo: numero(linha.saldo),
+  tetoDoLote: linha.tetoDoLote === null ? null : numero(linha.tetoDoLote),
+  localId: String(linha.localId ?? ""),
+  almoxarifadoId: String(linha.almoxarifadoId ?? ""),
+});

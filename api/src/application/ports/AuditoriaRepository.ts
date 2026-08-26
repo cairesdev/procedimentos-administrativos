@@ -43,6 +43,13 @@ export type TipoEvento =
   | "SOLICITACAO_ESTOQUE_RECUSADA"
   | "SOLICITACAO_ESTOQUE_CANCELADA"
   | "SOLICITACAO_ESTOQUE_EXPIRADA"
+  // 2ª fatia: o que acontece com o estoque depois que ele chega.
+  | "CONSUMO_ESTOQUE_REGISTRADO"
+  | "DEVOLUCAO_ESTOQUE_PEDIDA"
+  | "DEVOLUCAO_ESTOQUE_ACEITA"
+  | "DEVOLUCAO_ESTOQUE_RECUSADA"
+  | "TRANSFERENCIA_ESTOQUE_REGISTRADA"
+  | "AJUSTE_ESTOQUE_REGISTRADO"
   // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.
   | "ADMIN_ENTIDADE_CRIADO"
   | "ADMIN_ENTIDADE_PROMOVIDO"

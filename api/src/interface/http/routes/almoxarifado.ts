@@ -3,6 +3,9 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPapel } from "../middlewares/exigirPapel";
 import { MOTIVOS_DE_PERDA } from "../../../application/almoxarifado/ReceberEstoque";
+import {
+  FORMAS_DE_CONSUMO, MOTIVOS_DE_AJUSTE,
+} from "../../../application/almoxarifado/MovimentarEstoque";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 /**
@@ -94,6 +97,43 @@ const recebimentoSchema = z.object({
 
 const recusaSchema = z.object({ motivo: z.string().min(3).max(500) });
 
+const consumoSchema = z.object({
+  localId: z.string().uuid(),
+  produtoId: z.string().uuid(),
+  quantidade,
+  forma: z.enum(FORMAS_DE_CONSUMO),
+  periodoInicio: z.string().date().optional(),
+  periodoFim: z.string().date().optional(),
+  observacao: z.string().max(500).optional(),
+});
+
+const devolucaoSchema = z.object({
+  estoqueLocalId: z.string().uuid(),
+  quantidade,
+  motivo: z.string().min(3).max(500),
+});
+
+const respostaDevolucaoSchema = z.object({
+  aceitar: z.boolean(),
+  motivoRecusa: z.string().min(3).max(500).optional(),
+});
+
+const transferenciaSchema = z.object({
+  loteId: z.string().uuid(),
+  almoxarifadoDestinoId: z.string().uuid(),
+  quantidade,
+  motivo: z.string().max(500).optional(),
+});
+
+const ajusteSchema = z.object({
+  loteId: z.string().uuid().optional(),
+  estoqueLocalId: z.string().uuid().optional(),
+  // Zero é válido: contagem pode achar que não sobrou nada.
+  saldoCorrigido: z.number().nonnegative().max(99_999_999).multipleOf(0.001),
+  motivo: z.enum(MOTIVOS_DE_AJUSTE),
+  observacao: z.string().max(500).optional(),
+});
+
 export const almoxarifadoRouter = Router();
 
 // ---------------------------------------------------------------------------
@@ -112,6 +152,18 @@ almoxarifadoRouter.post("/almoxarifados", exigirPapel(...ADMINISTRA_ESTOQUE), as
     const { nome } = nomeSchema.parse(req.body);
     const id = await container.gerenciarAlmoxarifado.criarAlmoxarifado(req.sessao!.orgaoId, nome);
     res.status(201).json({ id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Antes da paramétrica de edição não faz diferença aqui (métodos distintos),
+// mas fica junto do resto do cadastro de almoxarifado.
+almoxarifadoRouter.get("/almoxarifados/:id/lotes", async (req, res, next) => {
+  try {
+    res.json(await container.almoxarifado.listarLotesDoAlmoxarifado(
+      req.sessao!.orgaoId, req.params.id!,
+    ));
   } catch (error) {
     next(error);
   }
@@ -449,6 +501,142 @@ almoxarifadoRouter.post("/solicitacoes/:id/receber", async (req, res, next) => {
       usuarioId: req.sessao!.usuarioId,
       solicitacaoId: req.params.id!,
       confirmacoes: recebimentoSchema.parse(req.body).confirmacoes,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// Movimento: consumo, devolução, transferência e ajuste
+
+const filtro = (req: { query: Record<string, unknown> }, chave: string) =>
+  typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
+
+almoxarifadoRouter.get("/consumo", async (req, res, next) => {
+  try {
+    res.json(await container.almoxarifado.listarConsumo(req.sessao!.orgaoId, {
+      ...paginacaoSchema.parse(req.query),
+      local: filtro(req, "local"),
+      produto: filtro(req, "produto"),
+      de: filtro(req, "de"),
+      ate: filtro(req, "ate"),
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Consumo é da unidade: exigir papel de almoxarife travaria a escola.
+almoxarifadoRouter.post("/consumo", async (req, res, next) => {
+  try {
+    const dados = consumoSchema.parse(req.body);
+    res.status(201).json(await container.movimentarEstoque.consumir({
+      ...dados,
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.get("/devolucoes", async (req, res, next) => {
+  try {
+    res.json(await container.almoxarifado.listarDevolucoes(req.sessao!.orgaoId, {
+      ...paginacaoSchema.parse(req.query),
+      status: filtro(req, "status"),
+      almoxarifado: filtro(req, "almoxarifado"),
+      local: filtro(req, "local"),
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.post("/devolucoes", async (req, res, next) => {
+  try {
+    const dados = devolucaoSchema.parse(req.body);
+    res.status(201).json(await container.movimentarEstoque.pedirDevolucao({
+      ...dados,
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Quem aceita a volta do material é o almoxarifado, não a unidade.
+almoxarifadoRouter.post(
+  "/devolucoes/:id/responder",
+  exigirPapel(...ADMINISTRA_ESTOQUE),
+  async (req, res, next) => {
+    try {
+      const dados = respostaDevolucaoSchema.parse(req.body);
+      await container.movimentarEstoque.responderDevolucao({
+        ...dados,
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        devolucaoId: req.params.id!,
+      });
+      res.json({ message: dados.aceitar ? "Devolução aceita" : "Devolução recusada" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+almoxarifadoRouter.get("/transferencias", async (req, res, next) => {
+  try {
+    res.json(await container.almoxarifado.listarTransferencias(req.sessao!.orgaoId, {
+      ...paginacaoSchema.parse(req.query),
+      almoxarifado: filtro(req, "almoxarifado"),
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.post(
+  "/transferencias",
+  exigirPapel(...ADMINISTRA_ESTOQUE),
+  async (req, res, next) => {
+    try {
+      const dados = transferenciaSchema.parse(req.body);
+      res.status(201).json(await container.movimentarEstoque.transferir({
+        ...dados,
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+      }));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+almoxarifadoRouter.get("/ajustes", async (req, res, next) => {
+  try {
+    res.json(await container.almoxarifado.listarAjustes(req.sessao!.orgaoId, {
+      ...paginacaoSchema.parse(req.query),
+      almoxarifado: filtro(req, "almoxarifado"),
+      local: filtro(req, "local"),
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Ajuste vale nos dois lados — a escola corrige o armário dela, o almoxarife
+// corrige o depósito. O caso de uso decide qual pelo campo informado.
+almoxarifadoRouter.post("/ajustes", async (req, res, next) => {
+  try {
+    const dados = ajusteSchema.parse(req.body);
+    res.status(201).json(await container.movimentarEstoque.ajustar({
+      ...dados,
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
     }));
   } catch (error) {
     next(error);

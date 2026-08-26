@@ -78,6 +78,25 @@ describe("rotas do almoxarifado", () => {
     }
   });
 
+  /**
+   * O que está declarado entre o caminho da rota e o início do handler — é
+   * onde os middlewares moram.
+   *
+   * Precisa varrer várias linhas: rota com middleware costuma ser quebrada em
+   * três linhas, e olhar só o resto da primeira daria falso negativo — a
+   * checagem passaria numa rota que perdeu a guarda.
+   */
+  const entre = (metodo: string, caminho: string): string | null => {
+    const inicio = new RegExp(
+      `almoxarifadoRouter\\.${metodo}\\(\\s*"${caminho.replace(/[/:]/g, "\\$&")}"\\s*,`,
+    ).exec(rotas);
+    if (!inicio) return null;
+
+    const resto = rotas.slice(inicio.index + inicio[0].length);
+    const handler = /async\s*\(\s*req|\(\s*req\s*,/.exec(resto);
+    return resto.slice(0, handler ? handler.index : 200);
+  };
+
   it("entrada e liberação exigem papel de quem administra o estoque", () => {
     // Pedir é da unidade; dar entrada e liberar é de quem responde pelo
     // estoque. Confundir os dois deixaria a escola liberando para si mesma.
@@ -89,14 +108,13 @@ describe("rotas do almoxarifado", () => {
       ["post", "/solicitacoes/:id/liberar"],
       ["post", "/solicitacoes/:id/recusar"],
       ["delete", "/lotes/:id"],
+      ["post", "/transferencias"],
+      ["post", "/devolucoes/:id/responder"],
     ] as const) {
-      const declaracao = new RegExp(
-        `almoxarifadoRouter\\.${metodo}\\(\\s*"${caminho.replace(/[/:]/g, "\\$&")}"\\s*,([^\n]*)`,
-      ).exec(rotas);
-
-      assert.ok(declaracao, `${metodo.toUpperCase()} ${caminho} não existe`);
+      const declaracao = entre(metodo, caminho);
+      assert.ok(declaracao !== null, `${metodo.toUpperCase()} ${caminho} não existe`);
       assert.match(
-        declaracao![1]!,
+        declaracao!,
         /exigirPapel/,
         `${metodo.toUpperCase()} ${caminho} não exige papel`,
       );
@@ -109,14 +127,14 @@ describe("rotas do almoxarifado", () => {
     for (const [metodo, caminho] of [
       ["post", "/solicitacoes"],
       ["post", "/solicitacoes/:id/receber"],
+      ["post", "/consumo"],
+      ["post", "/devolucoes"],
+      ["post", "/ajustes"],
     ] as const) {
-      const declaracao = new RegExp(
-        `almoxarifadoRouter\\.${metodo}\\(\\s*"${caminho.replace(/[/:]/g, "\\$&")}"\\s*,([^\n]*)`,
-      ).exec(rotas);
-
-      assert.ok(declaracao, `${metodo.toUpperCase()} ${caminho} não existe`);
+      const declaracao = entre(metodo, caminho);
+      assert.ok(declaracao !== null, `${metodo.toUpperCase()} ${caminho} não existe`);
       assert.ok(
-        !/exigirPapel/.test(declaracao![1]!),
+        !/exigirPapel/.test(declaracao!),
         `${metodo.toUpperCase()} ${caminho} exige papel e travaria a unidade`,
       );
     }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LOSS_REASONS } from "./types";
+import { ADJUSTMENT_REASONS, CONSUMPTION_FORMS, LOSS_REASONS } from "./types";
 
 /** Três casas, como a coluna `NUMERIC(14,3)` do banco. */
 const quantidade = z
@@ -123,3 +123,46 @@ export const refuseSchema = z.object({
 });
 
 export type RefuseInput = z.infer<typeof refuseSchema>;
+
+const valores = <T extends readonly { value: string }[]>(lista: T) =>
+  lista.map((item) => item.value) as [string, ...string[]];
+
+export const consumptionSchema = z.object({
+  localId: z.string().uuid("Escolha o local"),
+  produtoId: z.string().uuid("Escolha o produto"),
+  quantidade,
+  forma: z.enum(valores(CONSUMPTION_FORMS)),
+  periodoInicio: z.string().optional(),
+  periodoFim: z.string().optional(),
+  observacao: z.string().max(500).optional(),
+});
+
+export type ConsumptionInput = z.infer<typeof consumptionSchema>;
+
+export const returnSchema = z.object({
+  estoqueLocalId: z.string().uuid("Escolha o lote"),
+  quantidade,
+  motivo: z.string().min(3, "Explique por que o material está voltando").max(500),
+});
+
+export type ReturnInput = z.infer<typeof returnSchema>;
+
+export const transferSchema = z.object({
+  loteId: z.string().uuid("Escolha o lote"),
+  almoxarifadoDestinoId: z.string().uuid("Escolha o destino"),
+  quantidade,
+  motivo: z.string().max(500).optional(),
+});
+
+export type TransferInput = z.infer<typeof transferSchema>;
+
+export const adjustmentSchema = z.object({
+  loteId: z.string().uuid().optional(),
+  estoqueLocalId: z.string().uuid().optional(),
+  // Zero é válido: a contagem pode achar que não sobrou nada.
+  saldoCorrigido: z.number({ message: "Informe o saldo contado" }).nonnegative().max(99_999_999),
+  motivo: z.enum(valores(ADJUSTMENT_REASONS)),
+  observacao: z.string().max(500).optional(),
+});
+
+export type AdjustmentInput = z.infer<typeof adjustmentSchema>;

@@ -130,6 +130,11 @@ describe("consultas dos repositórios", () => {
    */
   const NAO_PARSEAVEIS: Record<string, string> = {
     bloquearLotes: "FOR UPDATE OF <alias> — trava só a linha do lote",
+    bloquearEstoqueLocal: "FOR UPDATE OF <alias> — trava só o lote na unidade",
+    bloquearLoteDaUnidade: "FOR UPDATE OF <alias>",
+    bloquearLotePorId: "FOR UPDATE OF <alias>",
+    bloquearDevolucao: "FOR UPDATE OF <alias>",
+    bloquearDevolucaoSimples: "FOR UPDATE OF <alias>",
   };
 
   it("tem sintaxe que o Postgres aceita", () => {

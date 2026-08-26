@@ -6,11 +6,13 @@ import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import {
-  intakeSchema, receiptSchema, refuseSchema, releaseSchema, stockLocationSchema,
-  stockRequestSchema, stockSettingsSchema, stockTypeSchema, warehouseSchema,
-  type IntakeInput, type ReceiptInput, type RefuseInput, type ReleaseInput,
-  type StockLocationInput, type StockRequestInput, type StockSettingsInput,
-  type StockTypeInput, type WarehouseInput,
+  adjustmentSchema, consumptionSchema, intakeSchema, receiptSchema, refuseSchema,
+  releaseSchema, returnSchema, stockLocationSchema, stockRequestSchema,
+  stockSettingsSchema, stockTypeSchema, transferSchema, warehouseSchema,
+  type AdjustmentInput, type ConsumptionInput, type IntakeInput, type ReceiptInput,
+  type RefuseInput, type ReleaseInput, type ReturnInput, type StockLocationInput,
+  type StockRequestInput, type StockSettingsInput, type StockTypeInput,
+  type TransferInput, type WarehouseInput,
 } from "./schemas";
 
 const WAREHOUSES = "/almoxarifado/almoxarifados";
@@ -199,3 +201,69 @@ export const confirmReceipt = async (id: string, input: ReceiptInput) =>
     revalidatePath(REQUESTS);
     revalidatePath(`${REQUESTS}/${id}`);
   }, "Recebimento confirmado");
+
+// ---------------------------------------------------------------------------
+// Movimento
+
+const CONSUMPTION = "/almoxarifado/consumo";
+const RETURNS = "/almoxarifado/devolucoes";
+const TRANSFERS = "/almoxarifado/transferencias";
+const ADJUSTMENTS = "/almoxarifado/ajustes";
+const LOCAL_STOCK = "/almoxarifado/estoque";
+
+export const registerConsumption = async (input: ConsumptionInput) =>
+  runAction(async () => {
+    const dados = consumptionSchema.parse(input);
+    await apiRequest(endpoints.consumption, {
+      method: "POST",
+      body: {
+        ...dados,
+        // Período em branco não é período: item a item o rejeita, e string
+        // vazia passaria pelo `optional` do Zod.
+        periodoInicio: semVazio(dados.periodoInicio),
+        periodoFim: semVazio(dados.periodoFim),
+        observacao: semVazio(dados.observacao),
+      },
+    });
+    revalidatePath(CONSUMPTION);
+    revalidatePath(LOCAL_STOCK);
+  }, "Consumo registrado");
+
+export const requestReturn = async (input: ReturnInput) =>
+  runAction(async () => {
+    await apiRequest(endpoints.returns, { method: "POST", body: returnSchema.parse(input) });
+    revalidatePath(RETURNS);
+    revalidatePath(LOCAL_STOCK);
+  }, "Devolução enviada para aceite");
+
+export const answerReturn = async (id: string, aceitar: boolean, motivoRecusa?: string) =>
+  runAction(async () => {
+    await apiRequest(endpoints.answerReturn(id), {
+      method: "POST",
+      body: { aceitar, motivoRecusa: semVazio(motivoRecusa) },
+    });
+    revalidatePath(RETURNS);
+  }, aceitar ? "Devolução aceita" : "Devolução recusada");
+
+export const transferBetweenWarehouses = async (input: TransferInput) =>
+  runAction(async () => {
+    const dados = transferSchema.parse(input);
+    await apiRequest(endpoints.stockTransfers, {
+      method: "POST",
+      body: { ...dados, motivo: semVazio(dados.motivo) },
+    });
+    revalidatePath(TRANSFERS);
+    revalidatePath(INTAKES);
+  }, "Transferência registrada");
+
+export const adjustStock = async (input: AdjustmentInput) =>
+  runAction(async () => {
+    const dados = adjustmentSchema.parse(input);
+    await apiRequest(endpoints.adjustments, {
+      method: "POST",
+      body: { ...dados, observacao: semVazio(dados.observacao) },
+    });
+    revalidatePath(ADJUSTMENTS);
+    revalidatePath(LOCAL_STOCK);
+    revalidatePath(INTAKES);
+  }, "Ajuste registrado");

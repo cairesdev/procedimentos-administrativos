@@ -113,6 +113,30 @@ VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa
         '77777777-7777-7777-7777-777777777777', 10);
 """
 
+# A 2a fatia move o lote que ja esta na unidade: consumo, devolucao e ajuste
+# partem dele.
+#
+# Usa uma liberacao PROPRIA (`b2`), e nao a do cenario base: um dos casos ali
+# testa justamente que a entrega `bbbb` gera a primeira linha de estoque, e
+# criar essa linha aqui faria aquele caso falhar por conflito de indice.
+CENARIO_MOVIMENTO = """
+INSERT INTO liberacao_lote (id, solicitacao_item_id, lote_id, quantidade)
+VALUES ('b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        '77777777-7777-7777-7777-777777777777', 7);
+INSERT INTO estoque_local (id, local_id, produto_id, lote_origem_id, liberacao_lote_id,
+                           quantidade_recebida, saldo, data_validade)
+VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc','33333333-3333-3333-3333-333333333333',
+        '55555555-5555-5555-5555-555555555555','77777777-7777-7777-7777-777777777777',
+        'b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2', 7, 7, current_date + 90);
+INSERT INTO consumo (id, local_id, produto_id, quantidade, forma, usuario_id)
+VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd','33333333-3333-3333-3333-333333333333',
+        '55555555-5555-5555-5555-555555555555', 3, 'ITEM_A_ITEM',
+        '88888888-8888-8888-8888-888888888888');
+"""
+
+# Primeiro caso da 2ª fatia — é aqui que o cenário de movimento é montado.
+MARCO_DA_SEGUNDA_FATIA = "consumo item a item nao tem periodo"
+
 # Cada caso descreve um estado que o banco tem de aceitar ou recusar sozinho.
 # Regra que só o caso de uso garante some quando alguém escreve direto no banco,
 # e num módulo de estoque o estado quebrado sobrevive à correção do código.
@@ -172,6 +196,72 @@ CASOS: list[tuple[str, str, bool]] = [
     ("saldo do lote não passa da quantidade",
      "UPDATE lote SET saldo = 200 WHERE id = '77777777-7777-7777-7777-777777777777'",
      False),
+    # ---- 2a fatia: consumo, devolucao, transferencia e ajuste --------------
+    (MARCO_DA_SEGUNDA_FATIA,
+     "INSERT INTO consumo (local_id, produto_id, quantidade, forma, periodo_inicio, periodo_fim) "
+     "VALUES ('33333333-3333-3333-3333-333333333333','55555555-5555-5555-5555-555555555555',"
+     "1,'ITEM_A_ITEM', current_date, current_date)",
+     False),
+    ("declaracao periodica exige o periodo",
+     "INSERT INTO consumo (local_id, produto_id, quantidade, forma) "
+     "VALUES ('33333333-3333-3333-3333-333333333333','55555555-5555-5555-5555-555555555555',"
+     "1,'DECLARACAO_PERIODICA')",
+     False),
+    ("periodo que termina antes de comecar e recusado",
+     "INSERT INTO consumo (local_id, produto_id, quantidade, forma, periodo_inicio, periodo_fim) "
+     "VALUES ('33333333-3333-3333-3333-333333333333','55555555-5555-5555-5555-555555555555',"
+     "1,'DECLARACAO_PERIODICA', current_date, current_date - 5)",
+     False),
+    ("consumo aponta o lote de onde saiu",
+     "INSERT INTO consumo_lote (consumo_id, estoque_local_id, quantidade) "
+     "VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd',"
+     "'cccccccc-cccc-cccc-cccc-cccccccccccc', 3)",
+     True),
+    ("devolucao pendente nao tem data de resposta",
+     "INSERT INTO devolucao (local_id, almoxarifado_id, produto_id, quantidade, status, "
+     "respondida_em) VALUES ('33333333-3333-3333-3333-333333333333',"
+     "'22222222-2222-2222-2222-222222222222','55555555-5555-5555-5555-555555555555',"
+     "2,'PENDENTE', now())",
+     False),
+    ("recusa de devolucao exige motivo",
+     "INSERT INTO devolucao (local_id, almoxarifado_id, produto_id, quantidade, status, "
+     "respondida_em) VALUES ('33333333-3333-3333-3333-333333333333',"
+     "'22222222-2222-2222-2222-222222222222','55555555-5555-5555-5555-555555555555',"
+     "2,'RECUSADA', now())",
+     False),
+    ("devolucao recusada com motivo e aceita",
+     "INSERT INTO devolucao (local_id, almoxarifado_id, produto_id, quantidade, status, "
+     "respondida_em, recusa_motivo) VALUES ('33333333-3333-3333-3333-333333333333',"
+     "'22222222-2222-2222-2222-222222222222','55555555-5555-5555-5555-555555555555',"
+     "2,'RECUSADA', now(), 'Embalagem violada')",
+     True),
+    ("transferencia para o proprio almoxarifado e recusada",
+     "INSERT INTO transferencia_almoxarifado (almoxarifado_origem_id, almoxarifado_destino_id, "
+     "lote_id, quantidade, usuario_id) VALUES ('22222222-2222-2222-2222-222222222222',"
+     "'22222222-2222-2222-2222-222222222222','77777777-7777-7777-7777-777777777777',1,"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("ajuste aponta o lote OU o estoque da unidade, nunca os dois",
+     "INSERT INTO ajuste_estoque (almoxarifado_id, lote_id, estoque_local_id, saldo_anterior, "
+     "saldo_corrigido, motivo, usuario_id) VALUES ('22222222-2222-2222-2222-222222222222',"
+     "'77777777-7777-7777-7777-777777777777','cccccccc-cccc-cccc-cccc-cccccccccccc',"
+     "10, 8,'CONTAGEM','88888888-8888-8888-8888-888888888888')",
+     False),
+    ("ajuste que nao muda nada e recusado",
+     "INSERT INTO ajuste_estoque (estoque_local_id, saldo_anterior, saldo_corrigido, motivo, "
+     "usuario_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 7, 7,'CONTAGEM',"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("ajuste do armario da escola e aceito",
+     "INSERT INTO ajuste_estoque (estoque_local_id, saldo_anterior, saldo_corrigido, motivo, "
+     "usuario_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 7, 5,'PERDA',"
+     "'88888888-8888-8888-8888-888888888888')",
+     True),
+    ("contagem que acha material a mais e aceita",
+     "INSERT INTO ajuste_estoque (estoque_local_id, saldo_anterior, saldo_corrigido, motivo, "
+     "usuario_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 5, 6,'SOBRA',"
+     "'88888888-8888-8888-8888-888888888888')",
+     True),
     ("reserva negativa é recusada",
      "UPDATE solicitacao_estoque_item SET quantidade_reservada = -1 WHERE id = "
      "'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'",
@@ -187,6 +277,14 @@ def conferir_invariantes(banco: Banco) -> int:
 
     falhas = 0
     for nome, sql, esperado_ok in CASOS:
+        # O cenário da 2ª fatia entra no meio da lista, depois dos casos que
+        # dependem de a unidade ainda não ter recebido nada.
+        if nome == MARCO_DA_SEGUNDA_FATIA:
+            ok, saida = banco.executar(CENARIO_MOVIMENTO)
+            if not ok:
+                print(f"FALHA ao montar o cenário de movimento\n{saida[-2000:]}")
+                return falhas + 1
+
         aceito, saida = banco.executar(sql)
         if aceito == esperado_ok:
             print(f"  ok   {nome}")

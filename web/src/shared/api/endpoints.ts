@@ -31,6 +31,7 @@ export const endpoints = {
   // Almoxarifado
   warehouses: "/almoxarifado/almoxarifados",
   stockTypes: "/almoxarifado/tipos",
+  warehouseBatches: (id: string) => `/almoxarifado/almoxarifados/${id}/lotes`,
   products: "/almoxarifado/produtos",
   stockSettings: "/almoxarifado/configuracao",
   stockLocations: "/almoxarifado/locais",
@@ -41,6 +42,11 @@ export const endpoints = {
   stockRequests: "/almoxarifado/solicitacoes",
   stockRequestItems: (id: string) => `/almoxarifado/solicitacoes/${id}/itens`,
   stockRequestAction: (id: string, acao: string) => `/almoxarifado/solicitacoes/${id}/${acao}`,
+  consumption: "/almoxarifado/consumo",
+  returns: "/almoxarifado/devolucoes",
+  answerReturn: (id: string) => `/almoxarifado/devolucoes/${id}/responder`,
+  stockTransfers: "/almoxarifado/transferencias",
+  adjustments: "/almoxarifado/ajustes",
 
   vehicles: "/frotas/veiculos",
   drivers: "/frotas/motoristas",

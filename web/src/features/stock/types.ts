@@ -201,3 +201,89 @@ export type LocalStock = {
   saldo: number;
   lotes: { id: string; saldo: number; dataValidade: string | null; dataEntrada: string }[];
 };
+
+export const CONSUMPTION_FORMS = [
+  { value: "ITEM_A_ITEM", label: "Item a item" },
+  { value: "DECLARACAO_PERIODICA", label: "Declaração do período" },
+] as const;
+
+export type ConsumptionForm = (typeof CONSUMPTION_FORMS)[number]["value"];
+
+export type Consumption = {
+  id: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  forma: ConsumptionForm;
+  periodoInicio: string | null;
+  periodoFim: string | null;
+  data: string;
+  usuarioNome: string;
+  observacao: string | null;
+  lotes: number;
+};
+
+export const RETURN_STATUSES = [
+  { value: "PENDENTE", label: "aguardando aceite", tone: "accent" },
+  { value: "ACEITA", label: "aceita", tone: "success" },
+  { value: "RECUSADA", label: "recusada", tone: "neutral" },
+] as const;
+
+export type StockReturn = {
+  id: string;
+  localNome: string;
+  almoxarifadoNome: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  status: "PENDENTE" | "ACEITA" | "RECUSADA";
+  motivo: string | null;
+  recusaMotivo: string | null;
+  solicitadaPor: string;
+  aceitaPor: string | null;
+  dataValidade: string | null;
+  data: string;
+  respondidaEm: string | null;
+};
+
+export type StockTransfer = {
+  id: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  quantidade: number;
+  origemNome: string;
+  destinoNome: string;
+  usuarioNome: string;
+  motivo: string | null;
+  dataValidade: string | null;
+  data: string;
+};
+
+/**
+ * Motivos de ajuste. `SOBRA` e `CONTAGEM` existem porque contagem física acha
+ * material a mais também — caixa atrás da porta, entrada lançada a menor.
+ */
+export const ADJUSTMENT_REASONS = [
+  { value: "CONTAGEM", label: "Contagem física" },
+  { value: "PERDA", label: "Perda" },
+  { value: "AVARIA", label: "Avaria" },
+  { value: "VENCIDO", label: "Vencido" },
+  { value: "SOBRA", label: "Sobra encontrada" },
+  { value: "ERRO_LANCAMENTO", label: "Erro de lançamento" },
+] as const;
+
+export type AdjustmentReason = (typeof ADJUSTMENT_REASONS)[number]["value"];
+
+export type Adjustment = {
+  id: string;
+  onde: string;
+  produtoNome: string;
+  unidadeMedida: string;
+  saldoAnterior: number;
+  saldoCorrigido: number;
+  diferenca: number;
+  motivo: AdjustmentReason;
+  observacao: string | null;
+  usuarioNome: string;
+  data: string;
+};

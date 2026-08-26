@@ -48,6 +48,7 @@ import { GerenciarAlmoxarifado } from "./application/almoxarifado/GerenciarAlmox
 import { SolicitarEstoque } from "./application/almoxarifado/SolicitarEstoque";
 import { LiberarEstoque } from "./application/almoxarifado/LiberarEstoque";
 import { ReceberEstoque } from "./application/almoxarifado/ReceberEstoque";
+import { MovimentarEstoque } from "./application/almoxarifado/MovimentarEstoque";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -78,6 +79,9 @@ export const container = {
   ),
   liberarEstoque: new LiberarEstoque(almoxarifado, auditoria, executarEmTransacao),
   receberEstoque: new ReceberEstoque(
+    almoxarifado, usuarios, auditoria, executarEmTransacao,
+  ),
+  movimentarEstoque: new MovimentarEstoque(
     almoxarifado, usuarios, auditoria, executarEmTransacao,
   ),
   protocolo,

@@ -2,8 +2,9 @@ import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { withPage, type Page } from "@/shared/api/pagination";
 import type {
-  Availability, Intake, IntakeDetail, LocalStock, Product, ReceiptPlan, ReleasePlan,
-  StockLocation, StockRequest, StockRequestSummary, StockSettings, StockType, Warehouse,
+  Adjustment, Availability, Consumption, Intake, IntakeDetail, LocalStock, Product,
+  ReceiptPlan, ReleasePlan, StockLocation, StockRequest, StockRequestSummary,
+  StockReturn, StockSettings, StockTransfer, StockType, Warehouse,
 } from "./types";
 
 export const listWarehouses = () => apiRequest<Warehouse[]>(endpoints.warehouses);
@@ -70,3 +71,27 @@ export const getReleasePlan = (id: string) =>
 
 export const getReceiptPlan = (id: string) =>
   apiRequest<ReceiptPlan>(endpoints.stockRequestAction(id, "recebimento"));
+
+const comFiltros = (base: string, filtros: Record<string, string | undefined>) => {
+  const query = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor) query.set(chave, valor);
+  }
+  return `${base}${query.size > 0 ? `?${query}` : ""}`;
+};
+
+export const listConsumption = (
+  filtros: { local?: string; produto?: string; de?: string; ate?: string; pagina?: string } = {},
+) => apiRequest<Page<Consumption>>(comFiltros(endpoints.consumption, filtros));
+
+export const listReturns = (
+  filtros: { status?: string; almoxarifado?: string; local?: string; pagina?: string } = {},
+) => apiRequest<Page<StockReturn>>(comFiltros(endpoints.returns, filtros));
+
+export const listTransfers = (
+  filtros: { almoxarifado?: string; pagina?: string } = {},
+) => apiRequest<Page<StockTransfer>>(comFiltros(endpoints.stockTransfers, filtros));
+
+export const listAdjustments = (
+  filtros: { almoxarifado?: string; local?: string; pagina?: string } = {},
+) => apiRequest<Page<Adjustment>>(comFiltros(endpoints.adjustments, filtros));

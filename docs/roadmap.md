@@ -104,8 +104,8 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
 5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
    casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
    ambiente de pé.
-6. **Módulo Almoxarifado** — 1ª fatia entregue, API e web (ver seção abaixo). Faltam consumo,
-   devolução, transferência entre almoxarifados, ajuste e relatórios do PNAE.
+6. **Módulo Almoxarifado** — fatias 1 e 2 entregues, API e web. Falta o relatório de consumo
+   para o PNAE, que agora tem dado para existir.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura
@@ -729,3 +729,52 @@ como "não me deram nada".
   exceções com a justificativa — que é o mecanismo previsto, não um contorno:
   sem a lista, bastaria acrescentar uma consulta sem órgão para o teste ficar
   mudo.
+
+## Almoxarifado — 2ª fatia (movimento)
+
+O que acontece com o estoque depois que ele chega. Consumo é o único que faz o
+saldo da escola diminuir por uso; devolução, transferência e ajuste são as três
+formas de o material andar sem ser consumido. Cada uma existe porque a
+alternativa é o servidor resolver por fora e o saldo ficar errado para sempre.
+
+| Rota | Regra central |
+| --- | --- |
+| POST `/almoxarifado/consumo` | baixa em FEFO sobre o armário da escola; o sistema escolhe os lotes |
+| POST `/almoxarifado/devolucoes` | o saldo sai da unidade **no pedido**, não no aceite |
+| POST `/devolucoes/:id/responder` | aceite credita o lote de origem; recusa devolve à unidade |
+| POST `/almoxarifado/transferencias` | debita a origem e cria uma **remessa de transferência** no destino |
+| POST `/almoxarifado/ajustes` | grava o saldo contado, dos dois lados, sempre com motivo |
+
+**Transferir não muda o dono do lote.** O lote pertence a uma remessa, e a
+remessa a um almoxarifado — então a transferência cria uma remessa nova no
+destino, com lotes que preservam a validade e apontam para a origem. O destino
+enxerga a chegada como qualquer entrada, com o mesmo FEFO e o mesmo
+comprovante, e o rastro fica no lote.
+
+**O ajuste grava o saldo, não a diferença.** É uma contagem física substituindo
+o que o sistema achava que tinha — quem está com o produto na mão sabe quanto
+tem, não quanto sumiu. Na unidade ele não passa do que ela recebeu: material a
+mais entrou por outro caminho, e o caminho precisa ser registrado, não
+escondido num ajuste.
+
+**O ajuste é a válvula que impede o resto do módulo de mentir.** Sem ele, quem
+perdeu um saco de arroz lançaria um consumo falso, e o relatório do PNAE viraria
+ficção.
+
+### Pego na verificação
+
+- **Dois erros de SQL que só o Postgres pega.** `saldo` ambíguo num
+  `UPDATE ... FROM` onde as duas tabelas têm a coluna, e `$1` deduzido como
+  texto por aparecer ao mesmo tempo como valor de coluna `uuid` e dentro de
+  `substr`. O parser estático aceitava os dois; o `PREPARE` no Postgres real
+  recusou. O primeiro virou um `UPDATE` simples com o id já travado na leitura,
+  que é mais claro de qualquer forma.
+- **Falso negativo no meu detector de `exigirPapel`.** A regex olhava só o resto
+  da linha do caminho, e rota com middleware costuma ser quebrada em três
+  linhas — a checagem passaria numa rota que perdeu a guarda. Agora varre até o
+  início do handler, e conferi derrubando o `exigirPapel` da transferência de
+  propósito.
+- **N+1 no navegador.** A tela de transferência montava o `<select>` de lotes
+  buscando as remessas e depois o detalhe de cada uma — uma dúzia de idas ao
+  servidor. Virou uma rota só, `/almoxarifados/:id/lotes`, e o `setState` dentro
+  do efeito sumiu junto.

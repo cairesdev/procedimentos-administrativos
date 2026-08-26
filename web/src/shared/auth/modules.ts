@@ -198,6 +198,14 @@ export const workspaces: Workspace[] = [
         icon: "package",
         links: [
           { href: "/almoxarifado/estoque", label: "Saldo por unidade", permission: "stock:read" },
+          { href: "/almoxarifado/consumo", label: "Consumo", permission: "stock:read" },
+          { href: "/almoxarifado/devolucoes", label: "Devoluções", permission: "stock:read" },
+          {
+            href: "/almoxarifado/transferencias",
+            label: "Transferências",
+            permission: "stock:read",
+          },
+          { href: "/almoxarifado/ajustes", label: "Ajustes", permission: "stock:read" },
         ],
       },
       {
