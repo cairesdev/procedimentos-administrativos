@@ -856,3 +856,27 @@ derrubando o filtro de `ORDEM_FORNECIMENTO` de propósito.
 O mesmo arquivo passou a exigir `app/<base>/page.tsx` para todo `basePath`
 declarado em `modules.ts`: o almoxarifado nasceu sem raiz e dava 404 no
 primeiro clique do hub, com todas as telas internas existindo.
+
+## `DATE` chegava como `Date` — e sumia o botão de liberar
+
+`TypeError: dataValidade.slice is not a function`, dentro de
+`LiberarEstoque.preparar`. O driver do Postgres converte `DATE` para um `Date`
+do JS interpretado no fuso do processo; todos os ports declaram estas colunas
+como `string`, e o TypeScript nunca percebeu a diferença porque `pool.query`
+devolve `any`.
+
+O sintoma foi pior que o erro. `getReleasePlan` falhava, o `.catch(() => null)`
+da tela engolia, e o card **Liberar** simplesmente não aparecia — o almoxarife
+concluía que não tinha permissão, com o erro real só no log do servidor.
+
+- `pool.ts` registra `types.setTypeParser(1082, …)`: DATE volta como texto.
+  `TIMESTAMPTZ` continua vindo como `Date`, porque ali o instante e o fuso
+  **são** a informação. Uma data pura não tem hora nem fuso — 2026-08-26 é o
+  dia 26 em qualquer lugar, e converter só inventava um horário para depois
+  desfazer.
+- A tela do pedido passou a mostrar o card com um aviso quando o plano falha,
+  em vez de esconder a etapa. Falha que se disfarça de falta de permissão custa
+  mais que o próprio erro.
+- `fefo.test.ts` confere o parser pelo próprio driver — `types.getTypeParser(1082)`
+  aplicado a uma data —, não por leitura do arquivo. Verificado removendo o
+  registro de propósito.

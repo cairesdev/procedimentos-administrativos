@@ -131,3 +131,45 @@ describe("validade: alerta, nunca bloqueio", () => {
     assert.equal(situacaoDaValidade("2026-07-10", hoje, 7), "OK");
   });
 });
+
+/**
+ * O driver do Postgres converte `DATE` para um `Date` do JS, e `diasAteVencer`
+ * espera texto. O plano de liberacao morria com "dataValidade.slice is not a
+ * function" — e o card "Liberar" simplesmente nao aparecia, como se fosse
+ * falta de permissao. A correcao esta no `pool.ts`, que devolve DATE como
+ * texto; estes testes fixam o contrato que o dominio assume.
+ */
+describe("validade: o dominio recebe texto, nunca Date", () => {
+  const hoje = new Date("2026-08-26T15:00:00Z");
+
+  it("aceita a data pura que o Postgres devolve", () => {
+    assert.equal(diasAteVencer("2026-08-26", hoje), 0);
+    assert.equal(diasAteVencer("2026-09-05", hoje), 10);
+    assert.equal(diasAteVencer("2026-08-20", hoje), -6);
+  });
+
+  it("aceita timestamp com hora, cortando no dia", () => {
+    assert.equal(diasAteVencer("2026-09-05T00:00:00.000Z", hoje), 10);
+  });
+
+  it("um Date cru quebraria — e o tipo do port diz string", () => {
+    // Se algum dia alguem remover o parser do pool, esta linha volta a valer.
+    assert.throws(() => diasAteVencer(new Date("2026-09-05") as never, hoje));
+  });
+});
+
+describe("pool: DATE volta como texto", () => {
+  it("o driver devolve a data pura sem converter para Date", async () => {
+    // O pool le o ambiente ao ser importado, e nao conecta em nenhum banco:
+    // aqui interessa so o efeito colateral de registrar o parser.
+    process.env.DATABASE_URL ??= "postgres://ninguem@localhost:1/vazio";
+    process.env.JWT_SECRET ??= "so-para-carregar-o-modulo";
+    await import("../../src/infrastructure/db/pool");
+
+    const { types } = await import("pg");
+    const comoOhDriverLe = types.getTypeParser(1082);
+
+    assert.equal(comoOhDriverLe("2026-08-26"), "2026-08-26");
+    assert.equal(typeof comoOhDriverLe("2026-08-26"), "string");
+  });
+});

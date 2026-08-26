@@ -91,18 +91,38 @@ export default async function StockRequestPage({ params }: RequestPageProps) {
         <RequestItems itens={pedido.itens} />
       </Card>
 
-      {podeLiberar && planoLiberacao ? (
+      {/*
+        O card aparece sempre que a etapa é a da vez, mesmo se o plano falhar.
+        Antes, o erro virava ausência silenciosa do botão: o almoxarife via a
+        tela sem "Liberar" e concluía que não tinha permissão, enquanto o erro
+        real ficava só no log do servidor.
+      */}
+      {podeLiberar ? (
         <Card title="Liberar" padded={false}>
           <div style={{ padding: "14px 16px" }}>
-            <ReleasePanel plano={planoLiberacao} />
+            {planoLiberacao ? (
+              <ReleasePanel plano={planoLiberacao} />
+            ) : (
+              <Alert tone="error">
+                Não foi possível montar a liberação deste pedido. Recarregue a página; se
+                continuar, avise o suporte com o número do pedido.
+              </Alert>
+            )}
           </div>
         </Card>
       ) : null}
 
-      {podeReceber && planoRecebimento ? (
+      {podeReceber ? (
         <Card title="Conferir o que chegou" padded={false}>
           <div style={{ padding: "14px 16px" }}>
-            <ReceiptPanel plano={planoRecebimento} />
+            {planoRecebimento ? (
+              <ReceiptPanel plano={planoRecebimento} />
+            ) : (
+              <Alert tone="error">
+                Não foi possível montar a conferência deste pedido. Recarregue a página; se
+                continuar, avise o suporte com o número do pedido.
+              </Alert>
+            )}
           </div>
         </Card>
       ) : null}
