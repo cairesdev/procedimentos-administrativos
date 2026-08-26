@@ -47,6 +47,9 @@ npm install
 npm run typecheck    # tsc --noEmit (src, scripts e tests) — rodar sempre antes de entregar
 npm test             # node --test + tsx; sem banco e sem rede
 npm run migrate      # migrations pendentes (tabela schema_migrations)
+python3 db/verificar-migrations.py   # antes de subir migration nova: aplica as 21 num
+                                     # Postgres descartável e confere os CHECKs de verdade
+                                     # (pip install --break-system-packages pgserver)
 npm run dev          # tsx watch
 npm run build
 

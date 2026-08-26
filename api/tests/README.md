@@ -15,6 +15,25 @@ para manter e nenhuma configuração além do `package.json`.
   ordem das rotas do Express, e o contrato entre a API e o web (eventos de
   auditoria, lista de módulos, matriz de permissões, rotas públicas).
 
+## Migration nova: rode o verificador antes de subir
+
+`npm test` confere a **sintaxe** do SQL com um parser. Ele não sabe se
+`DROP CONSTRAINT produto_orgao_id_nome_unidade_medida_key` acerta o nome que o
+Postgres gerou, nem se um `CHECK` recusa o que você acha que ele recusa. Isso só
+o Postgres responde — e responderia na VPS, no meio do deploy.
+
+```bash
+pip install --break-system-packages pgserver   # uma vez
+python3 db/verificar-migrations.py
+```
+
+Aplica todas as migrations em sequência num Postgres descartável e submete o
+schema a estados que ele **tem de recusar**: perda sem motivo, rascunho com data
+de envio, saldo maior que o recebido, entrega processada duas vezes. Fica fora
+do `npm test` porque exige um banco, e a suíte do Node roda sem banco e sem rede
+de propósito. O `pgserver` baixa um Postgres próprio e roda como usuário comum —
+sem root e sem Docker.
+
 ## Por que os testes de estrutura existem
 
 Três bugs desta base não seriam pegos por tipo nenhum: um enum de papel que

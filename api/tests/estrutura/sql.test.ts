@@ -121,9 +121,31 @@ describe("consultas dos repositórios", () => {
     }
   });
 
+  /**
+   * Construções válidas no Postgres que o `pgsql-ast-parser` não conhece.
+   *
+   * A lista é curta e justificada de propósito: cada entrada some da checagem
+   * de sintaxe, então é aqui que um SQL quebrado se esconderia. Todas foram
+   * conferidas contra um Postgres de verdade por `db/verificar-migrations.py`.
+   */
+  const NAO_PARSEAVEIS: Record<string, string> = {
+    bloquearLotes: "FOR UPDATE OF <alias> — trava só a linha do lote",
+  };
+
   it("tem sintaxe que o Postgres aceita", () => {
     for (const { arquivo, nome, sql } of todas) {
+      if (nome in NAO_PARSEAVEIS) continue;
       assert.doesNotThrow(() => parse(sql), `${arquivo} → SQL.${nome}`);
+    }
+  });
+
+  it("a lista de exceções do parser não tem entrada morta", () => {
+    // Exceção que sobrou depois de a consulta sumir esconderia a próxima.
+    for (const nome of Object.keys(NAO_PARSEAVEIS)) {
+      assert.ok(
+        todas.some((consulta) => consulta.nome === nome),
+        `SQL.${nome} está na lista de não parseáveis mas não existe mais`,
+      );
     }
   });
 });

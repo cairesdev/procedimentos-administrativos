@@ -11,7 +11,8 @@ export type NavIcon =
   | "clipboardCheck"
   | "truck"
   | "route"
-  | "wrench";
+  | "wrench"
+  | "boxes";
 
 export type NavLink = {
   href: string;
@@ -29,6 +30,7 @@ export type WorkspaceId =
   | "processos"
   | "protocolo"
   | "patrimonio"
+  | "almoxarifado"
   | "frotas"
   | "administracao";
 
@@ -160,6 +162,55 @@ export const workspaces: Workspace[] = [
         links: [
           { href: "/patrimonio/locais", label: "Locais", permission: "assets:read" },
           { href: "/patrimonio/categorias", label: "Categorias", permission: "assets:read" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "almoxarifado",
+    name: "Almoxarifado",
+    description: "Entradas, pedidos das unidades, liberação e recebimento",
+    basePath: "/almoxarifado",
+    icon: "boxes",
+    accent: "#7a3fa8",
+    accentSoft: "#f3ecfa",
+    module: "ALMOXARIFADO",
+    permission: "stock:read",
+    sections: [
+      {
+        group: "Movimento",
+        icon: "boxes",
+        links: [
+          {
+            href: "/almoxarifado/solicitacoes",
+            label: "Pedidos",
+            permission: "stock:read",
+          },
+          {
+            href: "/almoxarifado/entradas",
+            label: "Entradas",
+            permission: "stock:manage",
+          },
+        ],
+      },
+      {
+        group: "Estoque",
+        icon: "package",
+        links: [
+          { href: "/almoxarifado/estoque", label: "Saldo por unidade", permission: "stock:read" },
+        ],
+      },
+      {
+        group: "Cadastros",
+        icon: "mapPin",
+        links: [
+          {
+            href: "/almoxarifado/almoxarifados",
+            label: "Almoxarifados",
+            permission: "stock:manage",
+          },
+          { href: "/almoxarifado/tipos", label: "Tipos de estoque", permission: "stock:manage" },
+          { href: "/almoxarifado/locais", label: "Locais atendidos", permission: "stock:manage" },
         ],
       },
     ],

@@ -38,7 +38,13 @@ export type Permission =
   // licitação, contrato nem solicitação para fazer o trabalho dele.
   | "protocol:read"
   | "protocol:serve"
-  | "protocol:manage";
+  | "protocol:manage"
+  // Almoxarifado: pedir é da unidade; liberar e dar entrada é de quem
+  // administra o estoque. São duas atribuições diferentes e dois papéis.
+  | "stock:read"
+  | "stock:request"
+  | "stock:receive"
+  | "stock:manage";
 
 const READ_ONLY: Permission[] = [
   "fleet:read",
@@ -69,6 +75,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit:read",
     "documents:issue", "documents:template",
     "protocol:read", "protocol:serve", "protocol:manage",
+    "stock:read", "stock:request", "stock:receive", "stock:manage",
   ],
   GESTOR: [
     ...READ_ONLY,
@@ -83,14 +90,21 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:dispatch",
     "documents:issue", "documents:template",
     "protocol:read", "protocol:serve", "protocol:manage",
+    "stock:read", "stock:request", "stock:receive", "stock:manage",
   ],
   CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "assets:read", "documents:issue"],
   COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
   // Só o protocolo. Sem READ_ONLY: aquele conjunto carrega contratos,
   // licitações e solicitações, que não são atribuição de quem atende no balcão.
   PROTOCOLO: ["protocol:read", "protocol:serve", "documents:issue"],
-  NUTRICIONISTA: [...READ_ONLY, "requests:create"],
-  SERVIDOR: [...READ_ONLY, "requests:create"],
+  // A nutricionista responde pela alimentação escolar: dá entrada, libera para
+  // as escolas e emite os comprovantes.
+  NUTRICIONISTA: [
+    ...READ_ONLY, "requests:create",
+    "stock:read", "stock:request", "stock:receive", "stock:manage",
+    "documents:issue",
+  ],
+  SERVIDOR: [...READ_ONLY, "requests:create", "stock:read", "stock:request", "stock:receive"],
   // `documents:issue` nos dois: termo de transferência, termo de baixa e
   // autorização de viagem são o papel que estes cargos produzem no dia a dia.
   PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read", "documents:issue"],

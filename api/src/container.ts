@@ -43,6 +43,11 @@ import { GerenciarFrota } from "./application/frota/GerenciarFrota";
 import { PostgresProtocoloRepository } from "./infrastructure/db/PostgresProtocoloRepository";
 import { AtenderProtocolo } from "./application/protocolo/AtenderProtocolo";
 import { ExigirDoRequerente } from "./application/protocolo/ExigirDoRequerente";
+import { PostgresAlmoxarifadoRepository } from "./infrastructure/db/PostgresAlmoxarifadoRepository";
+import { GerenciarAlmoxarifado } from "./application/almoxarifado/GerenciarAlmoxarifado";
+import { SolicitarEstoque } from "./application/almoxarifado/SolicitarEstoque";
+import { LiberarEstoque } from "./application/almoxarifado/LiberarEstoque";
+import { ReceberEstoque } from "./application/almoxarifado/ReceberEstoque";
 
 const licitacoes = new PostgresLicitacaoRepository();
 const contratos = new PostgresContratoRepository();
@@ -61,8 +66,20 @@ const frota = new PostgresFrotaRepository();
 const numeracao = new GeradorNumeroProcesso(processos);
 const documentos = new PostgresDocumentoRepository();
 const protocolo = new PostgresProtocoloRepository();
+const almoxarifado = new PostgresAlmoxarifadoRepository();
 
 export const container = {
+  almoxarifado,
+  gerenciarAlmoxarifado: new GerenciarAlmoxarifado(
+    almoxarifado, auditoria, executarEmTransacao,
+  ),
+  solicitarEstoque: new SolicitarEstoque(
+    almoxarifado, usuarios, auditoria, executarEmTransacao,
+  ),
+  liberarEstoque: new LiberarEstoque(almoxarifado, auditoria, executarEmTransacao),
+  receberEstoque: new ReceberEstoque(
+    almoxarifado, usuarios, auditoria, executarEmTransacao,
+  ),
   protocolo,
   atenderProtocolo: new AtenderProtocolo(
     protocolo, usuarios, numeracao, auditoria, executarEmTransacao,

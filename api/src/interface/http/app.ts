@@ -2,6 +2,7 @@ import express from "express";
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
 import { patrimonioRouter } from "./routes/patrimonio";
+import { almoxarifadoRouter } from "./routes/almoxarifado";
 import { frotasRouter } from "./routes/frotas";
 import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
@@ -68,6 +69,9 @@ export const criarApp = () => {
 
   // Módulo de patrimônio: independente do módulo de processos.
   app.use("/patrimonio", ...sessao, resolveTenant("PATRIMONIO"), patrimonioRouter);
+
+  // Almoxarifado: a escola pede, o almoxarife libera, a escola confirma.
+  app.use("/almoxarifado", ...sessao, resolveTenant("ALMOXARIFADO"), almoxarifadoRouter);
 
   // Protocolo é sistema próprio: quem atende no balcão não precisa do módulo
   // de processos, e o inverso também vale.

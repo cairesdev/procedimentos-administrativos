@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""
+Aplica todas as migrations num Postgres de verdade e confere os invariantes.
+
+Por que existe, se `npm test` já confere o SQL: o parser estático diz se a
+sintaxe é válida, mas não sabe se `DROP CONSTRAINT produto_orgao_id_nome_key`
+acerta o nome que o Postgres gerou, nem se um CHECK recusa o que deveria. Isso
+só o Postgres responde — e responderia na VPS, no meio do deploy.
+
+Não entra no `npm test` porque exige um Postgres: a suíte do Node roda sem banco
+e sem rede, de propósito. Rode isto antes de subir migration nova.
+
+    pip install --break-system-packages pgserver
+    python3 api/db/verificar-migrations.py
+
+O `pgserver` baixa um Postgres próprio e roda como usuário comum — não precisa
+de root, de Docker, nem do banco de desenvolvimento.
+"""
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+try:
+    import pgserver
+except ImportError:
+    sys.exit("Falta o pgserver: pip install --break-system-packages pgserver")
+
+RAIZ = pathlib.Path(__file__).resolve().parent.parent
+MIGRATIONS = RAIZ / "db" / "migrations"
+REPOSITORIOS = RAIZ / "src" / "infrastructure" / "db"
+
+COMPARTILHADOS = {"TOTAL_DA_JANELA": 'COUNT(*) OVER() AS "_total"'}
+
+
+class Banco:
+    """Um Postgres descartável, criado do zero a cada execução."""
+
+    def __init__(self) -> None:
+        self.pasta = tempfile.mkdtemp(prefix="verificar-migrations-")
+        self.servidor = pgserver.get_server(self.pasta)
+        self.host = str(self.servidor.get_postmaster_info().socket_dir)
+        self.psql = str(
+            pathlib.Path(pgserver.__file__).parent / "pginstall" / "bin" / "psql"
+        )
+
+    def executar(self, sql: str) -> tuple[bool, str]:
+        resultado = subprocess.run(
+            [self.psql, "-h", self.host, "-U", "postgres", "-d", "postgres",
+             "-v", "ON_ERROR_STOP=1", "-t", "-A"],
+            capture_output=True, text=True, input=sql,
+        )
+        return resultado.returncode == 0, (resultado.stdout + resultado.stderr).strip()
+
+    def limpar(self) -> None:
+        shutil.rmtree(self.pasta, ignore_errors=True)
+
+
+def aplicar_migrations(banco: Banco) -> None:
+    arquivos = sorted(MIGRATIONS.glob("*.sql"))
+    if not arquivos:
+        sys.exit("Nenhuma migration encontrada")
+
+    for arquivo in arquivos:
+        sql = arquivo.read_text(encoding="utf-8")
+        # O pgcrypto não vem no pacote do pip. `gen_random_uuid()` é nativo
+        # desde o PG13, então a extensão não faz falta para conferir o schema.
+        sql = re.sub(r"CREATE EXTENSION[^;]*pgcrypto[^;]*;", "", sql, flags=re.I)
+
+        ok, saida = banco.executar(sql)
+        if not ok:
+            print(f"FALHA em {arquivo.name}\n{saida[-2500:]}")
+            sys.exit(1)
+        print(f"  ok   {arquivo.name}")
+
+    print(f"\n{len(arquivos)} migrations aplicadas em sequência.\n")
+
+
+CENARIO = """
+INSERT INTO orgao (id, nome, cnpj, municipio, uf)
+VALUES ('11111111-1111-1111-1111-111111111111','Prefeitura Teste','06125389000188','Teste','MA');
+INSERT INTO almoxarifado (id, orgao_id, nome)
+VALUES ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','Central');
+INSERT INTO local (id, orgao_id, codigo, nome, almoxarifado_id, cnpj, endereco)
+VALUES ('33333333-3333-3333-3333-333333333333','11111111-1111-1111-1111-111111111111','001',
+        'Escola Municipal','22222222-2222-2222-2222-222222222222','06125389000188','Rua A, 100');
+INSERT INTO tipo_estoque (id, orgao_id, nome)
+VALUES ('44444444-4444-4444-4444-444444444444','11111111-1111-1111-1111-111111111111','Alimentacao');
+INSERT INTO produto (id, nome, unidade_medida)
+VALUES ('55555555-5555-5555-5555-555555555555','CORANTE NATURAL','KG');
+INSERT INTO remessa_estoque (id, almoxarifado_id, codigo, titulo, data, tipo_estoque_id)
+VALUES ('66666666-6666-6666-6666-666666666666','22222222-2222-2222-2222-222222222222',
+        'R-001','Remessa de teste', current_date,'44444444-4444-4444-4444-444444444444');
+INSERT INTO lote (id, remessa_id, produto_id, quantidade, saldo, data_validade)
+VALUES ('77777777-7777-7777-7777-777777777777','66666666-6666-6666-6666-666666666666',
+        '55555555-5555-5555-5555-555555555555', 100, 100, current_date + 90);
+INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username)
+VALUES ('88888888-8888-8888-8888-888888888888','11111111-1111-1111-1111-111111111111',
+        'Maria','maria@teste.gov.br','x','ADMIN','maria');
+INSERT INTO solicitacao_estoque (id, local_solicitante_id, autor_usuario_id, tipo_estoque_id,
+                                 status, enviada_em)
+VALUES ('99999999-9999-9999-9999-999999999999','33333333-3333-3333-3333-333333333333',
+        '88888888-8888-8888-8888-888888888888','44444444-4444-4444-4444-444444444444',
+        'SOLICITADA', now());
+INSERT INTO solicitacao_estoque_item (id, solicitacao_id, produto_id, quantidade_solicitada,
+                                      quantidade_reservada)
+VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','99999999-9999-9999-9999-999999999999',
+        '55555555-5555-5555-5555-555555555555', 10, 10);
+INSERT INTO liberacao_lote (id, solicitacao_item_id, lote_id, quantidade)
+VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        '77777777-7777-7777-7777-777777777777', 10);
+"""
+
+# Cada caso descreve um estado que o banco tem de aceitar ou recusar sozinho.
+# Regra que só o caso de uso garante some quando alguém escreve direto no banco,
+# e num módulo de estoque o estado quebrado sobrevive à correção do código.
+CASOS: list[tuple[str, str, bool]] = [
+    ("perda sem motivo é recusada",
+     "UPDATE liberacao_lote SET quantidade_perdida = 3 WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'",
+     False),
+    ("confirmado + perdido tem de fechar com o liberado",
+     "UPDATE liberacao_lote SET quantidade_confirmada = 8, quantidade_perdida = 1, "
+     "motivo_perda = 'AVARIA' WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'",
+     False),
+    ("recebimento que fecha é aceito",
+     "UPDATE liberacao_lote SET quantidade_confirmada = 7, quantidade_perdida = 3, "
+     "motivo_perda = 'QUEBRA_TRANSPORTE' WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'",
+     True),
+    ("rascunho com data de envio é recusado",
+     "INSERT INTO solicitacao_estoque (local_solicitante_id, autor_usuario_id, status, enviada_em) "
+     "VALUES ('33333333-3333-3333-3333-333333333333','88888888-8888-8888-8888-888888888888',"
+     "'RASCUNHO', now())",
+     False),
+    ("enviada sem data de envio é recusada",
+     "INSERT INTO solicitacao_estoque (local_solicitante_id, autor_usuario_id, status) "
+     "VALUES ('33333333-3333-3333-3333-333333333333','88888888-8888-8888-8888-888888888888',"
+     "'SOLICITADA')",
+     False),
+    ("produto repetido em nome+unidade é recusado",
+     "INSERT INTO produto (nome, unidade_medida) VALUES ('CORANTE NATURAL','KG')",
+     False),
+    ("mesmo nome com outra unidade é aceito",
+     "INSERT INTO produto (nome, unidade_medida) VALUES ('CORANTE NATURAL','LITRO')",
+     True),
+    ("entrega gera uma linha de estoque na unidade",
+     "INSERT INTO estoque_local (local_id, produto_id, lote_origem_id, liberacao_lote_id, "
+     "quantidade_recebida, saldo, data_validade) VALUES "
+     "('33333333-3333-3333-3333-333333333333','55555555-5555-5555-5555-555555555555',"
+     "'77777777-7777-7777-7777-777777777777','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',7,7,"
+     "current_date + 90)",
+     True),
+    ("reprocessar a mesma entrega não duplica o saldo",
+     "INSERT INTO estoque_local (local_id, produto_id, lote_origem_id, liberacao_lote_id, "
+     "quantidade_recebida, saldo) VALUES "
+     "('33333333-3333-3333-3333-333333333333','55555555-5555-5555-5555-555555555555',"
+     "'77777777-7777-7777-7777-777777777777','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',7,7)",
+     False),
+    ("consumo não deixa saldo negativo na unidade",
+     "UPDATE estoque_local SET saldo = -1 WHERE liberacao_lote_id = "
+     "'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'",
+     False),
+    ("saldo maior que o recebido é recusado",
+     "UPDATE estoque_local SET saldo = 99 WHERE liberacao_lote_id = "
+     "'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'",
+     False),
+    ("dois locais sob o mesmo CNPJ são aceitos",
+     "INSERT INTO local (orgao_id, codigo, nome, cnpj) VALUES "
+     "('11111111-1111-1111-1111-111111111111','002','Outra Escola','06125389000188')",
+     True),
+    ("saldo do lote não passa da quantidade",
+     "UPDATE lote SET saldo = 200 WHERE id = '77777777-7777-7777-7777-777777777777'",
+     False),
+    ("reserva negativa é recusada",
+     "UPDATE solicitacao_estoque_item SET quantidade_reservada = -1 WHERE id = "
+     "'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'",
+     False),
+]
+
+
+def conferir_invariantes(banco: Banco) -> int:
+    ok, saida = banco.executar(CENARIO)
+    if not ok:
+        print(f"FALHA ao montar o cenário\n{saida[-2000:]}")
+        return 1
+
+    falhas = 0
+    for nome, sql, esperado_ok in CASOS:
+        aceito, saida = banco.executar(sql)
+        if aceito == esperado_ok:
+            print(f"  ok   {nome}")
+            continue
+
+        falhas += 1
+        motivo = (
+            "passou e deveria ser recusado" if aceito
+            else f"recusou: {saida.splitlines()[0][:110]}"
+        )
+        print(f"  FALHA {nome} — {motivo}")
+
+    print(f"\n{len(CASOS) - falhas}/{len(CASOS)} invariantes corretos")
+    return falhas
+
+
+def conferir_consultas(banco: Banco) -> int:
+    """
+    Submete cada consulta dos repositórios a um `PREPARE`.
+
+    `PREPARE` valida sintaxe, nomes de tabela e de coluna, e a dedução de tipo
+    dos parâmetros — sem executar nada. Foi assim que apareceu um `$2` usado ao
+    mesmo tempo como valor inserido e como comparação, que o Postgres recusa com
+    "inconsistent types deduced". O parser estático do `npm test` aceitava.
+    """
+    falhas = 0
+    total = 0
+
+    for arquivo in sorted(REPOSITORIOS.glob("*.ts")):
+        texto = arquivo.read_text(encoding="utf-8")
+        locais = dict(re.findall(r"^const ([A-Z_0-9]+) = `([\s\S]*?)`;$", texto, re.M))
+        consultas = re.findall(r"^  (\w+): `([\s\S]*?)`,\s*$", texto, re.M)
+
+        for nome, sql in consultas:
+            for chave, valor in {**locais, **COMPARTILHADOS}.items():
+                sql = sql.replace("${" + chave + "}", valor)
+            if "${" in sql:
+                continue  # interpolação que só o TypeScript resolve
+
+            total += 1
+            maior = max([int(x) for x in re.findall(r"\$(\d+)", sql)] or [0])
+            tipos = ", ".join(["unknown"] * maior)
+            declaracao = (
+                f"PREPARE p_{arquivo.stem}_{nome} "
+                f"{f'({tipos})' if tipos else ''} AS {sql}"
+            )
+
+            ok, saida = banco.executar(declaracao)
+            if not ok:
+                falhas += 1
+                print(f"  FALHA {arquivo.name} → SQL.{nome}")
+                print(f"         {saida.splitlines()[0][:150]}")
+
+    print(f"\n{total - falhas}/{total} consultas aceitas pelo Postgres")
+    return falhas
+
+
+def main() -> int:
+    banco = Banco()
+    try:
+        print("Aplicando migrations:")
+        aplicar_migrations(banco)
+        print("Conferindo invariantes:")
+        falhas = conferir_invariantes(banco)
+        print("\nConferindo as consultas dos repositórios:")
+        falhas += conferir_consultas(banco)
+        return 1 if falhas else 0
+    finally:
+        banco.limpar()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

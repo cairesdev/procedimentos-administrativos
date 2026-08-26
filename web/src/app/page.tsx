@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Boxes,
   Building2, ClipboardCheck, FileSignature, Inbox, Lock, MapPin, Package, Route, ShieldCheck,
   Truck, Wrench,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const icons: Record<NavIcon, typeof Inbox> = {
   truck: Truck,
   route: Route,
   wrench: Wrench,
+  boxes: Boxes,
 };
 
 // Porta de entrada: cada sistema é um mundo à parte daqui para dentro.

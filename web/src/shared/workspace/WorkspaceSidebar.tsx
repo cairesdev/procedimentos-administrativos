@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Boxes,
   Building2, ChevronRight, ClipboardCheck, FileSignature, Inbox, MapPin, Package, Route,
   ShieldCheck, Truck, Wrench,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const icons: Record<NavIcon, typeof Inbox> = {
   truck: Truck,
   route: Route,
   wrench: Wrench,
+  boxes: Boxes,
 };
 
 export const WorkspaceSidebar = ({ sections }: { sections: NavSection[] }) => {

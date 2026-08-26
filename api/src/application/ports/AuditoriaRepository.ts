@@ -34,6 +34,15 @@ export type TipoEvento =
   | "EXIGENCIA_CANCELADA"
   | "DOCUMENTO_EMITIDO"
   | "DOCUMENTO_CANCELADO"
+  // Almoxarifado: entrada, o ciclo do pedido e a perda no recebimento.
+  | "ENTRADA_ESTOQUE_REGISTRADA"
+  | "LOTE_ESTOQUE_EXCLUIDO"
+  | "SOLICITACAO_ESTOQUE_ENVIADA"
+  | "SOLICITACAO_ESTOQUE_LIBERADA"
+  | "SOLICITACAO_ESTOQUE_RECEBIDA"
+  | "SOLICITACAO_ESTOQUE_RECUSADA"
+  | "SOLICITACAO_ESTOQUE_CANCELADA"
+  | "SOLICITACAO_ESTOQUE_EXPIRADA"
   // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.
   | "ADMIN_ENTIDADE_CRIADO"
   | "ADMIN_ENTIDADE_PROMOVIDO"

@@ -104,9 +104,7 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
 5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
    casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
    ambiente de pé.
-6. **Módulo Almoxarifado** — levantamento revisado contra o sistema legado
-   (`docs/legado-almoxarifado.md`), decisões consolidadas em `decisoes.md` e UML atualizada.
-   Schema e API não iniciados. 1ª fatia: ciclo completo até o recebimento.
+6. **Módulo Almoxarifado** — 1ª fatia com API pronta (ver seção abaixo). Falta o web.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura
@@ -601,3 +599,59 @@ ganhou um container de rolagem horizontal — cortar esconderia coluna sem avisa
 invisível que uma das duas telas não cumpria. Agora traz o próprio `Stack` e funciona em qualquer
 lugar. Três checagens em `contrato-com-o-web.test.ts` guardam o invariante, porque a correção vive
 em CSS e o sintoma só aparece olhando a tela.
+
+## Almoxarifado — 1ª fatia (API)
+
+Ciclo completo até o recebimento, que é o que substitui o sistema legado.
+Levantamento em `legado-almoxarifado.md`, decisões em `decisoes.md`.
+
+| Rota | Regra central |
+| --- | --- |
+| CRUD `/almoxarifado/almoxarifados`, `/tipos` | exclusão travada por remessa ou local vinculado; desativar preserva o histórico |
+| GET `/almoxarifado/produtos` | catálogo **global**, sem órgão na consulta |
+| GET/PUT `/almoxarifado/configuracao` | reserva liga/desliga + prazo, e limiar do alerta de validade |
+| GET/PUT `/almoxarifado/locais/:id` | CNPJ, endereço e responsável do local; vínculo com o almoxarifado |
+| POST `/almoxarifado/remessas` | remessa e lotes numa transação só; o produto entra no catálogo global aqui |
+| DELETE `/almoxarifado/lotes/:id` | travado se o lote já saiu para alguma unidade |
+| GET `/almoxarifado/disponiveis/:almoxarifadoId` | saldo **menos as reservas do mesmo almoxarifado** |
+| POST `/almoxarifado/solicitacoes` | rascunho, sem reservar nada |
+| POST `/solicitacoes/:id/enviar` | trava os lotes, confere disponível e prende a reserva na mesma transação |
+| GET `/solicitacoes/:id/liberacao` | FEFO sugerido, descontando o que outro item da mesma solicitação já consumiu |
+| POST `/solicitacoes/:id/liberar` | debita, registra e **baixa a reserva** — tudo numa transação |
+| POST `/solicitacoes/:id/receber` | confirma por lote; a diferença vira perda com motivo obrigatório |
+
+**As três correções que o legado motivou**, cada uma com teste:
+
+- *A reserva nasce no envio e some na liberação.* No legado vivia no Redis, era
+  criada a cada item do rascunho e nunca era baixada: o material ficava
+  reservado e debitado ao mesmo tempo por até 48 horas.
+- *Reserva e disponibilidade olham o mesmo almoxarifado.* No legado a reserva
+  era por unidade e o saldo somava o órgão inteiro — duas escolas pediam o
+  mesmo material e as duas passavam na validação.
+- *A liberação é uma transação só.* No legado eram N inserts e updates soltos,
+  sem `BEGIN`: falha no meio deixava saldo debitado sem lote de destino.
+
+**O lote sobrevive à entrega.** Cada linha confirmada vira lote na unidade, com
+a validade copiada da origem — a escola consome em FEFO o que está no armário
+dela. `estoque_local` deixou de ser saldo agregado por produto.
+
+**Validade nunca bloqueia**, em lugar nenhum: lote vencido continua na lista de
+liberação, marcado. Quem decide se aquele leite serve é quem está com a caixa
+na mão, não uma data no banco.
+
+Papéis: `stock:read`, `stock:request`, `stock:receive` e `stock:manage`.
+NUTRICIONISTA administra o estoque da alimentação escolar e emite comprovante;
+SERVIDOR pede e confirma recebimento, mas não libera.
+
+### Pego na verificação
+
+- **`$2` como valor e como comparação** em `creditarEstoqueLocal`: o Postgres
+  recusa com "inconsistent types deduced for parameter $2" — em tempo de
+  execução, no meio do recebimento. O parser estático do `npm test` aceitava.
+  Apareceu ao submeter toda consulta a um `PREPARE` num Postgres de verdade,
+  passo que virou parte do `db/verificar-migrations.py` e hoje cobre as **297
+  consultas** de todos os repositórios.
+- **`DELETE ... USING` e `FOR UPDATE OF`** são válidos no Postgres e o
+  `pgsql-ast-parser` não conhece. Os `DELETE` viraram subconsulta (mais claros
+  de qualquer forma); o `FOR UPDATE OF` ficou, numa lista curta e justificada de
+  exceções — com um teste que recusa entrada morta nessa lista.
