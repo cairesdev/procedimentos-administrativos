@@ -163,11 +163,20 @@ describe("telas do almoxarifado", () => {
           : [],
     );
 
+  /**
+   * A raiz do sistema não tem tela: só manda para a primeira que o usuário
+   * pode ver. Quem guarda o módulo ali é o layout, e o próprio
+   * `enterWorkspace` já filtra os destinos pela permissão de cada link.
+   */
+  const soRedireciona = (conteudo: string) =>
+    /enterWorkspace\("almoxarifado"\)/.test(conteudo) && !/apiRequest|listar|fetch/.test(conteudo);
+
   it("toda página guarda módulo e permissão", () => {
     // Página sem guarda aparece para prefeitura que não contratou o módulo.
     for (const arquivo of paginas(APP)) {
       const conteudo = readFileSync(arquivo, "utf8");
       const nome = path.relative(raizWeb, arquivo);
+      if (soRedireciona(conteudo)) continue;
 
       assert.match(conteudo, /requirePermission\(/, `${nome} sem requirePermission`);
       assert.match(conteudo, /"ALMOXARIFADO"/, `${nome} não exige o módulo`);

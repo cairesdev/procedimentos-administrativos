@@ -813,3 +813,46 @@ Ficaram de fora porque não há onde guardar, não por escolha de layout:
 
 Se algum deles for exigido na prestação de contas, é coluna nova mais campo no
 formulário da ordem — não dá para resolver no modelo.
+
+## Escopos órfãos: o modelo que ninguém alcançava
+
+A ordem de fornecimento era **gravada e desaparecia**. `criarOrdem` existia;
+nenhuma leitura de `ordem_fornecimento` existia. O modal emitia a ordem,
+registrava o despacho na linha do tempo — e o `id` dela nunca chegava a
+tela nenhuma. Como a peça é emitida por referência (`referenciaId` = id da
+ordem), o escopo `ORDEM_FORNECIMENTO` ficou inalcançável desde a 0016. Os dois
+modelos dele — ordem de compras e a ordem de serviço da 0024 — passavam nos
+testes de renderização e não tinham botão.
+
+O mesmo valia para `SOLICITACAO`: o `COMPROVANTE_SOLICITACAO` da 0016 nunca
+teve onde ser pedido. A tela da solicitação só oferecia "Imprimir", que é a
+folha timbrada direta — sem código de conferência, sem registro.
+
+### O que passou a existir
+
+- `GET /processos/:id/ordens`, com a mesma guarda do POST (`COMPRAS`, `ADMIN`):
+  quem não emite a ordem também não precisa da lista.
+- Card **Ordens de fornecimento** no detalhe do processo: cada ordem com
+  contrato, valor, empenho e nota, e a emissão da peça logo abaixo.
+- Painel de documentos na tela da solicitação, escopo `SOLICITACAO`, liberado
+  só depois do envio — rascunho não rende comprovante.
+
+### A ordem nasce preenchida
+
+O formulário oferecia **todos os contratos da prefeitura** e um valor em
+branco. A API então recusava, por `contratoParticipaDoProcesso`, o que o
+formulário tinha deixado escolher. Agora a lista vem dos contratos da
+solicitação daquele processo, e escolher o contrato traz o valor que a
+solicitação empenhou nele. O campo continua editável: a ordem pode sair por
+parcela do total.
+
+### O teste que trava a classe inteira
+
+`contrato-com-o-web.test.ts` varre as telas que usam `IssueDocumentPanel` ou
+`IssueDocumentButton` e exige que **todo escopo do catálogo apareça em algum
+filtro**. Escopo sem tela é modelo invisível — aconteceu três vezes. Verificado
+derrubando o filtro de `ORDEM_FORNECIMENTO` de propósito.
+
+O mesmo arquivo passou a exigir `app/<base>/page.tsx` para todo `basePath`
+declarado em `modules.ts`: o almoxarifado nasceu sem raiz e dava 404 no
+primeiro clique do hub, com todas as telas internas existindo.

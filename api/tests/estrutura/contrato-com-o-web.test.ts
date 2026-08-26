@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { ESCOPOS } from "../../src/domain/documento/Catalogo";
 
 /**
  * A API e o web repetem algumas listas — eventos de auditoria, módulos,
@@ -229,4 +230,71 @@ describe("rotas públicas do web", () => {
       assert.match(mapa, new RegExp(`"${rota}": "${modulo}"`), `${rota} sem guarda de módulo`);
     }
   });
+});
+
+/**
+ * O hub e o menu levam à raiz de cada sistema (`/almoxarifado`, `/frotas`…).
+ * O almoxarifado nasceu sem `page.tsx` na raiz e dava 404 no primeiro clique
+ * do hub — nada apontava o buraco, porque cada tela interna existia.
+ */
+describe("raiz de cada sistema", () => {
+  const modulos = ler(raizWeb, "shared", "auth", "modules.ts");
+  const bases = [...modulos.matchAll(/basePath: "\/(\w+)"/g)].map((achado) => achado[1]!);
+
+  it("encontra todos os sistemas declarados", () => {
+    assert.ok(bases.length >= 6, `só ${bases.length} basePath — a regex não leu modules.ts`);
+  });
+
+  for (const base of bases) {
+    it(`/${base} tem página de entrada`, () => {
+      const raiz = path.join(raizWeb, "app", base, "page.tsx");
+      assert.ok(existsSync(raiz), `/${base} está no menu e não tem app/${base}/page.tsx`);
+    });
+  }
+});
+
+/**
+ * Escopo sem tela é modelo invisivel: a peca existe no banco, renderiza nos
+ * testes, e nenhum servidor consegue pedi-la. Aconteceu tres vezes — ordem de
+ * fornecimento, comprovante de solicitacao e as pecas de patrimonio antes da
+ * 0020 —, sempre com o mesmo sintoma: "faltou a tela".
+ *
+ * A emissao passa por IssueDocumentPanel ou IssueDocumentButton, e cada tela
+ * filtra os modelos pelo escopo. Se o literal do escopo nao aparece em nenhum
+ * desses arquivos, nao ha caminho ate ele.
+ */
+describe("escopo de documento alcancavel pela interface", () => {
+  const arquivosDeEmissao = (pasta: string): string[] =>
+    readdirSync(pasta, { withFileTypes: true }).flatMap((entrada) => {
+      const caminho = path.join(pasta, entrada.name);
+      if (entrada.isDirectory()) return arquivosDeEmissao(caminho);
+      if (!entrada.name.endsWith(".tsx") && !entrada.name.endsWith(".ts")) return [];
+      const conteudo = readFileSync(caminho, "utf8");
+      // Os proprios componentes de emissao nao filtram escopo: quem filtra e
+      // a tela que os usa. Incluir types.ts traz PROCESS_SCOPES.
+      const ehComponente = /components[\\/]IssueDocument/.test(caminho);
+      const usaEmissao = /IssueDocumentPanel|IssueDocumentButton/.test(conteudo);
+      const ehCatalogoDeEscopos = /features[\\/]documents[\\/]types\.ts$/.test(caminho);
+      return (usaEmissao && !ehComponente) || ehCatalogoDeEscopos ? [conteudo] : [];
+    });
+
+  // Só as linhas que falam de escopo: o literal solto ("BEM" num rotulo,
+  // "PROCESSO" num texto) nao prova que existe filtro.
+  const linhas = arquivosDeEmissao(path.join(raizWeb))
+    .flatMap((conteudo) => conteudo.split("\n"))
+    .filter((linha) => /escopo|SCOPES/.test(linha))
+    .join("\n");
+
+  it("achou as telas que emitem", () => {
+    assert.ok(linhas.length > 0, "nenhuma tela de emissao encontrada — a varredura falhou");
+  });
+
+  for (const escopo of ESCOPOS) {
+    it(`${escopo} tem tela que o emite`, () => {
+      assert.ok(
+        linhas.includes(`"${escopo}"`),
+        `nenhuma tela filtra modelos por "${escopo}" — o modelo existe e ninguem alcanca`,
+      );
+    });
+  }
 });

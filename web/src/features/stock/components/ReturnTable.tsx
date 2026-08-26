@@ -45,7 +45,9 @@ export const ReturnTable = ({
     router.refresh();
   };
 
-  const colunas = ["Produto", "Quantidade", "Unidade", "Motivo", "Situação"];
+  // A terceira coluna traz o local e quem pediu — a unidade de medida já sai
+  // colada à quantidade. O rótulo "Unidade" dizia respeito à coluna errada.
+  const colunas = ["Produto", "Quantidade", "Local", "Motivo", "Situação"];
 
   return (
     <>
