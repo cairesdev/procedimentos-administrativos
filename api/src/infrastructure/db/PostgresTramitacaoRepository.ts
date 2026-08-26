@@ -6,8 +6,8 @@ import {
 } from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
-  DestinoEtapa, FilaDeProcessos, NovaOrdemFornecimento, NovoDespacho, ProcessoDetalhe,
-  TramitacaoRepository,
+  DestinoEtapa, FilaDeProcessos, NovaOrdemFornecimento, NovoDespacho, OrdemDoProcesso,
+  ProcessoDetalhe, TramitacaoRepository,
 } from "../../application/ports/TramitacaoRepository";
 
 /** Colunas de apoio da query da fila — não fazem parte do contrato. */
@@ -125,6 +125,19 @@ const SQL = {
        fonte_recurso, valor, numero_parcelas, numero_nota_fiscal)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     RETURNING id`,
+  // O filtro por orgao_id está na própria ordem; o processo entra junto para
+  // a lista ser a daquele processo, não a da prefeitura inteira.
+  listarOrdens: `
+    SELECT o.id, o.numero, o.valor, o.data,
+           c.numero AS "contratoNumero",
+           f.razao_social AS "fornecedorNome",
+           o.numero_empenho AS "numeroEmpenho",
+           o.numero_nota_fiscal AS "numeroNotaFiscal"
+      FROM ordem_fornecimento o
+      JOIN contrato c ON c.id = o.contrato_id
+      JOIN fornecedor f ON f.id = o.fornecedor_id
+     WHERE o.orgao_id = $1 AND o.processo_id = $2
+     ORDER BY o.data DESC`,
 };
 
 export class PostgresTramitacaoRepository implements TramitacaoRepository {
@@ -224,5 +237,10 @@ export class PostgresTramitacaoRepository implements TramitacaoRepository {
       dados.numeroNotaFiscal ?? null,
     ]);
     return rows[0].id;
+  };
+
+  listarOrdens = async (orgaoId: string, processoId: string): Promise<OrdemDoProcesso[]> => {
+    const { rows } = await pool.query(SQL.listarOrdens, [orgaoId, processoId]);
+    return rows;
   };
 }

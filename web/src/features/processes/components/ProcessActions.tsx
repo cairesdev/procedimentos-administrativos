@@ -24,6 +24,8 @@ type ProcessActionsProps = {
   activeAssignmentId?: string;
   sectors: Option[];
   contracts: Option[];
+  /** Valor de cada contrato nesta solicitação, para a ordem já nascer preenchida. */
+  contractValues: Record<string, number>;
   canDispatch: boolean;
   canGiveOpinion: boolean;
   canEmitOrder: boolean;
@@ -36,6 +38,7 @@ export const ProcessActions = ({
   activeAssignmentId,
   sectors,
   contracts,
+  contractValues,
   canDispatch,
   canGiveOpinion,
   canEmitOrder,
@@ -71,12 +74,17 @@ export const ProcessActions = ({
     onDone: close,
   });
 
+  const primeiroContrato = contracts[0]?.value ?? "";
+
   const orderForm = useResourceForm<SupplyOrderInput>({
     schema: supplyOrderSchema as never,
     defaultValues: {
       lotacaoId: defaultAssignment,
-      contratoId: contracts[0]?.value ?? "",
-      valor: 0,
+      contratoId: primeiroContrato,
+      // O valor da ordem é o do contrato nesta solicitação. Digitar de novo
+      // um número que o sistema já sabe é convite a divergência entre a
+      // ordem e o que foi pedido.
+      valor: contractValues[primeiroContrato] ?? 0,
       numeroEmpenho: "",
       numeroNotaFiscal: "",
     },
@@ -84,6 +92,14 @@ export const ProcessActions = ({
     resetOnSuccess: false,
     onDone: close,
   });
+
+  // Trocar de contrato traz o valor dele junto; o campo continua editável,
+  // porque a ordem pode sair por parcela do total contratado.
+  const trocarContrato = (contratoId: string) => {
+    orderForm.form.setValue("contratoId", contratoId);
+    const valor = contractValues[contratoId];
+    if (valor !== undefined) orderForm.form.setValue("valor", valor);
+  };
 
   if (assignments.length === 0) {
     return (
@@ -223,9 +239,18 @@ export const ProcessActions = ({
             required
             emptyOption="Selecione"
             options={contracts}
-            {...orderForm.form.register("contratoId")}
+            hint="Apenas os contratos que a solicitação deste processo usou."
+            {...orderForm.form.register("contratoId", {
+              onChange: (evento) => trocarContrato(evento.target.value),
+            })}
           />
-          <CurrencyField control={orderForm.form.control} name="valor" label="Valor" required />
+          <CurrencyField
+            control={orderForm.form.control}
+            name="valor"
+            label="Valor"
+            required
+            hint="Vem do contrato na solicitação; ajuste se a ordem for parcial."
+          />
 
           <FieldGrid>
             <InputField

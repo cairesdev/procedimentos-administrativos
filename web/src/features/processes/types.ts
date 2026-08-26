@@ -34,6 +34,22 @@ export type Dispatch = {
 export type ProcessDetail = Process & { despachos: Dispatch[]; limiarAlertaDias: number };
 
 /**
+ * Ordem emitida no processo. É dela que sai a peça — ordem de compras ou
+ * ordem de serviço —, e por isso ela precisa ter rosto na tela: sem o número
+ * à vista, o documento correspondente não tem como ser pedido.
+ */
+export type SupplyOrder = {
+  id: string;
+  numero: string;
+  valor: string;
+  data: string;
+  contratoNumero: string;
+  fornecedorNome: string;
+  numeroEmpenho: string | null;
+  numeroNotaFiscal: string | null;
+};
+
+/**
  * Fila paginada. Os contadores vêm da API porque falam da fila inteira, não
  * da página — e `limiarAlertaDias` vem junto para a linha ser pintada com o
  * mesmo critério que gerou o número.

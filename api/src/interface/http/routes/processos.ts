@@ -134,6 +134,24 @@ processosRouter.delete("/:id/anexos/:anexoId", async (req, res, next) => {
   }
 });
 
+// Mesma guarda do POST: a ordem é peça de compras, e quem não a emite
+// também não precisa da lista para emitir o documento dela.
+processosRouter.get(
+  "/:id/ordens",
+  exigirPapel("COMPRAS", "ADMIN"),
+  async (req, res, next) => {
+    try {
+      const ordens = await container.tramitacao.listarOrdens(
+        req.sessao!.orgaoId,
+        req.params.id!,
+      );
+      res.json(ordens);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 processosRouter.post(
   "/:id/ordens",
   exigirPapel("COMPRAS", "ADMIN"),

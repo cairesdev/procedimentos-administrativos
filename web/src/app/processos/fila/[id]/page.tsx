@@ -2,9 +2,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { listAllContracts } from "@/features/contracts/queries";
-import { findProcess } from "@/features/processes/queries";
+import { findProcess, listSupplyOrders } from "@/features/processes/queries";
 import { ProcessActions } from "@/features/processes/components/ProcessActions";
 import { ProcessTimeline } from "@/features/processes/components/ProcessTimeline";
+import { SupplyOrderPanel } from "@/features/processes/components/SupplyOrderPanel";
 import { listSectors } from "@/features/sectors/queries";
 import { getWorkflow } from "@/features/workflows/queries";
 import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
@@ -49,6 +50,45 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
   const exigencias = process.tipoProcesso === "ATENDIMENTO_EXTERNO"
     ? await listRequirements(process.id).catch(() => [])
     : [];
+
+  /**
+   * A ordem sai do contrato que a solicitação usou — e do valor que ela
+   * empenhou nele. Oferecer a lista inteira de contratos da prefeitura fazia
+   * o formulário aceitar o que a API recusa em seguida, por não participarem
+   * do processo. Sem solicitação (atendimento externo), cai na lista geral.
+   */
+  const contratosDaSolicitacao = solicitacao?.contratos ?? [];
+  const valorPorContrato = Object.fromEntries(
+    contratosDaSolicitacao.map((contrato) => [
+      contrato.id,
+      (solicitacao?.itens ?? [])
+        .filter((item) => item.contratoId === contrato.id)
+        .reduce((soma, item) => soma + item.valorCalculado, 0),
+    ]),
+  );
+
+  const opcoesDeContrato = contratosDaSolicitacao.length > 0
+    ? contratosDaSolicitacao.map((contrato) => ({
+      value: contrato.id,
+      label: `Contrato ${contrato.numero} · ${contrato.fornecedorRazaoSocial}`,
+    }))
+    : contracts.map((contrato) => ({
+      value: contrato.id,
+      label: `Contrato ${contrato.numero}`,
+    }));
+
+  // A ordem é peça de compras: só quem a emite recebe a lista, e a API
+  // recusa os demais. Quem não pode não vê o card em vez de ver um erro.
+  const podeVerOrdens = viewer.can("processes:order");
+  const ordens = podeVerOrdens ? await listSupplyOrders(process.id).catch(() => []) : [];
+
+  // Os documentos de cada ordem são buscados pela referência dela, não do
+  // processo: a peça fala da ordem, e é lá que ela precisa aparecer.
+  const documentosPorOrdem = Object.fromEntries(
+    await Promise.all(
+      ordens.map(async (ordem) => [ordem.id, await listDocumentsFor(ordem.id).catch(() => [])] as const),
+    ),
+  );
 
   const currentSector = sectors.find((sector) => sector.id === process.setorAtualId);
   const isOpen = process.status === "ABERTO" || process.status === "TRAMITANDO";
@@ -124,10 +164,8 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
                 assignments={profile.lotacoes}
                 activeAssignmentId={activeAssignmentId}
                 sectors={sectors.map((sector) => ({ value: sector.id, label: sector.nome }))}
-                contracts={contracts.map((contract) => ({
-                  value: contract.id,
-                  label: `Contrato ${contract.numero}`,
-                }))}
+                contracts={opcoesDeContrato}
+                contractValues={valorPorContrato}
                 canDispatch={viewer.can("processes:dispatch")}
                 canGiveOpinion={viewer.can("processes:opinion")}
                 canEmitOrder={viewer.can("processes:order")}
@@ -142,6 +180,18 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
                 processoId={process.id}
                 exigencias={exigencias}
                 podeExigir={isOpen && viewer.can("processes:dispatch")}
+              />
+            </Card>
+          ) : null}
+
+          {podeVerOrdens ? (
+            <Card title="Ordens de fornecimento">
+              <SupplyOrderPanel
+                ordens={ordens}
+                documentosPorOrdem={documentosPorOrdem}
+                modelos={modelos.filter((modelo) => modelo.escopo === "ORDEM_FORNECIMENTO")}
+                voltarPara={`/processos/fila/${process.id}`}
+                podeEmitir={viewer.can("documents:issue")}
               />
             </Card>
           ) : null}

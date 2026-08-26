@@ -61,6 +61,22 @@ export type NovaOrdemFornecimento = {
   numeroNotaFiscal?: string;
 };
 
+/**
+ * A ordem emitida, como o setor de compras precisa vê-la: identificada pelo
+ * número, com o contrato e o fornecedor a que se refere. Sem esta leitura a
+ * ordem era gravada e desaparecia — e o documento dela, inalcançável.
+ */
+export type OrdemDoProcesso = {
+  id: string;
+  numero: string;
+  valor: string;
+  data: string;
+  contratoNumero: string;
+  fornecedorNome: string;
+  numeroEmpenho: string | null;
+  numeroNotaFiscal: string | null;
+};
+
 export interface TramitacaoRepository {
   buscarProcesso(orgaoId: string, processoId: string): Promise<ProcessoDetalhe | null>;
   listarFila(orgaoId: string, paginacao: Paginacao, setorId?: string): Promise<FilaDeProcessos>;
@@ -75,4 +91,5 @@ export interface TramitacaoRepository {
   contratoParticipaDoProcesso(processoId: string, contratoId: string): Promise<boolean>;
   existeNotaFiscal(orgaoId: string, fornecedorId: string, numeroNotaFiscal: string): Promise<boolean>;
   criarOrdem(dados: NovaOrdemFornecimento, tx: Tx): Promise<string>;
+  listarOrdens(orgaoId: string, processoId: string): Promise<OrdemDoProcesso[]>;
 }
