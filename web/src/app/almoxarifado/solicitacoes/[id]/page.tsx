@@ -1,0 +1,111 @@
+import { notFound } from "next/navigation";
+import {
+  getReceiptPlan, getReleasePlan, getStockRequest,
+} from "@/features/stock/queries";
+import { ReceiptPanel } from "@/features/stock/components/ReceiptPanel";
+import { ReleasePanel } from "@/features/stock/components/ReleasePanel";
+import { RequestActions } from "@/features/stock/components/RequestActions";
+import { RequestItems } from "@/features/stock/components/RequestItems";
+import { statusOf } from "@/features/stock/types";
+import { ApiError } from "@/shared/api/http-client";
+import { requirePermission } from "@/shared/auth/guards";
+import { Alert, Badge, Card, PageHeader, SummaryGrid } from "@/shared/ui/layout";
+import { toDate, toDateTime } from "@/shared/ui/labels";
+
+type RequestPageProps = { params: Promise<{ id: string }> };
+
+export default async function StockRequestPage({ params }: RequestPageProps) {
+  const viewer = await requirePermission("stock:read", "ALMOXARIFADO");
+  const { id } = await params;
+
+  const pedido = await getStockRequest(id).catch((erro) => {
+    if (erro instanceof ApiError && erro.status === 404) notFound();
+    throw erro;
+  });
+
+  const situacao = statusOf(pedido.status);
+  const podeLiberar = pedido.status === "SOLICITADA" && viewer.can("stock:manage");
+  const podeReceber =
+    (pedido.status === "LIBERADA" || pedido.status === "EM_TRANSITO")
+    && viewer.can("stock:receive");
+
+  // Cada plano só é buscado quando a etapa é a da vez: pedir os dois sempre
+  // faria uma chamada que a API recusa pelo estado.
+  const [planoLiberacao, planoRecebimento] = await Promise.all([
+    podeLiberar ? getReleasePlan(id).catch(() => null) : Promise.resolve(null),
+    podeReceber ? getReceiptPlan(id).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  return (
+    <>
+      <PageHeader
+        title={`Pedido · ${pedido.localSolicitanteNome}`}
+        subtitle={`Aberto em ${toDate(pedido.data)} por ${pedido.autorNome}`}
+        action={<Badge tone={situacao.tone}>{situacao.label}</Badge>}
+      />
+
+      <Card>
+        <SummaryGrid
+          items={[
+            { label: "Local solicitante", value: pedido.localSolicitanteNome },
+            { label: "Tipo de estoque", value: pedido.tipoEstoqueNome ?? "—" },
+            { label: "Itens", value: pedido.itens.length },
+            {
+              label: "Enviado em",
+              value: pedido.enviadaEm ? toDateTime(pedido.enviadaEm) : "—",
+            },
+            {
+              label: "Reserva expira",
+              value: pedido.reservaExpiraEm ? toDateTime(pedido.reservaExpiraEm) : "sem prazo",
+            },
+            {
+              label: "Liberado em",
+              value: pedido.liberadaEm ? toDateTime(pedido.liberadaEm) : "—",
+            },
+            {
+              label: "Recebido em",
+              value: pedido.recebidaEm ? toDateTime(pedido.recebidaEm) : "—",
+            },
+          ]}
+        />
+      </Card>
+
+      {pedido.motivoRecusa ? (
+        <Alert tone="error">Recusado: {pedido.motivoRecusa}</Alert>
+      ) : null}
+
+      {pedido.status === "EXPIRADA" ? (
+        <Alert tone="info">
+          A reserva venceu antes da liberação e o saldo voltou ao almoxarifado. Para retomar, abra
+          um pedido novo.
+        </Alert>
+      ) : null}
+
+      <Card title="Itens pedidos" padded={false}>
+        <RequestItems itens={pedido.itens} />
+      </Card>
+
+      {podeLiberar && planoLiberacao ? (
+        <Card title="Liberar" padded={false}>
+          <div style={{ padding: "14px 16px" }}>
+            <ReleasePanel plano={planoLiberacao} />
+          </div>
+        </Card>
+      ) : null}
+
+      {podeReceber && planoRecebimento ? (
+        <Card title="Conferir o que chegou" padded={false}>
+          <div style={{ padding: "14px 16px" }}>
+            <ReceiptPanel plano={planoRecebimento} />
+          </div>
+        </Card>
+      ) : null}
+
+      {!podeLiberar && !podeReceber ? (
+        <Card title="Ações">
+          <RequestActions pedido={pedido} podePedir={viewer.can("stock:request")} />
+        </Card>
+      ) : null}
+    </>
+  );
+}

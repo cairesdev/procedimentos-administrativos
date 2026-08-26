@@ -81,7 +81,13 @@ export const RequestBuilder = ({
 
   // Guarda a chave junto com a lista: assim a tela nunca mostra produto de um
   // almoxarifado enquanto outro já está selecionado, e "carregando" é derivado.
-  const produtos = carregado?.chave === chave ? carregado.produtos : [];
+  //
+  // O `useMemo` não é otimização: sem ele o array literal nasceria novo a cada
+  // render e derrubaria a memoização de `escolhidos` logo abaixo.
+  const produtos = useMemo(
+    () => (carregado?.chave === chave ? carregado.produtos : []),
+    [carregado, chave],
+  );
   const carregando = Boolean(local?.almoxarifadoId) && carregado?.chave !== chave;
 
   const trocarLocal = (novoLocal: string) => {

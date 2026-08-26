@@ -2,8 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": ".",
+    "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["tests", "src"]
+  "//": "O conversor da planilha mora no web, mas e logica pura e o teste dele vive aqui.",
+  "include": ["tests", "src", "../web/src/features/stock/paste.ts"]
 }

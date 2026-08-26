@@ -1,4 +1,6 @@
-import { parseNumber } from "@/shared/lib/spreadsheet-paste";
+// Import relativo, e não pelo alias `@/`: este módulo é lógica pura e o teste
+// dele roda a partir do projeto da API, onde o alias do web não é resolvido.
+import { parseNumber } from "../../shared/lib/spreadsheet-paste";
 
 /**
  * Colagem da planilha de entrada do almoxarifado.
@@ -80,20 +82,40 @@ export const converterData = (texto: string): { data: string | null; invalida: b
   if (!limpo) return { data: null, invalida: false };
 
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(limpo);
-  if (iso) return { data: `${iso[1]}-${iso[2]}-${iso[3]}`, invalida: false };
+  if (iso) {
+    const data = `${iso[1]}-${iso[2]}-${iso[3]}`;
+    return existe(data) ? { data, invalida: false } : { data: null, invalida: true };
+  }
 
   const br = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(limpo);
   if (br) {
     const [, dia, mes, ano] = br;
     const anoCheio = ano!.length === 2 ? `20${ano}` : ano!;
     const data = `${anoCheio}-${mes!.padStart(2, "0")}-${dia!.padStart(2, "0")}`;
-    // `Date.parse` recusa 31/02: melhor descartar que gravar data impossível.
-    return Number.isNaN(Date.parse(`${data}T12:00:00Z`))
-      ? { data: null, invalida: true }
-      : { data, invalida: false };
+    return existe(data) ? { data, invalida: false } : { data: null, invalida: true };
   }
 
   return { data: null, invalida: true };
+};
+
+/**
+ * 31 de fevereiro não existe — e `Date.parse` **não** avisa: ele transborda
+ * para 3 de março e devolve uma data válida. A única forma de pegar é montar a
+ * data e conferir se os componentes voltaram iguais.
+ *
+ * Sem isto, uma planilha com data digitada errada gravaria validade de março
+ * num lote que na verdade vence em fevereiro — e ninguém perceberia até o
+ * alimento estragar.
+ */
+const existe = (iso: string): boolean => {
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  const data = new Date(Date.UTC(ano!, mes! - 1, dia!, 12));
+
+  return (
+    data.getUTCFullYear() === ano
+    && data.getUTCMonth() === mes! - 1
+    && data.getUTCDate() === dia
+  );
 };
 
 export const converterPlanilha = (texto: string): StockPasteResult => {

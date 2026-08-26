@@ -104,7 +104,8 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
 5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
    casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
    ambiente de pé.
-6. **Módulo Almoxarifado** — 1ª fatia com API pronta (ver seção abaixo). Falta o web.
+6. **Módulo Almoxarifado** — 1ª fatia entregue, API e web (ver seção abaixo). Faltam consumo,
+   devolução, transferência entre almoxarifados, ajuste e relatórios do PNAE.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
 
 ## Infraestrutura
@@ -655,3 +656,44 @@ SERVIDOR pede e confirma recebimento, mas não libera.
   `pgsql-ast-parser` não conhece. Os `DELETE` viraram subconsulta (mais claros
   de qualquer forma); o `FOR UPDATE OF` ficou, numa lista curta e justificada de
   exceções — com um teste que recusa entrada morta nessa lista.
+
+## Almoxarifado — 1ª fatia (web)
+
+Quinto workspace no hub, cor roxa. Seis telas: pedidos, entradas, saldo por
+unidade e os três cadastros (almoxarifados, tipos, locais atendidos).
+
+**Entrada por planilha.** O caminho principal é colar do Excel — é assim que o
+material chega, e digitar duzentos itens à mão é o que faz o almoxarife desistir
+do sistema. O conversor aceita as variações de cabeçalho que aparecem na prática
+(`NOME`/`PRODUTO`/`ITEM`, `QTD`/`QTDE`, `VALIDADE`/`VENCIMENTO`), número
+brasileiro (`4.000` é quatro mil, `2,5` é dois e meio) e data nos dois formatos.
+Linha de total e separador são descartados e contados.
+
+**Liberação com FEFO ajustável.** A distribuição vem calculada da API e entra
+como valor inicial; o almoxarife ajusta porque o lote que vence antes pode estar
+no fundo do depósito. Lote vencido aparece marcado, nunca escondido — quem
+decide se aquele leite serve é quem está com a caixa na mão.
+
+**Conferência que começa preenchida.** A entrega que fecha é a rotina; obrigar a
+digitar item por item faria a conferência virar clique automático. Quem mexe é
+quem encontrou diferença — e aí o motivo passa a ser obrigatório, com o total da
+perda à vista antes de confirmar.
+
+**Saldo por unidade mostra o lote, não só o total.** Saber que há 40 kg de arroz
+não ajuda quem precisa consumir primeiro o que vence antes.
+
+### Pego na verificação
+
+- **`Date.parse("2026-02-31")` não devolve `NaN`.** O JavaScript transborda para
+  3 de março e entrega uma data válida, então a validação de data impossível não
+  pegava nada: uma planilha com `31/02` gravaria validade de março num lote que
+  vence em fevereiro. Agora a data é montada e os componentes são conferidos de
+  volta.
+- **Dois falsos negativos no meu próprio teste de contrato.** A verificação de
+  `exigirPapel` pegava a primeira ocorrência do caminho e caía no `GET` em vez
+  do `POST`; e a interpolação `${id}/${acao}` do web virava `:id/:id`. Os dois
+  foram conferidos derrubando o código de propósito — o detector acusa e o teste
+  volta a passar quando se restaura.
+- **`TSX_TSCONFIG_PATH=... npm test` não roda no Windows.** O `cmd.exe` não
+  entende variável na frente do comando. O conversor da planilha passou a usar
+  import relativo em vez do alias `@/`, e o `npm test` voltou a ser uma linha só.
