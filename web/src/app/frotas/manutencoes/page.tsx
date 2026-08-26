@@ -1,6 +1,7 @@
 import { listMaintenances, listVehicles } from "@/features/fleet/queries";
 import { MaintenanceForm } from "@/features/fleet/components/MaintenanceForm";
 import { MaintenanceTable } from "@/features/fleet/components/MaintenanceTable";
+import { listTemplates } from "@/features/documents/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
@@ -15,13 +16,14 @@ export default async function MaintenancesPage({ searchParams }: MaintenancesPag
   const viewer = await requirePermission("fleet:read", "FROTAS");
   const { veiculo, abertas, pagina } = await searchParams;
 
-  const [maintenances, vehicles] = await Promise.all([
+  const [maintenances, vehicles, modelos] = await Promise.all([
     listMaintenances({
       veiculo,
       abertas: abertas === "" || abertas === undefined ? undefined : abertas === "true",
       pagina,
     }),
     listVehicles(),
+    listTemplates("FROTAS").catch(() => []),
   ]);
 
   const canWrite = viewer.can("fleet:write");
@@ -71,7 +73,12 @@ export default async function MaintenancesPage({ searchParams }: MaintenancesPag
       </form>
 
       <Card title={`${maintenances.total} registros`} padded={false}>
-        <MaintenanceTable maintenances={maintenances.itens} canWrite={canWrite} />
+        <MaintenanceTable
+          maintenances={maintenances.itens}
+          canWrite={canWrite}
+          canIssue={viewer.can("documents:issue")}
+          modelos={modelos}
+        />
         <Pagination
           info={maintenances}
           base="/frotas/manutencoes"

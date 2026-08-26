@@ -48,7 +48,7 @@ export default async function ProtocoloPublicoPage({ searchParams }: ProtocoloPa
     : null;
 
   return (
-    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 20px" }}>
+    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 20px", display: "grid", gap: "18px", alignContent: "start" }}>
       <PageHeader
         title="Acompanhe seu protocolo"
         subtitle={`Consulte a situação do pedido que você abriu — ${app.shortName}`}

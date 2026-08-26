@@ -99,11 +99,11 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
    sem login.
 3. **Protocolo externo** — 1ª fatia (balcão e consulta) entregue; faltam a abertura pelo cidadão
    e o ciclo de exigência/resposta.
-4. **Documentos emitidos** — motor e modelos padrão prontos (fatias 1 e 2). Falta estender aos
-   módulos de patrimônio, frotas e almoxarifado: como o motor é genérico, cada peça nova é um
-   modelo global por migration, sem código.
-5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir
-   patrimônio e frotas, e o smoke test do módulo Processos continua exigindo ambiente de pé.
+4. **Documentos emitidos** — motor, modelos padrão e as peças de patrimônio e frotas prontos
+   (fatias 1 a 3). Falta o almoxarifado, que depende do módulo existir.
+5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
+   casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
+   ambiente de pé.
 6. **Módulo Almoxarifado** — schema pronto, API não iniciada. Seguir levantamento em
    `docs/decisoes.md` + UML.
 7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
@@ -511,3 +511,92 @@ paramétrica. São checagens baratas que leem o próprio código.
   segmentos e acusava `/relatorios/uso` por causa de `/viagens/:id`, que nunca a alcança. Agora o
   detector monta o padrão do Express e testa se ele realmente casa — e tem dois testes próprios,
   um de cada lado, porque detector que nunca dispara passa sensação de cobertura sem cobrir nada.
+
+## Documentos emitidos — fatia 3 (patrimônio e frotas)
+
+O motor era genérico desde a fatia 1; o que faltava aos outros módulos era o **escopo** — de onde
+a peça fala. Escopo custa código (uma consulta de contexto e um catálogo de marcadores); `tipo`
+não custa nada, e a prefeitura cria quantos quiser pelo painel. Migration `0020` abriu seis:
+
+| Escopo | Referência | Peça semeada |
+| --- | --- | --- |
+| `BEM` | bem | Termo de responsabilidade |
+| `TRANSFERENCIA_BEM` | transferência | Termo de transferência |
+| `BAIXA_BEM` | bem | Termo de baixa |
+| `INVENTARIO` | inventário | Folha de inventário (lista `{{#bens}}`) |
+| `VIAGEM` | viagem | Autorização de viagem, Ordem de abastecimento, Relatório de viagem |
+| `MANUTENCAO` | manutenção | Ordem de manutenção |
+
+**A transferência tem id próprio; a baixa não.** Um bem transferido três vezes tem três termos, e
+apontar para o bem não diria qual delas a peça documenta. Já `baixa_bem` tem o bem como chave
+primária — uma baixa por bem —, então o termo de baixa referencia o bem.
+
+**Quatro das tabelas novas não têm `orgao_id`.** `transferencia_bem`, `baixa_bem`, `inventario` e
+`manutencao` alcançam o órgão por join no bem, no local ou no veículo. Como o id vem da URL,
+consulta sem essa amarra deixaria uma prefeitura imprimir termo sobre o patrimônio de outra. Um
+teste lê o SQL da fonte de contexto e exige `orgao_id = $1` em toda consulta de topo; as filhas
+(itens, abastecimentos, linhas do inventário) estão numa lista com a justificativa de quem já as
+conferiu — sem essa lista, bastaria acrescentar uma consulta sem órgão para o teste ficar mudo.
+
+**Retirada e finalização vêm com traço.** A autorização de viagem é impressa **antes** da saída:
+km percorrido ainda não existe, e um zero ali seria lido como "não rodou". O mesmo para o custo de
+manutenção em aberto — "R$ 0,00" afirmaria que foi de graça.
+
+**A peça saiu de dentro de Processos.** `/processos/documentos/[id]` virou `/documentos/[id]`, fora
+dos workspaces: quem tem papel PATRIMONIO ou FROTAS emitia o termo e caía em tela travada. O
+endereço antigo redireciona, porque link de peça oficial pode estar impresso ou colado num e-mail.
+O botão de voltar sai de `?voltar=`, validado como caminho interno para não virar redirecionamento
+aberto. Papéis PATRIMONIO e FROTAS ganharam `documents:issue`.
+
+Bem ativo oferece o termo de responsabilidade; bem baixado, o de baixa. Transferência recusada não
+oferece nada — não houve transferência a documentar. Viagem cancelada não gera autorização.
+
+### Pego na verificação
+
+- **Peça criada pela prefeitura nascia sempre no módulo PROCESSOS.** `criarPersonalizado` tinha
+  `modulo: dados.modulo ?? "PROCESSOS"`, e a rota nunca mandava `modulo`. Enquanto todo escopo
+  falava de processo isso passava despercebido; com frotas, o administrador criaria a peça, ela
+  seria salva e **nunca apareceria na tela**, porque o botão de emissão filtra por módulo. O
+  módulo agora sai do escopo. O teste foi conferido nos dois sentidos: falha com o default de
+  volta, passa sem ele.
+- **O extrator de SQL só enxergava `SQL.nome`.** As consultas da fonte de contexto são constantes
+  soltas e ficavam fora da conferência de `$n` — justamente onde os parâmetros são numerados à
+  mão. Agora as 23 chamadas do arquivo entram na checagem.
+- **Terceira cópia da lista de escopos**, no schema Zod do web, que não acompanhou os seis novos.
+  Passou a derivar de `DOCUMENT_SCOPES`; um teste compara a lista do web com a da API.
+
+### Limitação conhecida
+
+A tela `/documentos/[id]` exige sessão, mas não módulo nem permissão específica: qualquer usuário
+da prefeitura pode abrir qualquer peça dela pelo id. Foi deliberado — a peça de um atendimento de
+balcão pertence ao módulo PROCESSOS, e exigir o módulo travaria a prefeitura que contratou só o
+Protocolo. O isolamento entre prefeituras continua na API, que busca pelo órgão da sessão.
+
+## Escolha do contrato e espaçamento das telas
+
+**A lista de contratos agora diz do que trata cada um.** `GET /contratos/para-solicitacao` passou a
+devolver **objeto**, **valor do contrato** e **saldo em dinheiro** do que ainda dá para pedir. Antes
+a linha trazia só o número, o fornecedor e a vigência — o solicitante escolhia por número, que não
+significa nada para quem pede material. O objeto vem da ata ou da licitação, porque o contrato não
+tem objeto próprio; o saldo soma item a item, e item medido por percentual ou por valor entra pelo
+próprio saldo, já que não tem quantidade × preço.
+
+O fluxo continua em dois passos: escolhe a unidade, vê os contratos dela pelo objeto, e só o
+contrato aberto revela os itens.
+
+**Cards encostados nas telas de detalhe.** O espaçamento entre cards dependia de cada página
+lembrar de embrulhar tudo num `<Stack>`. Sete telas não lembravam, e como o card tem borda e
+sombra, o resultado parecia um passando por cima do outro. A regra virou outra: **o container da
+página é uma pilha** (`.content` do painel da prefeitura e do painel do produto), e nenhuma tela
+precisa repetir isso. O `margin-bottom` do `PageHeader` e do `Steps` saiu junto — somaria ao gap.
+
+**Tabela vazando do card.** `Table` tem cabeçalho `nowrap`; com sete colunas dentro da coluna
+estreita de `Columns`, ela era pintada para fora do card, por cima da coluna ao lado. Três causas
+na mesma família, corrigidas juntas: `.card` ganhou `overflow: hidden` e `min-width: 0`, `.stack`
+passou a `minmax(0, 1fr)` (item de grade tem largura mínima de **conteúdo** por padrão) e a tabela
+ganhou um container de rolagem horizontal — cortar esconderia coluna sem avisar.
+
+`RequestDetailView` devolvia os cards soltos num fragmento e o espaçamento vinha de fora: contrato
+invisível que uma das duas telas não cumpria. Agora traz o próprio `Stack` e funciona em qualquer
+lugar. Três checagens em `contrato-com-o-web.test.ts` guardam o invariante, porque a correção vive
+em CSS e o sintoma só aparece olhando a tela.

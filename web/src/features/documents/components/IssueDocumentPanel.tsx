@@ -95,7 +95,10 @@ export const IssueDocumentPanel = ({
             </td>
             <td>{toDateTime(documento.data)}</td>
             <td style={{ textAlign: "right" }}>
-              <Link href={`/processos/documentos/${documento.id}`} style={{ color: "var(--acao)" }}>
+              <Link
+                href={`/documentos/${documento.id}?voltar=${encodeURIComponent(voltarPara)}`}
+                style={{ color: "var(--acao)" }}
+              >
                 <Printer size={14} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: "4px" }} />
                 Abrir
               </Link>

@@ -11,7 +11,7 @@ export default async function ConferenciaPage({ searchParams }: ConferenciaPageP
   if (codigo?.trim()) redirect(`/conferencia/${encodeURIComponent(codigo.trim())}`);
 
   return (
-    <div style={{ maxWidth: "560px", margin: "0 auto", padding: "40px 20px" }}>
+    <div style={{ maxWidth: "560px", margin: "0 auto", padding: "40px 20px", display: "grid", gap: "18px", alignContent: "start" }}>
       <PageHeader
         title="Conferência de documento"
         subtitle={`Confira a autenticidade de um documento emitido pelo ${app.shortName}`}

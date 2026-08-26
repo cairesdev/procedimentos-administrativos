@@ -1,6 +1,8 @@
 import { listAssetLocations, listAssetTransfers, listAssetWriteOffs } from "@/features/assets/queries";
 import { TransferTable } from "@/features/assets/components/TransferTable";
 import { WRITE_OFF_REASONS } from "@/features/assets/types";
+import { IssueDocumentButton } from "@/features/documents/components/IssueDocumentButton";
+import { listTemplates } from "@/features/documents/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Table, Toolbar } from "@/shared/ui/layout";
@@ -20,16 +22,19 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
   const viewer = await requirePermission("assets:read", "PATRIMONIO");
   const { status, local, pagina, paginaBaixas } = await searchParams;
 
-  const [transfers, locations, writeOffs, aguardando] = await Promise.all([
+  const [transfers, locations, writeOffs, aguardando, modelos] = await Promise.all([
     listAssetTransfers({ status, local, pagina }),
     listAssetLocations(),
     listAssetWriteOffs(paginaBaixas),
     // Consulta só pelo total: o aviso fala de todas as pendentes, não das que
     // por acaso caíram nesta página.
     listAssetTransfers({ status: "PENDENTE" }),
+    listTemplates("PATRIMONIO").catch(() => []),
   ]);
 
   const canWrite = viewer.can("assets:write");
+  const canIssue = viewer.can("documents:issue");
+  const modelosDeBaixa = modelos.filter((modelo) => modelo.escopo === "BAIXA_BEM");
   const pendentes = aguardando.total;
 
   return (
@@ -74,7 +79,12 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
       </form>
 
       <Card title={`${transfers.total} transferências`} padded={false}>
-        <TransferTable transfers={transfers.itens} canWrite={canWrite} />
+        <TransferTable
+          transfers={transfers.itens}
+          canWrite={canWrite}
+          canIssue={canIssue}
+          modelos={modelos}
+        />
         <Pagination
           info={transfers}
           base="/patrimonio/transferencias"
@@ -84,7 +94,11 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
 
       <Card title={`${writeOffs.total} baixas registradas`} padded={false}>
         <Table
-          columns={["Bem", "Local", "Motivo", "Observação", "Quando"]}
+          columns={
+            canIssue
+              ? ["Bem", "Local", "Motivo", "Observação", "Quando", ""]
+              : ["Bem", "Local", "Motivo", "Observação", "Quando"]
+          }
           isEmpty={writeOffs.itens.length === 0}
           emptyMessage="Nenhum bem baixado."
         >
@@ -106,6 +120,20 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
                 <br />
                 <small>por {writeOff.dadaPor}</small>
               </td>
+              {canIssue ? (
+                <td style={{ whiteSpace: "nowrap" }}>
+                  {/* A baixa é referenciada pelo bem: `baixa_bem` tem o bem
+                      como chave primária, uma baixa por bem. */}
+                  <IssueDocumentButton
+                    referenciaId={writeOff.bemId}
+                    voltarPara="/patrimonio/transferencias"
+                    modelos={modelosDeBaixa}
+                    titulo={`Documento · ${writeOff.codigoTombamento}`}
+                    descricao={writeOff.nomeBem}
+                    rotulo={`baixa de ${writeOff.codigoTombamento}`}
+                  />
+                </td>
+              ) : null}
             </tr>
           ))}
         </Table>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert, Badge, Card, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
+import { Alert, Badge, Card, Stack, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate, toDateTime, toDocument, humanize } from "@/shared/ui/labels";
 import { MEASUREMENT_LABELS, type RequestDetail } from "../types";
 
@@ -10,13 +10,17 @@ const quantidade = (valor: number) =>
  * Tudo sobre a solicitação numa tela só: o pedido, o processo que ele gerou,
  * cada item com o que veio do contrato, e os contratos de origem com
  * fornecedor e vigência. Reaproveitada pela versão de impressão.
+ *
+ * Traz o próprio `Stack`. Antes devolvia os cards soltos num fragmento e o
+ * espaçamento vinha de fora — contrato invisível que a tela de detalhe da
+ * solicitação não cumpria, e os cards saíam colados, um por cima do outro.
  */
 export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
   const rascunho = request.situacao === "RASCUNHO";
   const hoje = new Date();
 
   return (
-    <>
+    <Stack>
       <Card title="Solicitação">
         <SummaryGrid
           items={[
@@ -181,6 +185,6 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
           </Card>
         );
       })}
-    </>
+    </Stack>
   );
 };

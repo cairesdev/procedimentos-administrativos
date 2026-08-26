@@ -33,7 +33,7 @@ export default async function TenantPage({ params }: TenantPageProps) {
 
   return (
     <>
-      <Link href="/admin">
+      <Link href="/admin" style={{ justifySelf: "start" }}>
         <Button type="button" variant="ghost">
           <ChevronLeft size={15} aria-hidden="true" style={{ verticalAlign: "-2px" }} />
           Prefeituras

@@ -29,7 +29,7 @@ export default async function AbrirPedidoPage({ params }: AberturaPublicaProps) 
   });
 
   return (
-    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 20px" }}>
+    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 20px", display: "grid", gap: "18px", alignContent: "start" }}>
       <PageHeader
         title="Abrir pedido"
         subtitle={`${prefeitura.nome} — ${prefeitura.municipio}/${prefeitura.uf}`}

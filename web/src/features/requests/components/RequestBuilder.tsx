@@ -187,7 +187,14 @@ export const RequestBuilder = ({
         )}
       </Card>
 
-      <Card title="Contratos disponíveis" padded={false}>
+      <Card
+        title={
+          contratos.length > 0
+            ? `Contratos disponíveis (${contratos.length})`
+            : "Contratos disponíveis"
+        }
+        padded={false}
+      >
         {carregandoContratos ? (
           <p className={styles.aviso}>Carregando contratos…</p>
         ) : !unitId ? (
@@ -200,8 +207,12 @@ export const RequestBuilder = ({
             </Alert>
           </div>
         ) : (
-          <ul className={styles.contratos}>
-            {contratos.map((contrato) => {
+          <>
+            <p className={styles.aviso}>
+              Escolha o contrato pelo objeto. Os itens dele aparecem logo abaixo, e só os dele.
+            </p>
+            <ul className={styles.contratos}>
+              {contratos.map((contrato) => {
               const expandido = aberto === contrato.id;
               const itens = itensPorContrato[contrato.id];
               const escolhidosAqui = escolhidos.filter(
@@ -221,6 +232,9 @@ export const RequestBuilder = ({
                     </span>
                     <span className={styles.contrato_dados}>
                       <strong>Contrato {contrato.numero}</strong>
+                      <span className={styles.objeto}>
+                        {contrato.objeto || "Sem objeto registrado na origem"}
+                      </span>
                       <small>
                         {contrato.fornecedorRazaoSocial} · {vigencia(contrato)}
                         {contrato.origemNumero
@@ -229,14 +243,20 @@ export const RequestBuilder = ({
                       </small>
                     </span>
                     <span className={styles.contrato_tags}>
+                      <span className={styles.valor}>{toCurrency(contrato.valorTotal)}</span>
+                      <span className={styles.saldo}>
+                        {toCurrency(contrato.saldoDisponivel)} de saldo
+                      </span>
                       {escolhidosAqui > 0 ? (
                         <Badge tone="accent">
                           {escolhidosAqui} {escolhidosAqui === 1 ? "item" : "itens"}
                         </Badge>
-                      ) : null}
-                      <Badge tone="neutral">
-                        {contrato.itensDisponiveis} com saldo
-                      </Badge>
+                      ) : (
+                        <Badge tone="neutral">
+                          {contrato.itensDisponiveis}{" "}
+                          {contrato.itensDisponiveis === 1 ? "item" : "itens"}
+                        </Badge>
+                      )}
                     </span>
                   </button>
 
@@ -257,8 +277,9 @@ export const RequestBuilder = ({
                   ) : null}
                 </li>
               );
-            })}
-          </ul>
+              })}
+            </ul>
+          </>
         )}
       </Card>
 

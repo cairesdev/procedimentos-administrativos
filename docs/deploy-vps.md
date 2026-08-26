@@ -230,9 +230,78 @@ ssh -L 9001:localhost:9001 usuario@vps
 # depois: http://localhost:9001
 ```
 
-## 7. Checklist de segurança
+## 7. Rotacionar segredo vazado
+
+Vale para qualquer segredo que tenha passado por um arquivo versionado. As
+chaves do MinIO estiveram no `.env.example` em commits antigos — os arquivos
+já foram corrigidos, mas **o histórico do git guarda o que foi commitado**, e
+quem clonar o repositório lê o valor antigo. Corrigir o arquivo não invalida a
+chave; só a rotação invalida.
+
+### MinIO
+
+O MinIO guarda os objetos como arquivos em `./data/minio`. A chave é
+credencial de acesso, **não** chave de criptografia: trocá-la não torna nada
+ilegível e nenhum anexo se perde. É um restart.
+
+```bash
+cd /caminho/do/projeto
+alias dcp='docker compose -f docker-compose.prod.yml --env-file .env.prod'
+
+# 1. Gere o par novo (o usuário do MinIO exige 3+ caracteres; a senha, 8+)
+openssl rand -hex 12      # MINIO_ACCESS_KEY
+openssl rand -base64 32   # MINIO_SECRET_KEY
+
+# 2. Guarde de onde dá para voltar, se algo sair errado
+cp .env.prod .env.prod.bak && chmod 600 .env.prod.bak
+
+# 3. Edite as duas linhas no .env.prod
+nano .env.prod            # MINIO_ACCESS_KEY= / MINIO_SECRET_KEY=
+
+# 4. Suba minio e api juntos: a API lê a mesma variável e ficaria
+#    com a chave velha se você reiniciasse só o minio.
+dcp up -d --force-recreate minio minio-init api
+
+# 5. Confira
+dcp ps                    # minio healthy, minio-init com exit 0
+dcp logs --tail 30 api    # sem erro de credencial
+```
+
+Depois disso, **abra um anexo antigo pelo sistema** — é o teste que importa: a
+API assina a URL com a chave nova sobre um objeto gravado com a antiga. Se
+baixar, a rotação está completa e o `.env.prod.bak` pode ser apagado.
+
+Se o `minio-init` falhar com `Access Denied`, a senha nova tem menos de 8
+caracteres ou o `.env.prod` ficou com aspas em volta do valor — o Compose as
+trata como parte do texto.
+
+### O resto do que passou pelo histórico
+
+`JWT_SECRET`, `AUTH_SECRET` e `POSTGRES_PASSWORD` seguem a mesma regra. Dois
+avisos sobre o efeito colateral, que não existe no MinIO:
+
+- Trocar `JWT_SECRET` ou `AUTH_SECRET` **derruba todas as sessões abertas**:
+  todo mundo refaz login. Faça fora do horário de expediente.
+- Trocar `POSTGRES_PASSWORD` no `.env.prod` **não** troca a senha no banco já
+  inicializado — a variável só é lida no `initdb`. É preciso alterar dentro do
+  Postgres e só então subir os serviços com o valor novo:
+
+  ```bash
+  dcp exec db psql -U procedimentos -c "ALTER USER procedimentos PASSWORD 'nova';"
+  nano .env.prod
+  dcp up -d --force-recreate api backup
+  ```
+
+Reescrever o histórico do git (`git filter-repo`) remove o valor do passado,
+mas exige `push --force` e quebra todo clone existente. Com a chave já
+rotacionada, o valor antigo no histórico não abre mais nada — deixar como está
+é a escolha razoável, desde que o repositório seja privado.
+
+## 8. Checklist de segurança
 
 - [ ] `.env.prod` com `chmod 600` e fora do git
+- [ ] Chaves do MinIO rotacionadas (estiveram no histórico do git — seção 7)
+- [ ] Repositório privado no GitHub
 - [ ] Firewall liberando só 22, 80 e 443
 - [ ] `ADMIN_SENHA` removida do `.env.prod` depois do primeiro login
 - [ ] Backups sendo copiados para fora da VPS

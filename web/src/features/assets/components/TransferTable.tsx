@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { IssueDocumentButton } from "@/features/documents/components/IssueDocumentButton";
+import type { DocumentTemplate } from "@/features/documents/types";
 import { Button } from "@/shared/ui/button";
 import { Badge, Table } from "@/shared/ui/layout";
 import { toDateTime } from "@/shared/ui/labels";
@@ -18,9 +20,13 @@ const SITUACAO: Record<TransferStatus, { label: string; tone: "accent" | "succes
 export const TransferTable = ({
   transfers,
   canWrite,
+  canIssue,
+  modelos,
 }: {
   transfers: AssetTransfer[];
   canWrite: boolean;
+  canIssue: boolean;
+  modelos: DocumentTemplate[];
 }) => {
   const router = useRouter();
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -42,10 +48,11 @@ export const TransferTable = ({
   };
 
   const colunas = ["Bem", "De", "Para", "Enviada", "Situação"];
+  const temAcoes = canWrite || canIssue;
 
   return (
     <Table
-      columns={canWrite ? [...colunas, ""] : colunas}
+      columns={temAcoes ? [...colunas, ""] : colunas}
       isEmpty={transfers.length === 0}
       emptyMessage="Nenhuma transferência com esses filtros."
     >
@@ -76,9 +83,9 @@ export const TransferTable = ({
               </>
             ) : null}
           </td>
-          {canWrite ? (
-            <td>
-              {transfer.status === "PENDENTE" ? (
+          {temAcoes ? (
+            <td style={{ whiteSpace: "nowrap" }}>
+              {canWrite && transfer.status === "PENDENTE" ? (
                 <span style={{ display: "inline-flex", gap: "6px" }}>
                   <Button
                     type="button"
@@ -96,9 +103,19 @@ export const TransferTable = ({
                     Recusar
                   </Button>
                 </span>
-              ) : (
-                <span style={{ color: "var(--texto_apagado)", fontSize: "13px" }}>—</span>
-              )}
+              ) : null}
+
+              {/* Recusada não rende termo: não houve transferência a documentar. */}
+              {canIssue && transfer.status !== "RECUSADA" ? (
+                <IssueDocumentButton
+                  referenciaId={transfer.id}
+                  voltarPara="/patrimonio/transferencias"
+                  modelos={modelos.filter((modelo) => modelo.escopo === "TRANSFERENCIA_BEM")}
+                  titulo={`Documento · ${transfer.codigoTombamento}`}
+                  descricao={`${transfer.localOrigemNome} → ${transfer.localDestinoNome}`}
+                  rotulo={`transferência de ${transfer.codigoTombamento}`}
+                />
+              ) : null}
             </td>
           ) : null}
         </tr>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DOCUMENT_SCOPES } from "./types";
 
 export const templateSchema = z.object({
   nome: z.string().min(1, "Informe o nome").max(150),
@@ -10,7 +11,9 @@ export const templateSchema = z.object({
 export type TemplateInput = z.infer<typeof templateSchema>;
 
 export const newTemplateSchema = templateSchema.extend({
-  escopo: z.enum(["PROCESSO", "PROCESSO_CONTRATO", "ORDEM_FORNECIMENTO", "SOLICITACAO"]),
+  // A lista vem de `types.ts`, não repetida aqui: era a terceira cópia dos
+  // escopos no projeto, e a que ficou para trás quando os seis novos entraram.
+  escopo: z.enum(DOCUMENT_SCOPES),
 });
 
 export type NewTemplateInput = z.infer<typeof newTemplateSchema>;

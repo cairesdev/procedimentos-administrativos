@@ -128,6 +128,148 @@ const PARECER = `
    ORDER BY d.data DESC
    LIMIT 1`;
 
+// ---------------------------------------------------------------------------
+// Patrimônio
+//
+// `transferencia_bem`, `baixa_bem`, `inventario` e `inventario_item` não têm
+// `orgao_id` próprio — alcançam o órgão por join no bem ou no local. Filtrar
+// só pelo id da linha aqui deixaria uma prefeitura emitir termo sobre o
+// patrimônio de outra, bastando conhecer o id.
+
+const BEM = `
+  SELECT b.codigo_tombamento AS tombamento, b.nome,
+         cb.nome AS categoria,
+         b.estado_conservacao AS "estadoConservacao", b.status,
+         la.nome AS "localAtual", lt.nome AS "localTombamento",
+         coalesce(to_char(r.data, 'DD/MM/YYYY'),
+                  to_char(b.created_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY')) AS "dataEntrada",
+         coalesce(r.nota_fiscal, '—') AS "notaFiscal",
+         coalesce(f.razao_social, '—') AS fornecedor
+    FROM bem b
+    JOIN categoria_bem cb ON cb.id = b.categoria_id
+    JOIN local la ON la.id = b.local_atual_id
+    JOIN local lt ON lt.id = b.local_tombamento_id
+    LEFT JOIN remessa_lote rl ON rl.id = b.remessa_lote_id
+    LEFT JOIN remessa_patrimonio r ON r.id = rl.remessa_id
+    LEFT JOIN fornecedor f ON f.id = r.fornecedor_id
+   WHERE b.orgao_id = $1 AND b.id = $2`;
+
+const TRANSFERENCIA = `
+  SELECT t.bem_id AS "bemId", t.status,
+         lo.nome AS "localOrigem", ld.nome AS "localDestino",
+         to_char(t.data_envio AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS "dataEnvio",
+         coalesce(
+           to_char(t.data_aceite AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI'), '—'
+         ) AS "dataAceite",
+         ue.nome AS "enviadoPor", coalesce(ua.nome, '—') AS "aceitoPor"
+    FROM transferencia_bem t
+    JOIN bem b ON b.id = t.bem_id
+    JOIN local lo ON lo.id = t.local_origem_id
+    JOIN local ld ON ld.id = t.local_destino_id
+    JOIN usuario ue ON ue.id = t.enviado_por_usuario_id
+    LEFT JOIN usuario ua ON ua.id = t.aceito_por_usuario_id
+   WHERE b.orgao_id = $1 AND t.id = $2`;
+
+const BAIXA = `
+  SELECT bx.motivo, coalesce(bx.observacao, '—') AS observacao,
+         to_char(bx.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS data,
+         u.nome AS responsavel
+    FROM baixa_bem bx
+    JOIN bem b ON b.id = bx.bem_id
+    JOIN usuario u ON u.id = bx.usuario_id
+   WHERE b.orgao_id = $1 AND bx.bem_id = $2`;
+
+const INVENTARIO = `
+  SELECT l.nome AS local, i.status,
+         to_char(i.data_inicio, 'DD/MM/YYYY') AS "dataInicio",
+         coalesce(to_char(i.data_conclusao, 'DD/MM/YYYY'), '—') AS "dataConclusao",
+         (SELECT count(*) FROM inventario_item ii WHERE ii.inventario_id = i.id) AS "totalBens",
+         (SELECT count(*) FROM inventario_item ii
+           WHERE ii.inventario_id = i.id AND ii.situacao = 'ENCONTRADO') AS encontrados,
+         (SELECT count(*) FROM inventario_item ii
+           WHERE ii.inventario_id = i.id AND ii.situacao = 'NAO_ENCONTRADO') AS "naoEncontrados"
+    FROM inventario i
+    JOIN local l ON l.id = i.local_id
+   WHERE l.orgao_id = $1 AND i.id = $2`;
+
+const BENS_CONFERIDOS = `
+  SELECT b.codigo_tombamento AS tombamento, b.nome, cb.nome AS categoria,
+         ii.situacao, coalesce(ii.estado_observado, '—') AS "estadoObservado",
+         coalesce(ii.observacao, '') AS observacao
+    FROM inventario_item ii
+    JOIN bem b ON b.id = ii.bem_id
+    JOIN categoria_bem cb ON cb.id = b.categoria_id
+   WHERE ii.inventario_id = $1
+   ORDER BY b.codigo_tombamento`;
+
+// ---------------------------------------------------------------------------
+// Frotas
+//
+// `manutencao` alcança o órgão pelo veículo; `retirada`, `finalizacao` e
+// `abastecimento` alcançam pela viagem.
+
+const VEICULO_DA_VIAGEM = `
+  SELECT ve.placa, ve.modelo, coalesce(ve.ano::text, '—') AS ano,
+         coalesce(ve.tipo, '—') AS tipo,
+         coalesce(un.nome, 'Frota central') AS unidade,
+         ve.quilometragem_atual AS "quilometragemAtual"
+    FROM veiculo ve
+    LEFT JOIN unidade un ON un.id = ve.unidade_id
+   WHERE ve.id = $1`;
+
+const VIAGEM = `
+  SELECT v.status, v.motivo, v.responsavel, v.veiculo_id AS "veiculoId",
+         us.nome AS "unidadeSolicitante",
+         to_char(v.data_hora_desejada AT TIME ZONE 'America/Sao_Paulo',
+                 'DD/MM/YYYY HH24:MI') AS "dataHoraDesejada",
+         coalesce(to_char(v.data_hora_remarcada AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "dataHoraRemarcada",
+         m.nome AS "motoristaNome", m.cnh AS "motoristaCnh",
+         m.categoria_cnh AS "motoristaCategoriaCnh",
+         to_char(m.validade_cnh, 'DD/MM/YYYY') AS "motoristaValidadeCnh",
+         coalesce(to_char(r.data_hora AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "retiradaDataHora",
+         r.km_inicial AS "retiradaKmInicial",
+         CASE
+           WHEN r.nota_combustivel_tipo = 'LITRO'
+             THEN to_char(r.nota_combustivel_quantidade, 'FM999G999D00') || ' L'
+           WHEN r.nota_combustivel_tipo = 'VALOR'
+             THEN 'R$ ' || to_char(r.nota_combustivel_quantidade, 'FM999G999D00')
+           ELSE '—'
+         END AS "retiradaNotaCombustivel",
+         coalesce(to_char(fi.data_hora AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "finalizacaoDataHora",
+         fi.km_final AS "finalizacaoKmFinal",
+         coalesce(fi.sinistro, '—') AS "finalizacaoSinistro",
+         (SELECT coalesce(sum(a.litros), 0) FROM abastecimento a
+           WHERE a.viagem_id = v.id) AS "totalLitros",
+         (SELECT coalesce(sum(a.valor), 0) FROM abastecimento a
+           WHERE a.viagem_id = v.id) AS "totalCombustivel"
+    FROM viagem v
+    JOIN unidade us ON us.id = v.unidade_solicitante_id
+    JOIN motorista m ON m.id = v.motorista_id
+    LEFT JOIN retirada r ON r.viagem_id = v.id
+    LEFT JOIN finalizacao fi ON fi.viagem_id = v.id
+   WHERE v.orgao_id = $1 AND v.id = $2`;
+
+const ABASTECIMENTOS = `
+  SELECT to_char(a.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS data,
+         a.litros, a.valor
+    FROM abastecimento a
+   WHERE a.viagem_id = $1
+   ORDER BY a.data`;
+
+const MANUTENCAO = `
+  SELECT mn.tipo, coalesce(mn.descricao, '—') AS descricao,
+         coalesce(mn.oficina, '—') AS oficina,
+         to_char(mn.data_inicio, 'DD/MM/YYYY') AS "dataInicio",
+         coalesce(to_char(mn.data_fim, 'DD/MM/YYYY'), '—') AS "dataFim",
+         CASE WHEN mn.data_fim IS NULL THEN 'Em andamento' ELSE 'Encerrada' END AS status,
+         mn.custo, mn.veiculo_id AS "veiculoId"
+    FROM manutencao mn
+    JOIN veiculo ve ON ve.id = mn.veiculo_id
+   WHERE ve.orgao_id = $1 AND mn.id = $2`;
+
 const dinheiro = (valor: unknown) =>
   new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2 }).format(Number(valor ?? 0));
 
@@ -186,6 +328,12 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     }
     if (escopo === "ORDEM_FORNECIMENTO") return this.daOrdem(orgaoId, referenciaId, orgao);
     if (escopo === "SOLICITACAO") return this.daSolicitacao(orgaoId, referenciaId, orgao);
+    if (escopo === "BEM") return this.doBem(orgaoId, referenciaId, orgao);
+    if (escopo === "TRANSFERENCIA_BEM") return this.daTransferencia(orgaoId, referenciaId, orgao);
+    if (escopo === "BAIXA_BEM") return this.daBaixa(orgaoId, referenciaId, orgao);
+    if (escopo === "INVENTARIO") return this.doInventario(orgaoId, referenciaId, orgao);
+    if (escopo === "VIAGEM") return this.daViagem(orgaoId, referenciaId, orgao);
+    if (escopo === "MANUTENCAO") return this.daManutencao(orgaoId, referenciaId, orgao);
     return null;
   };
 
@@ -290,4 +438,220 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       itens: itens.rows.map(itemParaContexto),
     };
   };
+
+  // ---- Patrimônio ---------------------------------------------------------
+
+  private doBem = async (
+    orgaoId: string,
+    bemId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const bem = (await pool.query(BEM, [orgaoId, bemId])).rows[0];
+    return bem ? { orgao, bem: bemParaContexto(bem) } : null;
+  };
+
+  private daTransferencia = async (
+    orgaoId: string,
+    transferenciaId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const transferencia = (await pool.query(TRANSFERENCIA, [orgaoId, transferenciaId])).rows[0];
+    if (!transferencia) return null;
+
+    const bem = (await pool.query(BEM, [orgaoId, transferencia.bemId])).rows[0];
+    if (!bem) return null;
+
+    return {
+      orgao,
+      bem: bemParaContexto(bem),
+      transferencia: {
+        localOrigem: String(transferencia.localOrigem),
+        localDestino: String(transferencia.localDestino),
+        status: String(transferencia.status),
+        dataEnvio: String(transferencia.dataEnvio),
+        dataAceite: String(transferencia.dataAceite),
+        enviadoPor: String(transferencia.enviadoPor),
+        aceitoPor: String(transferencia.aceitoPor),
+      },
+    };
+  };
+
+  private daBaixa = async (
+    orgaoId: string,
+    bemId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const baixa = (await pool.query(BAIXA, [orgaoId, bemId])).rows[0];
+    // Sem baixa registrada os marcadores viriam vazios e o termo sairia
+    // afirmando uma baixa que não aconteceu.
+    if (!baixa) return null;
+
+    const bem = (await pool.query(BEM, [orgaoId, bemId])).rows[0];
+    if (!bem) return null;
+
+    return {
+      orgao,
+      bem: bemParaContexto(bem),
+      baixa: {
+        motivo: MOTIVO_DA_BAIXA[String(baixa.motivo)] ?? String(baixa.motivo),
+        observacao: String(baixa.observacao),
+        data: String(baixa.data),
+        responsavel: String(baixa.responsavel),
+      },
+    };
+  };
+
+  private doInventario = async (
+    orgaoId: string,
+    inventarioId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const inventario = (await pool.query(INVENTARIO, [orgaoId, inventarioId])).rows[0];
+    if (!inventario) return null;
+
+    const bens = await pool.query(BENS_CONFERIDOS, [inventarioId]);
+    return {
+      orgao,
+      inventario: {
+        local: String(inventario.local),
+        status: String(inventario.status),
+        dataInicio: String(inventario.dataInicio),
+        dataConclusao: String(inventario.dataConclusao),
+        totalBens: String(inventario.totalBens),
+        encontrados: String(inventario.encontrados),
+        naoEncontrados: String(inventario.naoEncontrados),
+      },
+      bens: bens.rows.map((linha) => ({
+        tombamento: String(linha.tombamento),
+        nome: String(linha.nome),
+        categoria: String(linha.categoria),
+        situacao: linha.situacao === "ENCONTRADO" ? "Encontrado" : "Não encontrado",
+        estadoObservado: String(linha.estadoObservado),
+        observacao: String(linha.observacao),
+      })),
+    };
+  };
+
+  // ---- Frotas -------------------------------------------------------------
+
+  private daViagem = async (
+    orgaoId: string,
+    viagemId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const viagem = (await pool.query(VIAGEM, [orgaoId, viagemId])).rows[0];
+    if (!viagem) return null;
+
+    const [veiculo, abastecimentos] = await Promise.all([
+      pool.query(VEICULO_DA_VIAGEM, [viagem.veiculoId]),
+      pool.query(ABASTECIMENTOS, [viagemId]),
+    ]);
+    if (!veiculo.rows[0]) return null;
+
+    // A autorização é impressa **antes** da viagem sair. Km percorrido só
+    // existe depois da finalização; até lá, traço em vez de um zero que o
+    // leitor entenderia como "não rodou".
+    const kmPercorrido = viagem.finalizacaoKmFinal != null && viagem.retiradaKmInicial != null
+      ? numero(Number(viagem.finalizacaoKmFinal) - Number(viagem.retiradaKmInicial))
+      : "—";
+
+    return {
+      orgao,
+      veiculo: veiculoParaContexto(veiculo.rows[0]),
+      viagem: {
+        status: String(viagem.status),
+        motivo: String(viagem.motivo),
+        responsavel: String(viagem.responsavel),
+        unidadeSolicitante: String(viagem.unidadeSolicitante),
+        dataHoraDesejada: String(viagem.dataHoraDesejada),
+        dataHoraRemarcada: String(viagem.dataHoraRemarcada),
+        kmPercorrido,
+        totalLitros: numero(viagem.totalLitros),
+        totalCombustivel: dinheiro(viagem.totalCombustivel),
+      },
+      motorista: {
+        nome: String(viagem.motoristaNome),
+        cnh: String(viagem.motoristaCnh),
+        categoriaCnh: String(viagem.motoristaCategoriaCnh),
+        validadeCnh: String(viagem.motoristaValidadeCnh),
+      },
+      retirada: {
+        dataHora: String(viagem.retiradaDataHora),
+        kmInicial: viagem.retiradaKmInicial == null ? "—" : numero(viagem.retiradaKmInicial),
+        notaCombustivel: String(viagem.retiradaNotaCombustivel),
+      },
+      finalizacao: {
+        dataHora: String(viagem.finalizacaoDataHora),
+        kmFinal: viagem.finalizacaoKmFinal == null ? "—" : numero(viagem.finalizacaoKmFinal),
+        sinistro: String(viagem.finalizacaoSinistro),
+      },
+      abastecimentos: abastecimentos.rows.map((linha) => ({
+        data: String(linha.data),
+        litros: linha.litros == null ? "—" : numero(linha.litros),
+        valor: linha.valor == null ? "—" : dinheiro(linha.valor),
+      })),
+    };
+  };
+
+  private daManutencao = async (
+    orgaoId: string,
+    manutencaoId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const manutencao = (await pool.query(MANUTENCAO, [orgaoId, manutencaoId])).rows[0];
+    if (!manutencao) return null;
+
+    const veiculo = (await pool.query(VEICULO_DA_VIAGEM, [manutencao.veiculoId])).rows[0];
+    if (!veiculo) return null;
+
+    // Custo é opcional: manutenção aberta em geral ainda não tem orçamento
+    // fechado, e escrever "R$ 0,00" seria afirmar que foi de graça.
+    const temCusto = manutencao.custo != null;
+
+    return {
+      orgao,
+      veiculo: veiculoParaContexto(veiculo),
+      manutencao: {
+        tipo: String(manutencao.tipo) === "PREVENTIVA" ? "Preventiva" : "Corretiva",
+        descricao: String(manutencao.descricao),
+        oficina: String(manutencao.oficina),
+        dataInicio: String(manutencao.dataInicio),
+        dataFim: String(manutencao.dataFim),
+        status: String(manutencao.status),
+        custo: temCusto ? dinheiro(manutencao.custo) : "—",
+        custoPorExtenso: temCusto ? valorPorExtenso(Number(manutencao.custo)) : "—",
+      },
+    };
+  };
 }
+
+/** Motivo da baixa como se lê num termo, não como está no CHECK. */
+const MOTIVO_DA_BAIXA: Record<string, string> = {
+  QUEBRADO: "Quebrado / imprestável",
+  DOADO: "Doado",
+  EXTRAVIADO: "Extraviado",
+  LEILAO: "Leilão",
+  OUTRO: "Outro",
+};
+
+const bemParaContexto = (linha: Record<string, unknown>) => ({
+  tombamento: String(linha.tombamento ?? ""),
+  nome: String(linha.nome ?? ""),
+  categoria: String(linha.categoria ?? ""),
+  estadoConservacao: String(linha.estadoConservacao ?? ""),
+  status: String(linha.status ?? ""),
+  localAtual: String(linha.localAtual ?? ""),
+  localTombamento: String(linha.localTombamento ?? ""),
+  dataEntrada: String(linha.dataEntrada ?? "—"),
+  notaFiscal: String(linha.notaFiscal ?? "—"),
+  fornecedor: String(linha.fornecedor ?? "—"),
+});
+
+const veiculoParaContexto = (linha: Record<string, unknown>) => ({
+  placa: String(linha.placa ?? ""),
+  modelo: String(linha.modelo ?? ""),
+  ano: String(linha.ano ?? "—"),
+  tipo: String(linha.tipo ?? "—"),
+  unidade: String(linha.unidade ?? ""),
+  quilometragemAtual: numero(linha.quilometragemAtual),
+});

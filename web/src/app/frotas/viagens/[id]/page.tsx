@@ -3,6 +3,8 @@ import { getTrip, listDrivers, listRefuels } from "@/features/fleet/queries";
 import { TripActions } from "@/features/fleet/components/TripActions";
 import { RefuelPanel } from "@/features/fleet/components/RefuelPanel";
 import { TRIP_STATUSES } from "@/features/fleet/types";
+import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
+import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { Card, PageHeader, SummaryGrid } from "@/shared/ui/layout";
@@ -21,9 +23,11 @@ export default async function TripPage({ params }: TripPageProps) {
 
   // Abastecimento só existe a partir da retirada.
   const jaSaiu = trip.status === "RETIRADA" || trip.status === "FINALIZADA";
-  const [drivers, refuels] = await Promise.all([
+  const [drivers, refuels, modelos, emitidos] = await Promise.all([
     listDrivers(),
     jaSaiu ? listRefuels(trip.id) : Promise.resolve([]),
+    listTemplates("FROTAS").catch(() => []),
+    listDocumentsFor(trip.id).catch(() => []),
   ]);
   const situacao = TRIP_STATUSES.find((item) => item.value === trip.status)?.label ?? trip.status;
   const quando = trip.dataHoraRemarcada ?? trip.dataHoraDesejada;
@@ -101,6 +105,22 @@ export default async function TripPage({ params }: TripPageProps) {
           />
         </Card>
       ) : null}
+
+      <Card title="Documentos" padded={false}>
+        <div style={{ padding: "14px 16px 0" }}>
+          <IssueDocumentPanel
+            referenciaId={trip.id}
+            voltarPara={`/frotas/viagens/${trip.id}`}
+            // Só o que fala da viagem: a ordem de manutenção é do veículo e
+            // sai na tela de manutenções, com outra referência.
+            modelos={modelos.filter((modelo) => modelo.escopo === "VIAGEM")}
+            emitidos={emitidos}
+            // Viagem cancelada não gera autorização: seria papel autorizando
+            // uma saída que a própria prefeitura já negou.
+            podeEmitir={viewer.can("documents:issue") && trip.status !== "CANCELADA"}
+          />
+        </div>
+      </Card>
 
       <Card title="Ações">
         <TripActions trip={trip} drivers={drivers} canManage={viewer.can("fleet:write")} />

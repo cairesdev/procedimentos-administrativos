@@ -9,6 +9,12 @@ export const DOCUMENT_SCOPES = [
   "PROCESSO_CONTRATO",
   "ORDEM_FORNECIMENTO",
   "SOLICITACAO",
+  "BEM",
+  "TRANSFERENCIA_BEM",
+  "BAIXA_BEM",
+  "INVENTARIO",
+  "VIAGEM",
+  "MANUTENCAO",
 ] as const;
 
 export type DocumentScope = (typeof DOCUMENT_SCOPES)[number];

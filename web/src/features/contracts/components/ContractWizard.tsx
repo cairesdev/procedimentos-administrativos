@@ -92,7 +92,7 @@ export const ContractWizard = ({
       : bids.find((bid) => bid.id === values.licitacaoId)?.numero;
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} className={styles.form}>
       <Steps steps={STEPS} current={step} />
 
       {step === 0 ? (

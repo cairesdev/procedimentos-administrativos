@@ -113,9 +113,24 @@
   color: var(--texto);
 }
 
+/*
+ * A área de conteúdo é uma pilha por definição.
+ *
+ * Antes o espaçamento entre cards dependia de cada página lembrar de embrulhar
+ * tudo num `<Stack>`; sete telas não lembravam, e os cards saíam encostados —
+ * com borda e sombra, parecendo um por cima do outro. Espaçamento é
+ * responsabilidade do container, não de cada tela repetir.
+ *
+ * `minmax(0, 1fr)` impede o transbordo: item de grade tem largura mínima de
+ * conteúdo por padrão, e uma tabela larga esticaria a coluna inteira.
+ */
 .content {
   padding: 22px 24px;
   max-width: 1180px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-content: start;
 }
 
 @media (max-width: 800px) {
@@ -137,7 +152,8 @@
 }
 
 .footer {
-  margin-top: 32px;
+  /* O `gap` da pilha já separa; a margem aqui é só o respiro extra do rodapé. */
+  margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--borda);
   font-size: 11.5px;

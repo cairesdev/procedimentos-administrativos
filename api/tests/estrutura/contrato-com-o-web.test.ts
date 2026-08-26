@@ -76,6 +76,26 @@ describe("módulos contratáveis", () => {
   });
 });
 
+describe("escopos de documento", () => {
+  it("a lista do web tem os mesmos escopos da API", () => {
+    // O web usa a lista para tipar a tela de criação de modelo. Escopo que
+    // existe só num lado deixa o administrador escolher algo que a API recusa,
+    // ou esconde dele uma peça que já dá para criar.
+    const naApi = aspas(
+      /export const ESCOPOS = \[(.*?)\] as const;/s.exec(
+        ler(raizApi, "src", "domain", "documento", "Catalogo.ts"),
+      )![1]!,
+    );
+    const noWeb = aspas(
+      /export const DOCUMENT_SCOPES = \[(.*?)\] as const;/s.exec(
+        ler(raizWeb, "features", "documents", "types.ts"),
+      )![1]!,
+    );
+
+    assert.deepEqual([...noWeb].sort(), [...naApi].sort());
+  });
+});
+
 describe("alcance dos papéis", () => {
   const permissoes = ler(raizWeb, "shared", "auth", "permissions.ts");
   const somenteLeitura = aspas(
@@ -117,6 +137,50 @@ describe("alcance dos papéis", () => {
   });
 });
 
+describe("espaçamento das páginas", () => {
+  /**
+   * Os cards saíam encostados nas telas de detalhe — com borda e sombra,
+   * parecendo um por cima do outro. A causa era o espaçamento depender de cada
+   * página lembrar de embrulhar tudo num `<Stack>`; sete telas não lembravam.
+   *
+   * A regra passou a ser: o container da página é uma pilha. Estas checagens
+   * guardam as duas metades, porque a correção vive em CSS e some numa revisão
+   * distraída — e o sintoma só aparece olhando a tela.
+   */
+  const regra = (css: string, seletor: string): string =>
+    new RegExp(`\\.${seletor}\\s*\\{([^}]*)\\}`).exec(css)![1]!;
+
+  it("a área de conteúdo espaça os filhos sozinha", () => {
+    for (const [arquivo, caminho] of [
+      ["painel da prefeitura", ["shared", "workspace", "workspace.module.css"]],
+      ["painel do produto", ["app", "admin", "admin.module.css"]],
+    ] as const) {
+      const conteudo = regra(ler(raizWeb, ...caminho), "content");
+      assert.match(conteudo, /display:\s*grid/, `${arquivo}: .content não é grade`);
+      assert.match(conteudo, /gap:/, `${arquivo}: .content sem gap`);
+    }
+  });
+
+  it("o cabeçalho não traz margem própria", () => {
+    // Margem aqui somaria ao gap da pilha e abriria um buraco de 36px entre o
+    // título e o primeiro card.
+    const layout = ler(raizWeb, "shared", "ui", "layout.module.css");
+    assert.ok(
+      !/margin-bottom/.test(regra(layout, "page_header")),
+      ".page_header voltou a ter margem — vai somar com o gap da pilha",
+    );
+  });
+
+  it("card e pilha não deixam conteúdo largo vazar", () => {
+    // Tabela de sete colunas era pintada para fora do card, por cima da coluna
+    // ao lado. Item de grade tem largura mínima de conteúdo por padrão.
+    const layout = ler(raizWeb, "shared", "ui", "layout.module.css");
+    assert.match(regra(layout, "card"), /overflow:\s*hidden/);
+    assert.match(regra(layout, "stack"), /grid-template-columns:\s*minmax\(0/);
+    assert.match(regra(layout, "table_scroll"), /overflow-x:\s*auto/);
+  });
+});
+
 describe("rotas públicas do web", () => {
   const proxy = ler(raizWeb, "proxy.ts");
   const padrao = /"(\/\(\(\?!.*?\)\.\*\))"/.exec(proxy)![1]!;
@@ -135,6 +199,9 @@ describe("rotas públicas do web", () => {
       "/", "/processos/fila", "/patrimonio/bens",
       "/protocolo", "/protocolo/atendimentos", "/protocolo/assuntos",
       "/administracao/documentos",
+      // A peça emitida saiu de /processos e virou rota neutra: continua
+      // exigindo sessão. Quem confere sem login usa /conferencia/{codigo}.
+      "/documentos", "/documentos/9f1c",
     ]) {
       assert.ok(exigeSessao(fechada), `${fechada} deveria exigir sessão`);
     }

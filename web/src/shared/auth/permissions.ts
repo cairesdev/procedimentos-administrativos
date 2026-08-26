@@ -91,8 +91,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   PROTOCOLO: ["protocol:read", "protocol:serve", "documents:issue"],
   NUTRICIONISTA: [...READ_ONLY, "requests:create"],
   SERVIDOR: [...READ_ONLY, "requests:create"],
-  PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read"],
-  FROTAS: ["fleet:read", "fleet:write", "trips:create", "units:read"],
+  // `documents:issue` nos dois: termo de transferência, termo de baixa e
+  // autorização de viagem são o papel que estes cargos produzem no dia a dia.
+  PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read", "documents:issue"],
+  FROTAS: ["fleet:read", "fleet:write", "trips:create", "units:read", "documents:issue"],
 };
 
 export const hasPermission = (role: Role, permission: Permission): boolean =>

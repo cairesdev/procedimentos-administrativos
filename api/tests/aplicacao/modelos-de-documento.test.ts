@@ -196,6 +196,31 @@ describe("modelo padrão e personalização", () => {
     );
   });
 
+  it("o módulo da peça nova sai do escopo", async () => {
+    // O botão de emissão pede os modelos por módulo. Com um default fixo em
+    // PROCESSOS, a peça de frotas nascia no módulo errado e nunca aparecia na
+    // tela que deveria oferecê-la — criada, salva e invisível.
+    const { modelos, gravado } = montar();
+
+    for (const [escopo, esperado] of [
+      ["VIAGEM", "FROTAS"],
+      ["MANUTENCAO", "FROTAS"],
+      ["TRANSFERENCIA_BEM", "PATRIMONIO"],
+      ["INVENTARIO", "PATRIMONIO"],
+      ["PROCESSO", "PROCESSOS"],
+    ] as const) {
+      await modelos.criarPersonalizado("org-1", {
+        escopo, nome: `Peça de ${escopo}`, titulo: "T",
+        corpo: "<p>{{orgao.nome}}</p>", ativo: true,
+      });
+    }
+
+    assert.deepEqual(
+      gravado.modelos.map((modelo) => modelo.modulo),
+      ["FROTAS", "FROTAS", "PATRIMONIO", "PATRIMONIO", "PROCESSOS"],
+    );
+  });
+
   it("barra marcador fora do escopo já na hora de salvar", async () => {
     // O erro aparece para quem edita, não para quem tenta imprimir.
     const { modelos, gravado } = montar();

@@ -3,7 +3,7 @@ import { Alert, Card, PageHeader } from "@/shared/ui/layout";
 
 export default function UnavailableModulePage() {
   return (
-    <main style={{ padding: "48px 24px", maxWidth: "560px", margin: "0 auto" }}>
+    <main style={{ padding: "48px 24px", maxWidth: "560px", margin: "0 auto", display: "grid", gap: "18px", alignContent: "start" }}>
       <PageHeader
         title="Módulo indisponível"
         subtitle="Esta área não está habilitada para a sua prefeitura"

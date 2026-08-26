@@ -40,10 +40,16 @@
   color: var(--texto_apagado);
 }
 
+/* Pilha, pelo mesmo motivo do painel da prefeitura: espaçamento é do
+   container, não de cada tela lembrar de embrulhar tudo num `<Stack>`. */
 .content {
   padding: 22px 24px;
   max-width: 1180px;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-content: start;
 }
 
 .tenant_actions {

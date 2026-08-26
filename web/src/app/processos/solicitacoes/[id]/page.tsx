@@ -21,7 +21,7 @@ export default async function RequestDetailPage({ params }: RequestPageProps) {
 
   return (
     <>
-      <Link href="/processos/solicitacoes">
+      <Link href="/processos/solicitacoes" style={{ justifySelf: "start" }}>
         <Button type="button" variant="ghost">
           <ChevronLeft size={15} aria-hidden="true" style={{ verticalAlign: "-2px" }} />
           Solicitações

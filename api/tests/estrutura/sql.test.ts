@@ -49,7 +49,13 @@ const consultas = (): Consulta[] => {
       templates[achado[1]!] = achado[2]!;
     }
 
-    for (const chamada of texto.matchAll(/\.query\(\s*SQL\.(\w+)\s*,\s*\[/g)) {
+    // Duas formas de nomear a consulta: propriedade do objeto `SQL` (a maioria
+    // dos repositórios) e constante solta em maiúsculas (a fonte de contexto
+    // dos documentos). A segunda ficou fora da conferência por um bom tempo —
+    // e é onde os `$n` são numerados à mão.
+    for (const chamada of texto.matchAll(
+      /\.query\(\s*(?:SQL\.(\w+)|([A-Z][A-Z_0-9]*))\s*,\s*\[/g,
+    )) {
       const inicio = chamada.index! + chamada[0].length - 1;
       let nivel = 0;
       let fim = inicio;
@@ -64,7 +70,8 @@ const consultas = (): Consulta[] => {
         }
       }
 
-      const template = templates[chamada[1]!];
+      const nome = chamada[1] ?? chamada[2]!;
+      const template = templates[nome] ?? locais[nome];
       if (!template) continue;
 
       let sql = template;
@@ -73,11 +80,11 @@ const consultas = (): Consulta[] => {
           sql = sql.replaceAll(`\${${chave}}`, valor);
         }
       }
-      assert.ok(!sql.includes("${"), `${arquivo}: ${chamada[1]} tem interpolação não resolvida`);
+      assert.ok(!sql.includes("${"), `${arquivo}: ${nome} tem interpolação não resolvida`);
 
       encontradas.push({
         arquivo,
-        nome: chamada[1]!,
+        nome,
         sql: sql.replace(/^\s*--.*$/gm, ""),
         parametros: contarItens(texto.slice(inicio + 1, fim)),
       });
@@ -117,6 +124,56 @@ describe("consultas dos repositórios", () => {
   it("tem sintaxe que o Postgres aceita", () => {
     for (const { arquivo, nome, sql } of todas) {
       assert.doesNotThrow(() => parse(sql), `${arquivo} → SQL.${nome}`);
+    }
+  });
+});
+
+describe("isolamento por órgão na fonte de contexto", () => {
+  /**
+   * O documento é emitido a partir de um id que vem da URL. Consulta que não
+   * amarra o registro ao órgão da sessão deixa uma prefeitura imprimir termo
+   * sobre o patrimônio de outra — basta conhecer o id.
+   *
+   * `transferencia_bem`, `baixa_bem`, `inventario` e `manutencao` não têm
+   * `orgao_id` próprio: chegam ao órgão por join no bem, no local ou no
+   * veículo. O que este teste garante é que chegam de algum jeito.
+   */
+  const FILHAS: Record<string, string> = {
+    // Aqui o id do parâmetro é o próprio órgão: não há o que amarrar.
+    ORGAO: "o registro buscado é o órgão da sessão",
+    PARECER: "despacho do processo já conferido",
+    ITENS_DO_PROCESSO: "itens do processo já conferido",
+    ITENS_DA_SOLICITACAO: "itens da solicitação já conferida",
+    BENS_CONFERIDOS: "linhas do inventário já conferido",
+    ABASTECIMENTOS: "abastecimentos da viagem já conferida",
+    VEICULO_DA_VIAGEM: "veículo alcançado pela viagem ou manutenção já conferida",
+  };
+
+  const daFonte = consultas().filter((c) => c.arquivo === "PostgresFonteDeContexto.ts");
+
+  it("encontra as consultas da fonte de contexto", () => {
+    assert.ok(daFonte.length > 10, `só ${daFonte.length} consultas na fonte de contexto`);
+  });
+
+  it("toda consulta de topo amarra o registro ao órgão", () => {
+    for (const { nome, sql } of daFonte) {
+      if (nome in FILHAS) continue;
+      assert.match(
+        sql,
+        /\borgao_id = \$1\b/,
+        `${nome} não filtra por órgão — id de outra prefeitura passaria`,
+      );
+    }
+  });
+
+  it("consulta filha declara de quem herda a conferência", () => {
+    // Sem esta lista, bastaria alguém acrescentar uma consulta sem órgão para
+    // o teste acima ficar mudo. Estar aqui é uma decisão registrada.
+    for (const nome of Object.keys(FILHAS)) {
+      assert.ok(
+        daFonte.some((consulta) => consulta.nome === nome),
+        `${nome} está na lista de exceções mas não existe mais na fonte de contexto`,
+      );
     }
   });
 });

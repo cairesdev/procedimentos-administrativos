@@ -84,13 +84,18 @@ export type ContratoCompleto = ContratoResumo & {
 export type ContratoParaSolicitacao = {
   id: string;
   numero: string;
+  /** Vem da ata ou da licitação: o contrato não tem objeto próprio. */
+  objeto: string;
   fornecedorRazaoSocial: string;
   dataInicio: string;
   dataFim: string | null;
+  valorTotal: number;
   origem: "LICITACAO" | "ATA";
   origemNumero: string | null;
   /** Só itens com saldo entram na conta. */
   itensDisponiveis: number;
+  /** Quanto ainda dá para pedir, em dinheiro. */
+  saldoDisponivel: number;
 };
 
 export interface ContratoRepository {

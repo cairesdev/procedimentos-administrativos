@@ -26,7 +26,9 @@ export const issueDocument = async (input: {
       body: { tipo: input.tipo, referenciaId: input.referenciaId },
     });
     revalidatePath(input.voltarPara);
-    destino = `/processos/documentos/${id}`;
+    // `voltar` carrega a tela de origem: a peça é a mesma em qualquer módulo,
+    // e sem isso o botão de voltar teria de chutar um destino.
+    destino = `/documentos/${id}?voltar=${encodeURIComponent(input.voltarPara)}`;
   }, "Documento emitido");
 
   // O redirect fica fora do runAction: ele funciona lançando, e seria
@@ -39,7 +41,7 @@ export const cancelDocument = async (id: string, input: CancelDocumentInput) =>
   runAction(async () => {
     const body = cancelDocumentSchema.parse(input);
     await apiRequest(`/documentos/${id}/cancelar`, { method: "POST", body });
-    revalidatePath(`/processos/documentos/${id}`);
+    revalidatePath(`/documentos/${id}`);
   }, "Documento cancelado");
 
 export const saveTemplate = async (tipo: string, input: TemplateInput) =>

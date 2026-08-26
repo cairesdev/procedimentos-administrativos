@@ -76,11 +76,26 @@ const SQL = {
   // hora do envio.
   listarParaSolicitacao: `
     SELECT c.id, c.numero,
+           -- O contrato não tem objeto próprio: ele vem da ata ou da licitação
+           -- que o originou. É o que diz ao solicitante do que trata o contrato,
+           -- e sem isso a lista era só um número.
+           coalesce(a.objeto, l.objeto, '') AS objeto,
            f.razao_social AS "fornecedorRazaoSocial",
            c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",
+           c.valor_total AS "valorTotal",
            CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS origem,
            coalesce(a.numero, l.numero) AS "origemNumero",
-           count(i.id) FILTER (WHERE i.saldo_disponivel > 0) AS "itensDisponiveis"
+           count(i.id) FILTER (WHERE i.saldo_disponivel > 0) AS "itensDisponiveis",
+           -- Saldo em dinheiro do que ainda dá para pedir. Item medido por
+           -- percentual ou por valor não tem quantidade × preço, então entra
+           -- pelo próprio saldo.
+           coalesce(sum(
+             CASE
+               WHEN i.saldo_disponivel <= 0 THEN 0
+               WHEN i.modo_medicao = 'UNIDADE' THEN i.saldo_disponivel * i.valor_unitario
+               ELSE i.saldo_disponivel
+             END
+           ), 0) AS "saldoDisponivel"
       FROM contrato c
       JOIN fornecedor f ON f.id = c.fornecedor_id
       LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
@@ -91,7 +106,8 @@ const SQL = {
        AND ($2::uuid IS NULL OR EXISTS (
              SELECT 1 FROM contrato_unidade cu
               WHERE cu.contrato_id = c.id AND cu.unidade_id = $2))
-     GROUP BY c.id, c.numero, f.razao_social, c.data_inicio, c.data_fim, a.numero, l.numero
+     GROUP BY c.id, c.numero, a.objeto, l.objeto, f.razao_social,
+              c.data_inicio, c.data_fim, c.valor_total, a.numero, l.numero
     HAVING count(i.id) FILTER (WHERE i.saldo_disponivel > 0) > 0
      ORDER BY c.numero`,
   unidadeTemAcesso: `SELECT 1 FROM contrato_unidade WHERE contrato_id = $1 AND unidade_id = $2`,
@@ -211,7 +227,14 @@ export class PostgresContratoRepository implements ContratoRepository {
     unidadeId?: string,
   ): Promise<ContratoParaSolicitacao[]> => {
     const { rows } = await pool.query(SQL.listarParaSolicitacao, [orgaoId, unidadeId ?? null]);
-    return rows.map((linha) => ({ ...linha, itensDisponiveis: Number(linha.itensDisponiveis) }));
+    // `count` e `sum` voltam como string no driver: sem o Number, o valor
+    // chegaria à tela como texto e a formatação de moeda mostraria NaN.
+    return rows.map((linha) => ({
+      ...linha,
+      itensDisponiveis: Number(linha.itensDisponiveis),
+      valorTotal: Number(linha.valorTotal),
+      saldoDisponivel: Number(linha.saldoDisponivel),
+    }));
   };
 
   contratosForaDaUnidade = async (

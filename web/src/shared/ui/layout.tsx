@@ -59,16 +59,20 @@ export const Table = ({
 }) => {
   if (isEmpty) return <p className={styles.empty}>{emptyMessage}</p>;
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column}>{column}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>{children}</tbody>
-    </table>
+    // O container de rolagem é o que impede a tabela de sete colunas de sair
+    // do card e cobrir a coluna ao lado nas telas de detalhe.
+    <div className={styles.table_scroll}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column}>{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
   );
 };
 

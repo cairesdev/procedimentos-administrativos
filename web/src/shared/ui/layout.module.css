@@ -1,9 +1,10 @@
+/* Sem `margin-bottom`: quem separa é o `gap` da pilha que envolve a página.
+   Manter a margem aqui somaria ao gap e daria um buraco de 36px. */
 .page_header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
 }
 
 .page_title {
@@ -22,6 +23,11 @@
   border: 1px solid var(--borda);
   border-radius: var(--raio_grande);
   box-shadow: var(--sombra);
+  /* Sem isto, conteúdo mais largo que o card (tabela de muitas colunas)
+     era pintado para fora dele, por cima do card vizinho. O `min-width: 0`
+     deixa o card encolher dentro da grade em vez de empurrar a coluna. */
+  overflow: hidden;
+  min-width: 0;
 }
 
 .card_title {
@@ -44,6 +50,10 @@
 
 .stack {
   display: grid;
+  /* `minmax(0, 1fr)` e não o `auto` implícito: item de grade tem largura
+     mínima de conteúdo por padrão, então uma tabela larga esticava a coluna
+     inteira e o Stack transbordava para cima do vizinho. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -57,6 +67,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+/* Tabela larga rola dentro do card em vez de vazar dele. Cortar esconderia
+   coluna sem avisar; rolar mantém tudo alcançável. */
+.table_scroll {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .table {
@@ -163,7 +180,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 

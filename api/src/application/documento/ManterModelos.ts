@@ -1,5 +1,6 @@
 import {
-  CATALOGO_POR_ESCOPO, ehEscopo, tipoAPartirDoNome, type EscopoDeDocumento,
+  CATALOGO_POR_ESCOPO, MODULO_DO_ESCOPO, ehEscopo, tipoAPartirDoNome,
+  type EscopoDeDocumento,
 } from "../../domain/documento/Catalogo";
 import { limparCorpo, tagsRemovidas } from "../../domain/documento/CorpoSeguro";
 import { validarContraCatalogo } from "../../domain/documento/Marcadores";
@@ -15,7 +16,6 @@ export type DadosDoModelo = {
 
 export type NovoModeloPersonalizado = DadosDoModelo & {
   escopo: string;
-  modulo?: string;
 };
 
 /**
@@ -64,6 +64,11 @@ export class ManterModelos {
     dados: NovoModeloPersonalizado,
   ): Promise<{ id: string; tipo: string }> => {
     const catalogo = this.catalogoDe(dados.escopo);
+    // O módulo sai do escopo, não de quem chama. Enquanto todo escopo falava
+    // de processo, um default "PROCESSOS" passava despercebido; com patrimônio
+    // e frotas ele esconderia a peça nova da tela que deveria oferecê-la, já
+    // que o botão de emissão filtra os modelos por módulo.
+    const modulo = MODULO_DO_ESCOPO[dados.escopo as EscopoDeDocumento];
 
     const tipo = tipoAPartirDoNome(dados.nome);
     if (tipo.length < 3) {
@@ -80,7 +85,7 @@ export class ManterModelos {
       tipo,
       id: await this.documentos.criarModelo({
         orgaoId,
-        modulo: dados.modulo ?? "PROCESSOS",
+        modulo,
         tipo,
         escopo: dados.escopo,
         nome: dados.nome,
