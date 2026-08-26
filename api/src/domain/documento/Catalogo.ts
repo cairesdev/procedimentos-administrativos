@@ -102,6 +102,23 @@ const CONTRATO = [
   "contrato.numero", "contrato.objeto", "contrato.dataInicio", "contrato.dataFim",
   "contrato.valorTotal", "contrato.valorTotalPorExtenso", "contrato.fiscal",
   "contrato.origem", "contrato.origemNumero",
+  // Modalidade da licitação que originou o contrato, direto ou pela ata. A
+  // ordem de serviço do legado imprime "Pregão Eletrônico nº 29/2025".
+  "contrato.modalidade",
+];
+
+/**
+ * Quem contrata. Costuma ser a própria prefeitura, mas a ordem de serviço do
+ * legado nomeia a secretaria ("SECRETARIA MUNICIPAL DE EDUCAÇÃO/FUMMDEB") — é
+ * ela que responde pela despesa.
+ *
+ * Vem de `ordem_fornecimento.dados_contratante`, que era gravado e nunca lido.
+ * Sem o dado informado, cai no órgão: a peça sai correta em vez de sair com
+ * lacuna.
+ */
+const CONTRATANTE = [
+  "contratante.nome", "contratante.cnpj", "contratante.endereco",
+  "contratante.cidade", "contratante.inscricaoEstadual", "contratante.inscricaoMunicipal",
 ];
 
 const FORNECEDOR = [
@@ -225,7 +242,7 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
     listas: {},
   },
   ORDEM_FORNECIMENTO: {
-    valores: [...COMUNS, ...PROCESSO, ...CONTRATO, ...FORNECEDOR, ...ORDEM],
+    valores: [...COMUNS, ...PROCESSO, ...CONTRATO, ...CONTRATANTE, ...FORNECEDOR, ...ORDEM],
     listas: { itens: ITENS },
   },
   SOLICITACAO: {

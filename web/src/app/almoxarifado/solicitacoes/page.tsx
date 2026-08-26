@@ -43,7 +43,10 @@ export default async function StockRequestsPage({ searchParams }: RequestsPagePr
           {pendentes === 1
             ? "Um pedido aguardando liberação."
             : `${pendentes} pedidos aguardando liberação.`}{" "}
-          Enquanto isso, o saldo deles fica reservado.
+          Enquanto isso, o saldo deles fica reservado.{" "}
+          {/* O aviso leva à fila: a liberação acontece dentro de cada pedido,
+              e sem este atalho o caminho até ela é adivinhar o filtro. */}
+          <Link href="/almoxarifado/solicitacoes?status=SOLICITADA">Ver a fila de liberação</Link>
         </Alert>
       ) : null}
 

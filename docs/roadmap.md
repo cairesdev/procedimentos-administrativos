@@ -778,3 +778,38 @@ ficção.
   buscando as remessas e depois o detalhe de cada uma — uma dúzia de idas ao
   servidor. Virou uma rota só, `/almoxarifados/:id/lotes`, e o `setState` dentro
   do efeito sumiu junto.
+
+## Ordem de Serviço como modelo padrão
+
+O sistema já tinha `ORDEM_FORNECIMENTO`, decalcada da **Ordem de Compras** de
+São Bernardo. A **Ordem de Serviço** de Alto Parnaíba é outra peça: numerada em
+cinco seções (contratado, contratante, despesa, observações com os itens,
+assinaturas), enquanto aquela é um bloco corrido de tabelas. Migration `0024`
+acrescenta o tipo `ORDEM_SERVICO` no mesmo escopo — escopo custa código, `tipo`
+não custa nada.
+
+### Dois marcadores que faltavam
+
+- **`contratante.*`** — `ordem_fornecimento.dados_contratante` era gravado e
+  **nunca lido**: mais uma configuração sem efeito, na mesma família da
+  visibilidade estendida. A ordem de serviço nomeia a secretaria
+  ("SECRETARIA MUNICIPAL DE EDUCAÇÃO/FUMMDEB"), que é quem responde pela
+  despesa. Sem o dado informado, cai no órgão — a peça sai correta em vez de
+  sair com lacuna.
+- **`contrato.modalidade`** — "Pregão Eletrônico", vindo da licitação direta ou
+  da que originou a ata. O dado existia em `licitacao.modalidade` e não chegava
+  a documento nenhum.
+
+### O que o PDF tem e o sistema não captura
+
+Ficaram de fora porque não há onde guardar, não por escolha de layout:
+
+| Campo do PDF | Situação |
+| --- | --- |
+| 2.9. Vencimento | `ordem_fornecimento` não tem a coluna |
+| 2.13. Processo Dispensa nº | a modalidade cobre a natureza; o número não existe |
+| 2.14. Processo de Inexigibilidade nº | idem |
+| Cidade do fornecedor | `fornecedor.endereco` é campo único, sem cidade separada |
+
+Se algum deles for exigido na prestação de contas, é coluna nova mais campo no
+formulário da ordem — não dá para resolver no modelo.

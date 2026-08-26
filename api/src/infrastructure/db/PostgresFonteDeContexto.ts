@@ -43,11 +43,14 @@ const CONTRATO_DO_PROCESSO = `
          coalesce(f.email, '') AS "fornecedorEmail",
          coalesce(f.telefone, '') AS "fornecedorTelefone",
          coalesce(f.inscricao_estadual, '') AS "fornecedorInscricaoEstadual",
-         coalesce(f.inscricao_municipal, '') AS "fornecedorInscricaoMunicipal"
+         coalesce(f.inscricao_municipal, '') AS "fornecedorInscricaoMunicipal",
+         coalesce(l.modalidade, la.modalidade, '') AS modalidade
     FROM contrato c
     JOIN fornecedor f ON f.id = c.fornecedor_id
     LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
     LEFT JOIN licitacao l ON l.id = c.licitacao_id
+    -- A licitação que gerou a ata: contrato por ata herda a modalidade dela.
+    LEFT JOIN licitacao la ON la.id = a.licitacao_id
     JOIN item i ON i.contrato_id = c.id
     JOIN solicitacao_item si ON si.item_id = i.id
     JOIN solicitacao s ON s.id = si.solicitacao_id
@@ -63,7 +66,8 @@ const ORDEM = `
          coalesce(o.fonte_recurso, '') AS "fonteRecurso",
          coalesce(o.numero_parcelas, 1) AS "numeroParcelas",
          coalesce(o.numero_nota_fiscal, '') AS "numeroNotaFiscal",
-         o.valor, o.processo_id AS "processoId", o.contrato_id AS "contratoId"
+         o.valor, o.processo_id AS "processoId", o.contrato_id AS "contratoId",
+         o.dados_contratante AS "dadosContratante"
     FROM ordem_fornecimento o
    WHERE o.orgao_id = $1 AND o.id = $2`;
 
@@ -80,11 +84,13 @@ const CONTRATO_POR_ID = `
          coalesce(f.email, '') AS "fornecedorEmail",
          coalesce(f.telefone, '') AS "fornecedorTelefone",
          coalesce(f.inscricao_estadual, '') AS "fornecedorInscricaoEstadual",
-         coalesce(f.inscricao_municipal, '') AS "fornecedorInscricaoMunicipal"
+         coalesce(f.inscricao_municipal, '') AS "fornecedorInscricaoMunicipal",
+         coalesce(l.modalidade, la.modalidade, '') AS modalidade
     FROM contrato c
     JOIN fornecedor f ON f.id = c.fornecedor_id
     LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
     LEFT JOIN licitacao l ON l.id = c.licitacao_id
+    LEFT JOIN licitacao la ON la.id = a.licitacao_id
    WHERE c.orgao_id = $1 AND c.id = $2`;
 
 /** Itens da solicitação do processo — o que a ordem manda entregar. */
@@ -373,8 +379,21 @@ const itemParaContexto = (linha: Record<string, unknown>) => ({
   valorTotal: dinheiro(linha.valorTotal),
 });
 
+/** Modalidade como se lê num documento, não como está no CHECK. */
+const MODALIDADE: Record<string, string> = {
+  PREGAO_ELETRONICO: "Pregão Eletrônico",
+  PREGAO_PRESENCIAL: "Pregão Presencial",
+  CONCORRENCIA: "Concorrência",
+  DISPENSA: "Dispensa de Licitação",
+  INEXIGIBILIDADE: "Inexigibilidade",
+  CHAMADA_PUBLICA: "Chamada Pública",
+  LEILAO: "Leilão",
+  DIALOGO_COMPETITIVO: "Diálogo Competitivo",
+};
+
 const contratoParaContexto = (linha: Record<string, unknown>) => ({
   contrato: {
+    modalidade: MODALIDADE[String(linha.modalidade ?? "")] ?? "—",
     numero: String(linha.numero ?? ""),
     objeto: String(linha.objeto ?? ""),
     dataInicio: String(linha.dataInicio ?? ""),
@@ -480,6 +499,9 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       orgao,
       processo: processo.rows[0],
       ...contratoParaContexto(contrato.rows[0]),
+      // Quem contrata. `dados_contratante` era gravado e nunca lido; sem ele
+      // informado, cai no órgão — a peça sai correta em vez de sair com lacuna.
+      contratante: contratanteParaContexto(ordem.dadosContratante, orgao),
       ordem: {
         numero: String(ordem.numero),
         numeroEmpenho: String(ordem.numeroEmpenho),
@@ -785,6 +807,33 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     };
   };
 }
+
+/**
+ * Contratante da ordem: o que foi informado na emissão, com queda para o órgão.
+ *
+ * A secretaria é quem responde pela despesa e é ela que a ordem de serviço do
+ * legado nomeia. Quando ninguém informa, a prefeitura é a resposta certa.
+ */
+const contratanteParaContexto = (
+  informado: unknown,
+  orgao: Record<string, unknown>,
+): Record<string, string> => {
+  const dados = (typeof informado === "object" && informado !== null
+    ? informado
+    : {}) as Record<string, unknown>;
+
+  const ou = (chave: string, padrao: unknown) =>
+    String(dados[chave] ?? padrao ?? "—") || "—";
+
+  return {
+    nome: ou("nome", orgao.nome),
+    cnpj: ou("cnpj", orgao.cnpj),
+    endereco: ou("endereco", orgao.endereco),
+    cidade: ou("cidade", `${orgao.municipio ?? ""} - ${orgao.uf ?? ""}`),
+    inscricaoEstadual: ou("inscricaoEstadual", null),
+    inscricaoMunicipal: ou("inscricaoMunicipal", null),
+  };
+};
 
 /** Motivo da perda como se lê num termo, não como está no CHECK. */
 const MOTIVO_DA_PERDA: Record<string, string> = {
