@@ -198,7 +198,7 @@ describe("escopos: código e banco", () => {
   it("o CHECK da migration tem exatamente os escopos do código", () => {
     // Mesma classe de bug da lista de módulos do painel: escopo que existe num
     // lado e não no outro só falha na hora de gravar o modelo.
-    const migration = ler("0020_documentos_patrimonio_frotas.sql");
+    const migration = ler("0022_documentos_almoxarifado.sql");
     const check = /CHECK \(escopo IN \(([\s\S]*?)\)\)/.exec(migration)![1]!;
     const noBanco = [...check.matchAll(/'(\w+)'/g)].map((achado) => achado[1]!);
 

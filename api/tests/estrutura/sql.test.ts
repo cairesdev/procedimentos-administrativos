@@ -168,6 +168,9 @@ describe("isolamento por órgão na fonte de contexto", () => {
     ITENS_DA_SOLICITACAO: "itens da solicitação já conferida",
     BENS_CONFERIDOS: "linhas do inventário já conferido",
     ABASTECIMENTOS: "abastecimentos da viagem já conferida",
+    ITENS_DO_PEDIDO: "itens do pedido de material já conferido",
+    LOTES_DO_PEDIDO: "lotes entregues no pedido já conferido",
+    LOTES_DA_ENTRADA: "lotes da remessa de estoque já conferida",
     VEICULO_DA_VIAGEM: "veículo alcançado pela viagem ou manutenção já conferida",
   };
 

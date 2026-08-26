@@ -17,6 +17,8 @@ export const ESCOPOS = [
   "INVENTARIO",
   "VIAGEM",
   "MANUTENCAO",
+  "SOLICITACAO_ESTOQUE",
+  "ENTRADA_ESTOQUE",
 ] as const;
 
 export type EscopoDeDocumento = (typeof ESCOPOS)[number];
@@ -33,6 +35,8 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   INVENTARIO: "PATRIMONIO",
   VIAGEM: "FROTAS",
   MANUTENCAO: "FROTAS",
+  SOLICITACAO_ESTOQUE: "ALMOXARIFADO",
+  ENTRADA_ESTOQUE: "ALMOXARIFADO",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -46,6 +50,8 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   INVENTARIO: "Inventário de local, com os bens conferidos",
   VIAGEM: "Viagem, com os abastecimentos",
   MANUTENCAO: "Manutenção de veículo",
+  SOLICITACAO_ESTOQUE: "Pedido de material, com itens e lotes entregues",
+  ENTRADA_ESTOQUE: "Entrada no almoxarifado, com os lotes",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -63,6 +69,8 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   INVENTARIO: "inventário",
   VIAGEM: "viagem",
   MANUTENCAO: "manutenção",
+  SOLICITACAO_ESTOQUE: "pedido de material",
+  ENTRADA_ESTOQUE: "entrada de estoque",
 };
 
 export type CatalogoDeMarcadores = {
@@ -171,6 +179,42 @@ const MANUTENCAO = [
   "manutencao.custo", "manutencao.custoPorExtenso",
 ];
 
+const SOLICITACAO_ESTOQUE = [
+  "pedido.local", "pedido.almoxarifado", "pedido.tipoEstoque",
+  "pedido.autor", "pedido.status",
+  "pedido.data", "pedido.enviadoEm", "pedido.liberadoEm", "pedido.recebidoEm",
+  "pedido.liberadoPor", "pedido.recebidoPor",
+  "pedido.totalItens", "pedido.totalLotes",
+  // Endereço e responsável do local: é para onde a carga vai e quem assina.
+  "pedido.cnpj", "pedido.endereco", "pedido.responsavel",
+];
+
+/** Uma linha do que foi pedido. */
+const ITENS_DE_ESTOQUE = [
+  "produto", "unidadeMedida",
+  "solicitado", "liberado", "recebido",
+];
+
+/**
+ * Uma linha do que saiu, por LOTE.
+ *
+ * É o que o romaneio precisa: quem recebe confere caixa por caixa, e caixa tem
+ * validade. Agrupar por produto perderia justamente o dado que se confere.
+ */
+const LOTES_ENTREGUES = [
+  "produto", "unidadeMedida", "remessa", "validade",
+  "quantidade", "confirmado", "perdido", "motivoPerda",
+];
+
+const ENTRADA_ESTOQUE = [
+  "entrada.codigo", "entrada.titulo", "entrada.data",
+  "entrada.almoxarifado", "entrada.tipoEstoque",
+  "entrada.localArmazenado", "entrada.notaFiscal", "entrada.fornecedor",
+  "entrada.responsavel", "entrada.totalLotes",
+];
+
+const LOTES_DA_ENTRADA = ["produto", "unidadeMedida", "quantidade", "validade"];
+
 export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
   PROCESSO: {
     valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
@@ -215,6 +259,17 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   MANUTENCAO: {
     valores: [...COMUNS, ...VEICULO, ...MANUTENCAO],
     listas: {},
+  },
+  SOLICITACAO_ESTOQUE: {
+    valores: [...COMUNS, ...SOLICITACAO_ESTOQUE],
+    // Duas listas no mesmo escopo: o comprovante do pedido imprime `itens`, o
+    // romaneio e o termo de recebimento imprimem `lotes`. Um escopo só, três
+    // peças — escopo custa código, tipo não custa nada.
+    listas: { itens: ITENS_DE_ESTOQUE, lotes: LOTES_ENTREGUES },
+  },
+  ENTRADA_ESTOQUE: {
+    valores: [...COMUNS, ...ENTRADA_ESTOQUE],
+    listas: { lotes: LOTES_DA_ENTRADA },
   },
 };
 

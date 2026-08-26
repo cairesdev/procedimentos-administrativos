@@ -99,8 +99,8 @@ as ações que o estado aceita; abastecimentos lançados na mesma tela a partir 
    sem login.
 3. **Protocolo externo** — 1ª fatia (balcão e consulta) entregue; faltam a abertura pelo cidadão
    e o ciclo de exigência/resposta.
-4. **Documentos emitidos** — motor, modelos padrão e as peças de patrimônio e frotas prontos
-   (fatias 1 a 3). Falta o almoxarifado, que depende do módulo existir.
+4. **Documentos emitidos** — motor, modelos padrão e as peças de todos os módulos prontos
+   (fatias 1 a 4).
 5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
    casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
    ambiente de pé.
@@ -697,3 +697,35 @@ não ajuda quem precisa consumir primeiro o que vence antes.
 - **`TSX_TSCONFIG_PATH=... npm test` não roda no Windows.** O `cmd.exe` não
   entende variável na frente do comando. O conversor da planilha passou a usar
   import relativo em vez do alias `@/`, e o `npm test` voltou a ser uma linha só.
+
+## Almoxarifado — comprovantes
+
+Quatro peças em **dois** escopos, e não quatro: `SOLICITACAO_ESTOQUE` serve ao
+comprovante do pedido, ao romaneio de entrega e ao termo de recebimento, porque
+os três falam do mesmo registro e mudam só a lista que imprimem. Escopo custa
+código — uma consulta de contexto e um catálogo; `tipo` não custa nada.
+
+| Peça | Escopo | Imprime |
+| --- | --- | --- |
+| Comprovante do pedido | `SOLICITACAO_ESTOQUE` | `{{#itens}}` — pedido, liberado, recebido |
+| Romaneio de entrega | `SOLICITACAO_ESTOQUE` | `{{#lotes}}` — o que segue no caminhão |
+| Termo de recebimento | `SOLICITACAO_ESTOQUE` | `{{#lotes}}` com o confirmado e a perda |
+| Comprovante de entrada | `ENTRADA_ESTOQUE` | `{{#lotes}}` da remessa |
+
+**O romaneio lista por LOTE, não por produto.** Quem recebe confere caixa por
+caixa, e caixa tem validade — agrupar por produto perderia justamente o dado
+que se confere. O endereço, o CNPJ e o responsável do local vão impressos: é
+para onde a carga vai e quem assina.
+
+**Quantidade que ainda não aconteceu sai como traço, não como zero.** No
+comprovante de um pedido recém-enviado, um "0" na coluna de liberado seria lido
+como "não me deram nada".
+
+### Pego na verificação
+
+- **O detector de isolamento por órgão disparou** nas três consultas filhas do
+  almoxarifado (`ITENS_DO_PEDIDO`, `LOTES_DO_PEDIDO`, `LOTES_DA_ENTRADA`), que
+  rodam só depois de o pai ter sido conferido pelo órgão. Entraram na lista de
+  exceções com a justificativa — que é o mecanismo previsto, não um contorno:
+  sem a lista, bastaria acrescentar uma consulta sem órgão para o teste ficar
+  mudo.

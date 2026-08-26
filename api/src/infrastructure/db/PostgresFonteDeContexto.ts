@@ -259,6 +259,92 @@ const ABASTECIMENTOS = `
    WHERE a.viagem_id = $1
    ORDER BY a.data`;
 
+// ---------------------------------------------------------------------------
+// Almoxarifado
+//
+// `solicitacao_estoque` e `liberacao_lote` alcançam o órgão pelo local; a
+// remessa, pelo almoxarifado.
+
+const PEDIDO_ESTOQUE = `
+  SELECT l.nome AS local, coalesce(a.nome, '—') AS almoxarifado,
+         coalesce(te.nome, '—') AS "tipoEstoque",
+         u.nome AS autor, s.status,
+         to_char(s.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS data,
+         coalesce(to_char(s.enviada_em AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "enviadoEm",
+         coalesce(to_char(s.liberada_em AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "liberadoEm",
+         coalesce(to_char(s.recebida_em AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI'), '—') AS "recebidoEm",
+         coalesce(ul.nome, '—') AS "liberadoPor",
+         coalesce(ur.nome, '—') AS "recebidoPor",
+         coalesce(l.cnpj, '—') AS cnpj,
+         coalesce(l.endereco, '—') AS endereco,
+         coalesce(l.responsavel, '—') AS responsavel,
+         (SELECT count(*) FROM solicitacao_estoque_item si
+           WHERE si.solicitacao_id = s.id) AS "totalItens",
+         (SELECT count(*) FROM liberacao_lote ll
+            JOIN solicitacao_estoque_item si ON si.id = ll.solicitacao_item_id
+           WHERE si.solicitacao_id = s.id) AS "totalLotes"
+    FROM solicitacao_estoque s
+    JOIN local l ON l.id = s.local_solicitante_id
+    JOIN usuario u ON u.id = s.autor_usuario_id
+    LEFT JOIN almoxarifado a ON a.id = l.almoxarifado_id
+    LEFT JOIN tipo_estoque te ON te.id = s.tipo_estoque_id
+    LEFT JOIN usuario ul ON ul.id = s.liberada_por_usuario_id
+    LEFT JOIN usuario ur ON ur.id = s.recebida_por_usuario_id
+   WHERE l.orgao_id = $1 AND s.id = $2`;
+
+const ITENS_DO_PEDIDO = `
+  SELECT p.nome AS produto, p.unidade_medida AS "unidadeMedida",
+         si.quantidade_solicitada AS solicitado,
+         si.quantidade_liberada AS liberado,
+         si.quantidade_recebida AS recebido
+    FROM solicitacao_estoque_item si
+    JOIN produto p ON p.id = si.produto_id
+   WHERE si.solicitacao_id = $1
+   ORDER BY p.nome`;
+
+// Por lote, e não por produto: o romaneio é conferido caixa por caixa, e caixa
+// tem validade. Agrupar perderia o dado que se confere.
+const LOTES_DO_PEDIDO = `
+  SELECT p.nome AS produto, p.unidade_medida AS "unidadeMedida",
+         r.codigo AS remessa, lo.data_validade AS validade,
+         ll.quantidade, ll.quantidade_confirmada AS confirmado,
+         ll.quantidade_perdida AS perdido,
+         coalesce(ll.motivo_perda, '') AS "motivoPerda"
+    FROM liberacao_lote ll
+    JOIN solicitacao_estoque_item si ON si.id = ll.solicitacao_item_id
+    JOIN produto p ON p.id = si.produto_id
+    JOIN lote lo ON lo.id = ll.lote_id
+    JOIN remessa_estoque r ON r.id = lo.remessa_id
+   WHERE si.solicitacao_id = $1
+   ORDER BY p.nome, lo.data_validade NULLS LAST`;
+
+const ENTRADA_ESTOQUE = `
+  SELECT r.codigo, r.titulo,
+         to_char(r.data, 'DD/MM/YYYY') AS data,
+         a.nome AS almoxarifado, te.nome AS "tipoEstoque",
+         coalesce(r.local_armazenado, '—') AS "localArmazenado",
+         coalesce(r.nota_fiscal, '—') AS "notaFiscal",
+         coalesce(f.razao_social, '—') AS fornecedor,
+         coalesce(u.nome, '—') AS responsavel,
+         (SELECT count(*) FROM lote lo WHERE lo.remessa_id = r.id) AS "totalLotes"
+    FROM remessa_estoque r
+    JOIN almoxarifado a ON a.id = r.almoxarifado_id
+    JOIN tipo_estoque te ON te.id = r.tipo_estoque_id
+    LEFT JOIN fornecedor f ON f.id = r.fornecedor_id
+    LEFT JOIN usuario u ON u.id = r.responsavel_usuario_id
+   WHERE a.orgao_id = $1 AND r.id = $2`;
+
+const LOTES_DA_ENTRADA = `
+  SELECT p.nome AS produto, p.unidade_medida AS "unidadeMedida",
+         lo.quantidade, lo.data_validade AS validade
+    FROM lote lo
+    JOIN produto p ON p.id = lo.produto_id
+   WHERE lo.remessa_id = $1
+   ORDER BY lo.data_validade NULLS LAST, p.nome`;
+
 const MANUTENCAO = `
   SELECT mn.tipo, coalesce(mn.descricao, '—') AS descricao,
          coalesce(mn.oficina, '—') AS oficina,
@@ -334,6 +420,8 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     if (escopo === "INVENTARIO") return this.doInventario(orgaoId, referenciaId, orgao);
     if (escopo === "VIAGEM") return this.daViagem(orgaoId, referenciaId, orgao);
     if (escopo === "MANUTENCAO") return this.daManutencao(orgaoId, referenciaId, orgao);
+    if (escopo === "SOLICITACAO_ESTOQUE") return this.doPedido(orgaoId, referenciaId, orgao);
+    if (escopo === "ENTRADA_ESTOQUE") return this.daEntrada(orgaoId, referenciaId, orgao);
     return null;
   };
 
@@ -623,7 +711,99 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       },
     };
   };
+
+  // ---- Almoxarifado -------------------------------------------------------
+
+  private doPedido = async (
+    orgaoId: string,
+    solicitacaoId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const pedido = (await pool.query(PEDIDO_ESTOQUE, [orgaoId, solicitacaoId])).rows[0];
+    if (!pedido) return null;
+
+    const [itens, lotes] = await Promise.all([
+      pool.query(ITENS_DO_PEDIDO, [solicitacaoId]),
+      pool.query(LOTES_DO_PEDIDO, [solicitacaoId]),
+    ]);
+
+    return {
+      orgao,
+      pedido: {
+        ...Object.fromEntries(
+          Object.entries(pedido).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+        ),
+        totalItens: String(pedido.totalItens),
+        totalLotes: String(pedido.totalLotes),
+      },
+      // Quantidade que ainda não aconteceu vem como traço, não como zero: um
+      // "0" no comprovante do pedido seria lido como "não liberaram nada".
+      itens: itens.rows.map((linha) => ({
+        produto: String(linha.produto),
+        unidadeMedida: String(linha.unidadeMedida),
+        solicitado: numero(linha.solicitado),
+        liberado: linha.liberado === null ? "—" : numero(linha.liberado),
+        recebido: linha.recebido === null ? "—" : numero(linha.recebido),
+      })),
+      lotes: lotes.rows.map((linha) => ({
+        produto: String(linha.produto),
+        unidadeMedida: String(linha.unidadeMedida),
+        remessa: String(linha.remessa),
+        validade: linha.validade ? formatarDataSimples(linha.validade) : "sem validade",
+        quantidade: numero(linha.quantidade),
+        confirmado: linha.confirmado === null ? "—" : numero(linha.confirmado),
+        perdido: Number(linha.perdido) > 0 ? numero(linha.perdido) : "—",
+        motivoPerda: MOTIVO_DA_PERDA[String(linha.motivoPerda)] ?? "",
+      })),
+    };
+  };
+
+  private daEntrada = async (
+    orgaoId: string,
+    remessaId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const entrada = (await pool.query(ENTRADA_ESTOQUE, [orgaoId, remessaId])).rows[0];
+    if (!entrada) return null;
+
+    const lotes = await pool.query(LOTES_DA_ENTRADA, [remessaId]);
+
+    return {
+      orgao,
+      entrada: {
+        ...Object.fromEntries(
+          Object.entries(entrada).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+        ),
+        totalLotes: String(entrada.totalLotes),
+      },
+      lotes: lotes.rows.map((linha) => ({
+        produto: String(linha.produto),
+        unidadeMedida: String(linha.unidadeMedida),
+        quantidade: numero(linha.quantidade),
+        validade: linha.validade ? formatarDataSimples(linha.validade) : "sem validade",
+      })),
+    };
+  };
 }
+
+/** Motivo da perda como se lê num termo, não como está no CHECK. */
+const MOTIVO_DA_PERDA: Record<string, string> = {
+  QUEBRA_TRANSPORTE: "Quebra no transporte",
+  AVARIA: "Avaria",
+  VENCIDO: "Vencido",
+  EXTRAVIO: "Extravio",
+  OUTRO: "Outro",
+};
+
+/**
+ * Data do banco no formato do documento. O `to_char` resolve nas consultas que
+ * o usam direto; aqui a validade vem como `Date` dentro da lista.
+ */
+const formatarDataSimples = (valor: unknown): string =>
+  new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(valor instanceof Date ? valor : new Date(String(valor)));
 
 /** Motivo da baixa como se lê num termo, não como está no CHECK. */
 const MOTIVO_DA_BAIXA: Record<string, string> = {

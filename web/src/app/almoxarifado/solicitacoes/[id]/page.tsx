@@ -7,6 +7,8 @@ import { ReleasePanel } from "@/features/stock/components/ReleasePanel";
 import { RequestActions } from "@/features/stock/components/RequestActions";
 import { RequestItems } from "@/features/stock/components/RequestItems";
 import { statusOf } from "@/features/stock/types";
+import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
+import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { Alert, Badge, Card, PageHeader, SummaryGrid } from "@/shared/ui/layout";
@@ -31,9 +33,13 @@ export default async function StockRequestPage({ params }: RequestPageProps) {
 
   // Cada plano só é buscado quando a etapa é a da vez: pedir os dois sempre
   // faria uma chamada que a API recusa pelo estado.
-  const [planoLiberacao, planoRecebimento] = await Promise.all([
+  const [planoLiberacao, planoRecebimento, modelos, emitidos] = await Promise.all([
     podeLiberar ? getReleasePlan(id).catch(() => null) : Promise.resolve(null),
     podeReceber ? getReceiptPlan(id).catch(() => null) : Promise.resolve(null),
+    // A prefeitura pode ter desativado os modelos, ou nada ter sido emitido
+    // ainda: nenhum dos dois é motivo para derrubar a tela do pedido.
+    listTemplates("ALMOXARIFADO").catch(() => []),
+    listDocumentsFor(id).catch(() => []),
   ]);
 
   return (
@@ -100,6 +106,21 @@ export default async function StockRequestPage({ params }: RequestPageProps) {
           </div>
         </Card>
       ) : null}
+
+      <Card title="Documentos" padded={false}>
+        <div style={{ padding: "14px 16px 0" }}>
+          <IssueDocumentPanel
+            referenciaId={pedido.id}
+            voltarPara={`/almoxarifado/solicitacoes/${pedido.id}`}
+            // Só as peças que falam do pedido: o comprovante de entrada é da
+            // remessa e sai na tela dela, com outra referência.
+            modelos={modelos.filter((modelo) => modelo.escopo === "SOLICITACAO_ESTOQUE")}
+            emitidos={emitidos}
+            // Rascunho não rende comprovante: nada foi pedido ainda.
+            podeEmitir={pedido.status !== "RASCUNHO" && viewer.can("documents:issue")}
+          />
+        </div>
+      </Card>
 
       {!podeLiberar && !podeReceber ? (
         <Card title="Ações">

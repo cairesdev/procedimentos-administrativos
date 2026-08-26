@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getIntake } from "@/features/stock/queries";
 import { BatchTable } from "@/features/stock/components/BatchTable";
+import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
+import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { Card, PageHeader, SummaryGrid } from "@/shared/ui/layout";
@@ -16,6 +18,11 @@ export default async function IntakePage({ params }: IntakePageProps) {
     if (erro instanceof ApiError && erro.status === 404) notFound();
     throw erro;
   });
+
+  const [modelos, emitidos] = await Promise.all([
+    listTemplates("ALMOXARIFADO").catch(() => []),
+    listDocumentsFor(id).catch(() => []),
+  ]);
 
   return (
     <>
@@ -38,6 +45,18 @@ export default async function IntakePage({ params }: IntakePageProps) {
 
       <Card title="Lotes" padded={false}>
         <BatchTable batches={intake.lotes} canWrite={viewer.can("stock:manage")} />
+      </Card>
+
+      <Card title="Documentos" padded={false}>
+        <div style={{ padding: "14px 16px 0" }}>
+          <IssueDocumentPanel
+            referenciaId={intake.id}
+            voltarPara={`/almoxarifado/entradas/${intake.id}`}
+            modelos={modelos.filter((modelo) => modelo.escopo === "ENTRADA_ESTOQUE")}
+            emitidos={emitidos}
+            podeEmitir={viewer.can("documents:issue")}
+          />
+        </div>
       </Card>
     </>
   );
