@@ -32,6 +32,9 @@ export type TipoEvento =
   | "EXIGENCIA_REGISTRADA"
   | "EXIGENCIA_RESPONDIDA"
   | "EXIGENCIA_CANCELADA"
+  | "DOCUMENTO_PREPARADO"
+  | "DOCUMENTO_EDITADO"
+  | "DOCUMENTO_DESCARTADO"
   | "DOCUMENTO_EMITIDO"
   | "DOCUMENTO_CANCELADO"
   // Almoxarifado: entrada, o ciclo do pedido e a perda no recebimento.

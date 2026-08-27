@@ -37,7 +37,9 @@ export const DocumentSheet = async ({
       orgName={orgName}
       title={documento.titulo}
       emitidoPor={`${documento.emitidoPorNome} (${documento.emitidoPorCargo})`}
-      emitidoEm={documento.data}
+      // A folha só é renderizada para peça emitida; o tipo admite nulo por
+      // causa do rascunho, que segue outro caminho na tela.
+      emitidoEm={documento.data ?? undefined}
     >
       {documento.canceladoEm ? (
         <div className={styles.cancelado}>

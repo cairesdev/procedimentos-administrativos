@@ -10,8 +10,8 @@ import {
 } from "./schemas";
 
 /**
- * Emite a peça e leva direto para ela: quem clicou quer imprimir, não voltar
- * para a lista e procurar o que acabou de gerar.
+ * Prepara a peça e leva direto para ela, agora em rascunho: o usuário revisa
+ * o texto e as datas antes de emitir.
  */
 export const issueDocument = async (input: {
   tipo: string;
@@ -29,11 +29,48 @@ export const issueDocument = async (input: {
     // `voltar` carrega a tela de origem: a peça é a mesma em qualquer módulo,
     // e sem isso o botão de voltar teria de chutar um destino.
     destino = `/documentos/${id}?voltar=${encodeURIComponent(input.voltarPara)}`;
-  }, "Documento emitido");
+  }, "Documento pronto para revisão");
 
   // O redirect fica fora do runAction: ele funciona lançando, e seria
   // confundido com falha da emissão.
   if (destino) redirect(destino);
+  return resultado;
+};
+
+/** Salva o texto revisado. Só vale enquanto a peça é rascunho. */
+export const saveDraftBody = async (id: string, corpo: string) =>
+  runAction(async () => {
+    await apiRequest(`/documentos/${id}/corpo`, { method: "PUT", body: { corpo } });
+    revalidatePath(`/documentos/${id}`);
+  }, "Texto salvo");
+
+/** Confirma a emissão: a peça ganha data e passa a valer na conferência. */
+export const issueDraft = async (id: string, voltarPara: string) => {
+  let emitido = false;
+
+  const resultado = await runAction(async () => {
+    await apiRequest(`/documentos/${id}/emitir`, { method: "POST" });
+    revalidatePath(`/documentos/${id}`);
+    revalidatePath(voltarPara);
+    emitido = true;
+  }, "Documento emitido");
+
+  // Recarrega na mesma URL: a peça agora sai sem o editor, com data e QR.
+  if (emitido) redirect(`/documentos/${id}?voltar=${encodeURIComponent(voltarPara)}`);
+  return resultado;
+};
+
+/** Descarta o rascunho e volta para a tela de origem. */
+export const discardDraft = async (id: string, voltarPara: string) => {
+  let descartado = false;
+
+  const resultado = await runAction(async () => {
+    await apiRequest(`/documentos/${id}`, { method: "DELETE" });
+    revalidatePath(voltarPara);
+    descartado = true;
+  }, "Rascunho descartado");
+
+  if (descartado) redirect(voltarPara);
   return resultado;
 };
 

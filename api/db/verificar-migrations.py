@@ -266,6 +266,50 @@ CASOS: list[tuple[str, str, bool]] = [
      "UPDATE solicitacao_estoque_item SET quantidade_reservada = -1 WHERE id = "
      "'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'",
      False),
+
+    # ---- 0025: o documento nasce em rascunho ---------------------------------
+    # A edicao acontece antes de emitir. Depois, a peca responde por um codigo
+    # publico e mudar o corpo faria a conferencia mentir.
+    ("rascunho com data de emissao e recusado",
+     "INSERT INTO documento_emitido (orgao_id, modulo, tipo, codigo, titulo, corpo, "
+     "dados, referencia_id, emitido_por_nome, emitido_por_cargo, situacao, data) VALUES "
+     "('11111111-1111-1111-1111-111111111111','PROCESSOS','DESPACHO','AAAA-BBBB-CCC1',"
+     "'D','<p>x</p>','{}'::jsonb,'11111111-1111-1111-1111-111111111111','Maria','Admin','RASCUNHO', now())",
+     False),
+    ("documento emitido sem data e recusado",
+     "INSERT INTO documento_emitido (orgao_id, modulo, tipo, codigo, titulo, corpo, "
+     "dados, referencia_id, emitido_por_nome, emitido_por_cargo, situacao, data) VALUES "
+     "('11111111-1111-1111-1111-111111111111','PROCESSOS','DESPACHO','AAAA-BBBB-CCC2',"
+     "'D','<p>x</p>','{}'::jsonb,'11111111-1111-1111-1111-111111111111','Maria','Admin','EMITIDO', NULL)",
+     False),
+    ("rascunho sem data e aceito",
+     "INSERT INTO documento_emitido (id, orgao_id, modulo, tipo, codigo, titulo, corpo, "
+     "dados, referencia_id, emitido_por_nome, emitido_por_cargo, situacao, data) VALUES "
+     "('d0c00000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',"
+     "'PROCESSOS','DESPACHO','AAAA-BBBB-CCC3','D','<p>x</p>','{}'::jsonb,"
+     "'11111111-1111-1111-1111-111111111111','Maria','Admin','RASCUNHO', NULL)",
+     True),
+    ("cancelar rascunho e recusado",
+     "UPDATE documento_emitido SET cancelado_em = now(), cancelado_motivo = 'x' "
+     "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
+     False),
+    ("edicao sem autor e recusada",
+     "UPDATE documento_emitido SET editado_em = now() "
+     "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
+     False),
+    ("edicao com quem e quando e aceita",
+     "UPDATE documento_emitido SET editado_em = now(), "
+     "editado_por_usuario_id = '88888888-8888-8888-8888-888888888888' "
+     "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
+     True),
+    ("rascunho vira documento com data",
+     "UPDATE documento_emitido SET situacao = 'EMITIDO', data = now() "
+     "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
+     True),
+    ("situacao fora do vocabulario e recusada",
+     "UPDATE documento_emitido SET situacao = 'PUBLICADO' "
+     "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
+     False),
 ]
 
 

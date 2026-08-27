@@ -93,7 +93,7 @@ export const IssueDocumentPanel = ({
               <br />
               <small>{documento.emitidoPorCargo}</small>
             </td>
-            <td>{toDateTime(documento.data)}</td>
+            <td>{documento.data ? toDateTime(documento.data) : "—"}</td>
             <td style={{ textAlign: "right" }}>
               <Link
                 href={`/documentos/${documento.id}?voltar=${encodeURIComponent(voltarPara)}`}

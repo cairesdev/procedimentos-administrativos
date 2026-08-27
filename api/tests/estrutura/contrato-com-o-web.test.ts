@@ -298,3 +298,55 @@ describe("escopo de documento alcancavel pela interface", () => {
     });
   }
 });
+
+/**
+ * O documento passou a nascer em rascunho. As garantias que fazem isso valer a
+ * pena sao estruturais, e cada uma ja falhou em algum sistema por descuido de
+ * uma linha: rascunho visivel na conferencia publica, rascunho contado como
+ * documento do registro, e edicao aceita depois da emissao.
+ */
+describe("rascunho de documento nao vaza para fora", () => {
+  const repositorio = ler(
+    raizApi, "src", "infrastructure", "db", "PostgresDocumentoRepository.ts",
+  );
+
+  it("a conferencia publica so encontra peca emitida", () => {
+    // O codigo existe desde o rascunho, porque o corpo o imprime. Sem este
+    // filtro, quem digitasse o codigo veria um texto ainda em revisao.
+    const consulta = /buscarPorCodigo: `([\s\S]*?)`/.exec(repositorio)![1]!;
+    assert.match(
+      consulta,
+      /situacao = 'EMITIDO'/,
+      "a conferencia publica mostraria rascunho",
+    );
+  });
+
+  it("as listagens do registro ignoram rascunho", () => {
+    for (const nome of ["listarPorReferencia", "listarEmitidos"]) {
+      const consulta = new RegExp(`${nome}: \`([\\s\\S]*?)\``).exec(repositorio)![1]!;
+      assert.match(consulta, /situacao = 'EMITIDO'/, `${nome} conta rascunho como documento`);
+    }
+  });
+
+  it("emitir e condicional: dois cliques nao emitem duas vezes", () => {
+    const consulta = /confirmarEmissao: `([\s\S]*?)`/.exec(repositorio)![1]!;
+    assert.match(
+      consulta,
+      /situacao = 'RASCUNHO'/,
+      "sem a condicao no UPDATE, a segunda chamada re-carimbaria a data",
+    );
+  });
+
+  it("so rascunho e apagado; o que circulou se cancela", () => {
+    const consulta = /descartarRascunho: `([\s\S]*?)`/.exec(repositorio)![1]!;
+    assert.match(consulta, /situacao = 'RASCUNHO'/, "o DELETE alcancaria documento emitido");
+  });
+
+  it("o corpo editado passa pelo sanitizador do modelo", () => {
+    // A pagina de conferencia e publica: HTML vindo do editor sem limpeza
+    // seria XSS servido pela prefeitura.
+    const casoDeUso = ler(raizApi, "src", "application", "documento", "EmitirDocumento.ts");
+    const salvar = /salvarCorpo = async[\s\S]*?\n  \};/.exec(casoDeUso)![0];
+    assert.match(salvar, /limparCorpo\(/, "corpo do editor gravado sem sanitizar");
+  });
+});

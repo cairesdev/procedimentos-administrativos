@@ -41,6 +41,16 @@ export class EmitirDocumento {
     private readonly auditoria: AuditoriaRepository,
   ) {}
 
+  /**
+   * Monta a peça e a guarda em **rascunho**, com o código já sorteado.
+   *
+   * O código precisa existir aqui porque o próprio corpo o imprime — e porque
+   * o QR da conferência sai impresso na folha. Renderizar depois obrigaria a
+   * remendar o texto que o usuário acabou de revisar.
+   *
+   * Enquanto rascunho, a peça não é conferível nem aparece nas listagens do
+   * registro: existe só para quem a está escrevendo.
+   */
   executar = async (entrada: EmissaoEntrada): Promise<{ id: string; codigo: string }> => {
     const modelo = await this.documentos.resolverModelo(entrada.orgaoId, entrada.tipo);
     if (!modelo) {
@@ -84,7 +94,7 @@ export class EmitirDocumento {
       const corpo = limparCorpo(renderizar(modelo.corpo, contextoCompleto));
 
       try {
-        id = await this.documentos.emitir({
+        id = await this.documentos.rascunhar({
           orgaoId: entrada.orgaoId,
           modulo: modelo.modulo,
           tipo: modelo.tipo,
@@ -112,12 +122,119 @@ export class EmitirDocumento {
     await this.auditoria.registrar({
       orgaoId: entrada.orgaoId,
       usuarioId: entrada.usuarioId,
-      tipoEvento: "DOCUMENTO_EMITIDO",
+      tipoEvento: "DOCUMENTO_PREPARADO",
       referenciaId: entrada.referenciaId,
       detalhes: { documentoId: id, tipo: modelo.tipo, titulo: modelo.titulo, origem: modelo.origem },
     });
 
     return { id, codigo };
+  };
+
+  /**
+   * Grava o texto revisado. Só vale em rascunho: depois de emitida, a peça
+   * responde por um código público e mudar o corpo faria a conferência mentir.
+   *
+   * O corpo passa pelo mesmo sanitizador do modelo. O editor é `contenteditable`
+   * e a colagem de um documento do Word traz `<font>`, `<o:p>` e style de mais
+   * — nada disso pode chegar à página pública.
+   */
+  salvarCorpo = async (entrada: {
+    orgaoId: string;
+    usuarioId: string;
+    documentoId: string;
+    corpo: string;
+  }): Promise<void> => {
+    const documento = await this.exigirRascunhoDoAutor(
+      entrada.orgaoId, entrada.documentoId, entrada.usuarioId,
+    );
+
+    const corpo = limparCorpo(entrada.corpo);
+    if (!corpo.trim()) {
+      throw new ErroDeNegocio("O documento ficaria vazio — nada foi salvo");
+    }
+
+    await this.documentos.salvarCorpo(
+      entrada.orgaoId, entrada.documentoId, corpo, entrada.usuarioId,
+    );
+    await this.auditoria.registrar({
+      orgaoId: entrada.orgaoId,
+      usuarioId: entrada.usuarioId,
+      tipoEvento: "DOCUMENTO_EDITADO",
+      referenciaId: documento.referenciaId,
+      detalhes: { documentoId: documento.id, codigo: documento.codigo },
+    });
+  };
+
+  /** Rascunho vira documento: ganha data e passa a valer na conferência. */
+  confirmar = async (entrada: {
+    orgaoId: string;
+    usuarioId: string;
+    documentoId: string;
+  }): Promise<void> => {
+    const documento = await this.exigirRascunhoDoAutor(
+      entrada.orgaoId, entrada.documentoId, entrada.usuarioId,
+    );
+
+    // A troca de situação é condicional no UPDATE: dois cliques no botão não
+    // emitem duas vezes, e o segundo descobre isso pelo banco, não por leitura
+    // anterior que já estaria velha.
+    const emitiu = await this.documentos.confirmarEmissao(entrada.orgaoId, entrada.documentoId);
+    if (!emitiu) throw new ErroDeNegocio("Este documento já foi emitido");
+
+    await this.auditoria.registrar({
+      orgaoId: entrada.orgaoId,
+      usuarioId: entrada.usuarioId,
+      tipoEvento: "DOCUMENTO_EMITIDO",
+      referenciaId: documento.referenciaId,
+      detalhes: {
+        documentoId: documento.id,
+        codigo: documento.codigo,
+        tipo: documento.tipo,
+        titulo: documento.titulo,
+        editado: documento.editadoEm !== null,
+      },
+    });
+  };
+
+  /** Rascunho se descarta; o que já circulou se cancela. */
+  descartar = async (entrada: {
+    orgaoId: string;
+    usuarioId: string;
+    documentoId: string;
+  }): Promise<void> => {
+    const documento = await this.exigirRascunhoDoAutor(
+      entrada.orgaoId, entrada.documentoId, entrada.usuarioId,
+    );
+
+    await this.documentos.descartarRascunho(entrada.orgaoId, entrada.documentoId);
+    await this.auditoria.registrar({
+      orgaoId: entrada.orgaoId,
+      usuarioId: entrada.usuarioId,
+      tipoEvento: "DOCUMENTO_DESCARTADO",
+      referenciaId: documento.referenciaId,
+      detalhes: { documentoId: documento.id, codigo: documento.codigo },
+    });
+  };
+
+  /**
+   * Quem preparou é quem revisa. A peça leva o nome e o cargo do autor
+   * impressos: deixar outro servidor reescrever o texto poria a assinatura de
+   * um sobre as palavras de outro.
+   */
+  private exigirRascunhoDoAutor = async (
+    orgaoId: string,
+    documentoId: string,
+    usuarioId: string,
+  ) => {
+    const documento = await this.documentos.buscarEmitido(orgaoId, documentoId);
+    if (!documento) throw new NaoEncontrado("Documento não encontrado");
+    if (documento.situacao !== "RASCUNHO") {
+      throw new ErroDeNegocio("Documento já emitido não pode mais ser alterado");
+    }
+    if (documento.emitidoPorUsuarioId !== usuarioId) {
+      throw new ErroDeNegocio("Este rascunho é de outro servidor", 403);
+    }
+    return documento;
   };
 
   cancelar = async (entrada: {

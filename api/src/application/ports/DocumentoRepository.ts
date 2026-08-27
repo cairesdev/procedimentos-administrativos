@@ -34,6 +34,9 @@ export type NovoModelo = {
   personalizado: boolean;
 };
 
+/** Rascunho é peça em revisão: sem data de emissão e fora da conferência. */
+export type SituacaoDoDocumento = "RASCUNHO" | "EMITIDO";
+
 export type DocumentoEmitido = {
   id: string;
   orgaoId: string;
@@ -43,9 +46,16 @@ export type DocumentoEmitido = {
   titulo: string;
   corpo: string;
   referenciaId: string;
+  emitidoPorUsuarioId: string | null;
   emitidoPorNome: string;
   emitidoPorCargo: string;
-  data: string;
+  situacao: SituacaoDoDocumento;
+  /** Nula enquanto rascunho: a peça ainda não saiu. */
+  data: string | null;
+  criadoEm: string;
+  /** O texto como o modelo o produziu, antes de qualquer ajuste. */
+  corpoOriginal: string | null;
+  editadoEm: string | null;
   canceladoEm: string | null;
   canceladoMotivo: string | null;
 };
@@ -98,10 +108,19 @@ export interface DocumentoRepository {
   /** Apagar a linha da prefeitura devolve o tipo ao modelo global. */
   removerModelo(id: string): Promise<void>;
 
-  emitir(dados: NovoDocumentoEmitido): Promise<string>;
+  /** Grava a peça em rascunho: código já sorteado, sem data de emissão. */
+  rascunhar(dados: NovoDocumentoEmitido): Promise<string>;
+  /** Troca o corpo do rascunho e registra quem mexeu. */
+  salvarCorpo(orgaoId: string, id: string, corpo: string, usuarioId: string): Promise<void>;
+  /** Rascunho vira documento: carimba a data. Devolve false se já não era rascunho. */
+  confirmarEmissao(orgaoId: string, id: string): Promise<boolean>;
+  descartarRascunho(orgaoId: string, id: string): Promise<void>;
   buscarEmitido(orgaoId: string, id: string): Promise<DocumentoEmitido | null>;
+  /** Só peças emitidas: rascunho não conta como documento do registro. */
   listarPorReferencia(orgaoId: string, referenciaId: string): Promise<DocumentoEmitido[]>;
   listarEmitidos(orgaoId: string, paginacao: Paginacao): Promise<Pagina<DocumentoEmitido>>;
+  /** Rascunhos que este usuário deixou pendentes. */
+  listarRascunhos(orgaoId: string, usuarioId: string): Promise<DocumentoEmitido[]>;
   /** Busca sem órgão: a conferência é pública e o código é único no produto. */
   buscarPorCodigo(codigo: string): Promise<DocumentoParaConferencia | null>;
   cancelar(orgaoId: string, id: string, motivo: string): Promise<void>;

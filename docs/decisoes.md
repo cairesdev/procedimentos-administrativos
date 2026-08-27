@@ -526,3 +526,41 @@ ATENDIMENTO_EXTERNO` e anexo enviado por requerente existem e nunca foram usados
   quem pergunta é quem está resolvendo o pedido.
 - **`/cidadao` para o público, `/protocolo` para o balcão.** Os dois nomes dizem para quem a tela
   é; usar o mesmo caminho para os dois confundiria a rota pública com o sistema interno.
+
+## Documento editável: a revisão fica antes da emissão
+
+**Pedido do cliente:** poder ajustar texto e datas do documento gerado.
+
+**Decisão:** a peça nasce em **rascunho** e é editável até ser emitida. Depois
+de emitida, o corpo é imutável — só resta cancelar e preparar outra.
+
+**Por quê.** O documento emitido guarda o retrato e responde por um código
+verificador único no produto, publicado em `/conferencia/{codigo}`. Editar
+depois faria a conferência mentir: o TCE abriria o código e veria texto
+diferente do papel assinado que circulou. A garantia inteira do motor de
+documentos depende disso.
+
+**Como fica:**
+
+- Emitir passou a ter duas etapas. O botão **prepara** a peça; a tela abre com
+  o texto editável; **Emitir documento** carimba a data e libera a conferência.
+- O código é sorteado já no rascunho, porque o corpo o imprime e o QR o carrega.
+  Rascunho abandonado consome um código — é barato, e a alternativa seria
+  remendar o texto que o usuário acabou de revisar.
+- `corpo_original` guarda o texto do modelo. Dá para comparar o que mudou e para
+  voltar atrás com um clique.
+- O rascunho é **de quem o preparou**: a peça leva o nome e o cargo do autor
+  impressos, e deixar outro servidor reescrevê-la poria a assinatura de um sobre
+  as palavras de outro.
+- Rascunho se **descarta**; o que já circulou se **cancela**. São atos
+  diferentes e o banco recusa a confusão.
+
+**Editor: `contenteditable`, não Lexical.** A Ordem de Serviço é toda tabela,
+com `colspan` e `style="width: 22%"` em quase toda célula. Lexical e ProseMirror
+convertem o HTML de entrada para um estado interno e o devolvem re-serializado —
+esses atributos se perdem sem uma extensão escrita para cada um. Para "trocar
+uma data", o custo não se paga, e o documento sairia deformado sem ninguém
+pedir. Com `contenteditable` o HTML é o próprio estado. Quem decide o que pode
+ficar continua sendo `limparCorpo`, o mesmo sanitizador do modelo — e a colagem
+entra como texto puro, para o usuário não ver uma formatação na tela e outra
+depois de salvar.

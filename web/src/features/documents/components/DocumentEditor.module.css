@@ -1,0 +1,109 @@
+.editor {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 0;
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--superficie_alt);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  position: sticky;
+  /* O documento é longo: a barra acompanha a rolagem, senão salvar exige
+     voltar ao topo depois de cada ajuste no rodapé da peça. */
+  top: 8px;
+  z-index: 2;
+}
+
+.grupo,
+.grupo_direita {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grupo button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto_suave);
+  cursor: pointer;
+}
+
+.grupo button:hover {
+  border-color: var(--acao);
+  color: var(--acao);
+}
+
+.pendente {
+  font-size: 12px;
+  color: var(--aviso, #a76a00);
+  white-space: nowrap;
+}
+
+/* A área editável imita a folha: quem edita precisa ver o que vai imprimir. */
+.area {
+  min-height: 300px;
+  padding: 18px 20px;
+  background: var(--superficie);
+  border: 1px dashed var(--borda_forte);
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  text-align: justify;
+  outline: none;
+}
+
+.area:focus {
+  border-color: var(--acao);
+  border-style: solid;
+}
+
+.area :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 12px;
+}
+
+.area :global(th),
+.area :global(td) {
+  border: 1px solid var(--borda_forte);
+  padding: 5px 7px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.area :global(th) {
+  background: var(--superficie_alt);
+  font-weight: 600;
+}
+
+.area :global(h1),
+.area :global(h2),
+.area :global(h3) {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+
+.area :global(p) {
+  margin: 0 0 10px;
+}
+
+.area :global(ul),
+.area :global(ol) {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}

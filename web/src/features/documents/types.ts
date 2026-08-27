@@ -47,6 +47,9 @@ export type DocumentTemplate = {
   origem: "GLOBAL" | "PREFEITURA";
 };
 
+/** Rascunho é peça em revisão: sem data e fora da conferência pública. */
+export type DocumentStatus = "RASCUNHO" | "EMITIDO";
+
 export type IssuedDocument = {
   id: string;
   orgaoId: string;
@@ -56,9 +59,16 @@ export type IssuedDocument = {
   titulo: string;
   corpo: string;
   referenciaId: string;
+  emitidoPorUsuarioId: string | null;
   emitidoPorNome: string;
   emitidoPorCargo: string;
-  data: string;
+  situacao: DocumentStatus;
+  /** Nula enquanto rascunho: a peça ainda não saiu. */
+  data: string | null;
+  criadoEm: string;
+  /** O texto como o modelo o produziu, para o "voltar ao original". */
+  corpoOriginal: string | null;
+  editadoEm: string | null;
   canceladoEm: string | null;
   canceladoMotivo: string | null;
 };

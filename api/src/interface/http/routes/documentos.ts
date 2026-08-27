@@ -25,6 +25,10 @@ const novoModeloSchema = modeloSchema.extend({ escopo: z.enum(ESCOPOS) });
 
 const cancelamentoSchema = z.object({ motivo: z.string().min(3).max(500) });
 
+// O corpo vem do editor e é sanitizado no caso de uso; o teto existe para o
+// payload não virar vetor de abuso. Documento oficial não passa disso.
+const corpoSchema = z.object({ corpo: z.string().min(1).max(200_000) });
+
 export const documentosRouter = Router();
 
 /** Tipos disponíveis com o modelo em vigor — alimenta o botão de emissão. */
@@ -124,6 +128,17 @@ documentosRouter.post("/", async (req, res, next) => {
   }
 });
 
+/** Rascunhos que este servidor deixou pendentes de revisão. */
+documentosRouter.get("/rascunhos", async (req, res, next) => {
+  try {
+    res.json(
+      await container.documentos.listarRascunhos(req.sessao!.orgaoId, req.sessao!.usuarioId),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 documentosRouter.get("/", async (req, res, next) => {
   try {
     const referencia = typeof req.query.referencia === "string" ? req.query.referencia : undefined;
@@ -151,6 +166,50 @@ documentosRouter.get("/:id", async (req, res, next) => {
       return;
     }
     res.json(documento);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Salva o texto revisado. Só vale enquanto a peça é rascunho. */
+documentosRouter.put("/:id/corpo", async (req, res, next) => {
+  try {
+    const { corpo } = corpoSchema.parse(req.body);
+    await container.emitirDocumento.salvarCorpo({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      documentoId: req.params.id!,
+      corpo,
+    });
+    res.json({ message: "Texto salvo" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Confirma a emissão: a peça ganha data e passa a valer na conferência. */
+documentosRouter.post("/:id/emitir", async (req, res, next) => {
+  try {
+    await container.emitirDocumento.confirmar({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      documentoId: req.params.id!,
+    });
+    res.json({ message: "Documento emitido" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Descarta o rascunho. O que já circulou se cancela, não se apaga. */
+documentosRouter.delete("/:id", async (req, res, next) => {
+  try {
+    await container.emitirDocumento.descartar({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      documentoId: req.params.id!,
+    });
+    res.json({ message: "Rascunho descartado" });
   } catch (error) {
     next(error);
   }

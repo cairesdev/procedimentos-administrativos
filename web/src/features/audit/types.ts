@@ -43,6 +43,9 @@ export const AUDIT_EVENTS = [
   "DEVOLUCAO_ESTOQUE_RECUSADA",
   "TRANSFERENCIA_ESTOQUE_REGISTRADA",
   "AJUSTE_ESTOQUE_REGISTRADO",
+  "DOCUMENTO_PREPARADO",
+  "DOCUMENTO_EDITADO",
+  "DOCUMENTO_DESCARTADO",
   "DOCUMENTO_EMITIDO",
   "DOCUMENTO_CANCELADO",
   "ADMIN_ENTIDADE_CRIADO",
@@ -97,7 +100,10 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   },
   {
     group: "Documentos",
-    events: ["DOCUMENTO_EMITIDO", "DOCUMENTO_CANCELADO"],
+    events: [
+      "DOCUMENTO_PREPARADO", "DOCUMENTO_EDITADO", "DOCUMENTO_DESCARTADO",
+      "DOCUMENTO_EMITIDO", "DOCUMENTO_CANCELADO",
+    ],
   },
   {
     group: "Almoxarifado",
@@ -166,6 +172,9 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   DEVOLUCAO_ESTOQUE_RECUSADA: "Devolução recusada",
   TRANSFERENCIA_ESTOQUE_REGISTRADA: "Transferência entre almoxarifados",
   AJUSTE_ESTOQUE_REGISTRADO: "Ajuste de estoque",
+  DOCUMENTO_PREPARADO: "Documento preparado para revisão",
+  DOCUMENTO_EDITADO: "Texto do documento ajustado antes de emitir",
+  DOCUMENTO_DESCARTADO: "Rascunho de documento descartado",
   DOCUMENTO_EMITIDO: "Documento emitido",
   DOCUMENTO_CANCELADO: "Documento cancelado",
   ADMIN_ENTIDADE_CRIADO: "Administrador criado",

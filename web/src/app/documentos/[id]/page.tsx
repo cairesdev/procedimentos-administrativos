@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Ban } from "lucide-react";
 import { findDocument } from "@/features/documents/queries";
 import { DocumentSheet } from "@/features/documents/components/DocumentSheet";
+import { DocumentEditor } from "@/features/documents/components/DocumentEditor";
 import { CancelDocumentForm } from "@/features/documents/components/CancelDocumentForm";
 import { getProfile } from "@/features/auth/queries";
 import { ApiError } from "@/shared/api/http-client";
 import { getViewer } from "@/shared/auth/guards";
 import { publicBaseUrl } from "@/shared/config/base-url";
 import { getOwnLetterhead } from "@/shared/letterhead/queries";
+import { Alert } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
 
 type DocumentPageProps = {
@@ -43,6 +45,13 @@ export default async function DocumentPage({ params, searchParams }: DocumentPag
     publicBaseUrl(),
   ]);
 
+  /**
+   * Rascunho é peça em revisão, e só de quem a preparou. Para os demais — e
+   * depois de emitida — a tela é a folha de sempre, sem editor.
+   */
+  const emRevisao = documento.situacao === "RASCUNHO";
+  const podeEditar = emRevisao && documento.emitidoPorUsuarioId === viewer.id;
+
   return (
     <>
       {/* Barra de tela: some na impressão junto com o resto do cromo. */}
@@ -55,7 +64,7 @@ export default async function DocumentPage({ params, searchParams }: DocumentPag
           Voltar
         </Link>
 
-        {viewer.can("documents:issue") && !documento.canceladoEm ? (
+        {viewer.can("documents:issue") && !emRevisao && !documento.canceladoEm ? (
           <ModalTrigger
             label="Cancelar documento"
             title="Cancelar documento"
@@ -67,12 +76,32 @@ export default async function DocumentPage({ params, searchParams }: DocumentPag
         ) : null}
       </div>
 
-      <DocumentSheet
-        documento={documento}
-        letterhead={letterhead}
-        orgName={profile.orgaoNome}
-        baseUrl={baseUrl}
-      />
+      {podeEditar ? (
+        <DocumentEditor
+          documentId={documento.id}
+          corpo={documento.corpo}
+          corpoOriginal={documento.corpoOriginal}
+          voltarPara={destinoDeVolta(voltar)}
+        />
+      ) : (
+        <>
+          {emRevisao ? (
+            <div className="somente_tela" style={{ padding: "14px 16px 0" }}>
+              <Alert tone="info">
+                Rascunho de {documento.emitidoPorNome}, ainda em revisão. Só quem o preparou pode
+                editá-lo ou emiti-lo.
+              </Alert>
+            </div>
+          ) : null}
+
+          <DocumentSheet
+            documento={documento}
+            letterhead={letterhead}
+            orgName={profile.orgaoNome}
+            baseUrl={baseUrl}
+          />
+        </>
+      )}
     </>
   );
 }

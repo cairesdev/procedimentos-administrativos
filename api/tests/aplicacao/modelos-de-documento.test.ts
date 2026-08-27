@@ -37,9 +37,29 @@ const montar = () => {
     removerModelo: async (id: string) => {
       gravado.modelos.splice(gravado.modelos.findIndex((m) => m.id === id), 1);
     },
-    emitir: async (dados: Record<string, unknown>) => {
-      gravado.emitidos.push(dados);
-      return `doc-${gravado.emitidos.length}`;
+    rascunhar: async (dados: Record<string, unknown>) => {
+      const id = `doc-${gravado.emitidos.length + 1}`;
+      // O falso guarda o que a tabela guarda: rascunho nasce sem data, com o
+      // corpo repetido em `corpoOriginal`.
+      gravado.emitidos.push({
+        ...dados, id, situacao: "RASCUNHO", data: null,
+        corpoOriginal: dados.corpo, editadoEm: null, canceladoEm: null,
+        emitidoPorUsuarioId: dados.emitidoPorUsuarioId,
+      });
+      return id;
+    },
+    salvarCorpo: async (_orgao: string, id: string, corpo: string, usuarioId: string) => {
+      const doc = gravado.emitidos.find((item) => item.id === id)!;
+      Object.assign(doc, { corpo, editadoEm: "2026-08-26T12:00:00Z", editadoPor: usuarioId });
+    },
+    confirmarEmissao: async (_orgao: string, id: string) => {
+      const doc = gravado.emitidos.find((item) => item.id === id)!;
+      if (doc.situacao !== "RASCUNHO") return false;
+      Object.assign(doc, { situacao: "EMITIDO", data: "2026-08-26T12:00:00Z" });
+      return true;
+    },
+    descartarRascunho: async (_orgao: string, id: string) => {
+      gravado.emitidos.splice(gravado.emitidos.findIndex((item) => item.id === id), 1);
     },
     buscarEmitido: async (_orgao: string, id: string) =>
       gravado.emitidos.find((doc) => doc.id === id) ?? null,
@@ -272,5 +292,151 @@ describe("emissão", () => {
     );
 
     assert.equal(gravado.emitidos.length, 0);
+  });
+});
+
+/**
+ * O cliente pediu para ajustar texto e datas antes de a peca sair. A edicao
+ * fica ANTES da emissao: depois, o documento responde por um codigo publico em
+ * /conferencia, e mudar o corpo faria a conferencia mentir sobre o papel que
+ * ja circulou.
+ */
+describe("rascunho: revisar antes de emitir", () => {
+  const comModelo = async () => {
+    const ambiente = montar();
+    await ambiente.modelos.criarPersonalizado(null, {
+      escopo: "PROCESSO", nome: "Despacho", titulo: "DESPACHO",
+      corpo: "<p>Prazo de 5 dias.</p>", ativo: true,
+    });
+    return ambiente;
+  };
+
+  it("nasce em rascunho, sem data de emissao", async () => {
+    const { emissao, gravado, auditados } = await comModelo();
+    await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+
+    assert.equal(gravado.emitidos[0]!.situacao, "RASCUNHO");
+    assert.equal(gravado.emitidos[0]!.data, null);
+    assert.equal(auditados[0]!.tipoEvento, "DOCUMENTO_PREPARADO");
+  });
+
+  it("o texto revisado substitui o do modelo, e o original fica guardado", async () => {
+    const { emissao, gravado } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+
+    await emissao.salvarCorpo({
+      orgaoId: "org-1", usuarioId: "u-1", documentoId: id,
+      corpo: "<p>Prazo de 10 dias.</p>",
+    });
+
+    assert.match(String(gravado.emitidos[0]!.corpo), /10 dias/);
+    assert.match(String(gravado.emitidos[0]!.corpoOriginal), /5 dias/);
+    assert.ok(gravado.emitidos[0]!.editadoEm, "a edicao nao registrou quando");
+  });
+
+  it("o texto colado passa pelo sanitizador", async () => {
+    // Colar do Word traz <script>, <font> e style de mais. A pagina de
+    // conferencia e publica: nada disso pode chegar la.
+    const { emissao, gravado } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+
+    await emissao.salvarCorpo({
+      orgaoId: "org-1", usuarioId: "u-1", documentoId: id,
+      corpo: '<p onclick="roubar()">Texto</p><script>alert(1)</script><font>x</font>',
+    });
+
+    const corpo = String(gravado.emitidos[0]!.corpo);
+    assert.ok(!corpo.includes("script"), "script sobreviveu ao sanitizador");
+    assert.ok(!corpo.includes("onclick"), "handler inline sobreviveu");
+    assert.match(corpo, /Texto/, "o texto legitimo se perdeu");
+  });
+
+  it("recusa corpo que ficaria vazio depois de limpo", async () => {
+    const { emissao, gravado } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+    const antes = String(gravado.emitidos[0]!.corpo);
+
+    await recusa(
+      () => emissao.salvarCorpo({
+        orgaoId: "org-1", usuarioId: "u-1", documentoId: id, corpo: "<script>só isso</script>",
+      }),
+      /vazio/,
+    );
+    assert.equal(gravado.emitidos[0]!.corpo, antes, "o corpo foi alterado apesar da recusa");
+  });
+
+  it("emitir carimba a data e o rascunho deixa de ser editavel", async () => {
+    const { emissao, gravado, auditados } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+
+    await emissao.confirmar({ orgaoId: "org-1", usuarioId: "u-1", documentoId: id });
+
+    assert.equal(gravado.emitidos[0]!.situacao, "EMITIDO");
+    assert.ok(gravado.emitidos[0]!.data, "documento emitido sem data");
+    assert.equal(auditados.at(-1)!.tipoEvento, "DOCUMENTO_EMITIDO");
+
+    await recusa(
+      () => emissao.salvarCorpo({
+        orgaoId: "org-1", usuarioId: "u-1", documentoId: id, corpo: "<p>tarde demais</p>",
+      }),
+      /nao pode mais ser alterado|não pode mais ser alterado/,
+    );
+  });
+
+  it("emitir duas vezes e recusado", async () => {
+    const { emissao } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+    await emissao.confirmar({ orgaoId: "org-1", usuarioId: "u-1", documentoId: id });
+
+    await recusa(
+      () => emissao.confirmar({ orgaoId: "org-1", usuarioId: "u-1", documentoId: id }),
+      /ja foi emitido|já foi emitido|nao pode mais|não pode mais/,
+    );
+  });
+
+  it("o rascunho e de quem o preparou", async () => {
+    // A peca leva o nome e o cargo do autor impressos: outro servidor
+    // reescrever o texto poria a assinatura de um sobre as palavras de outro.
+    const { emissao, gravado } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+    const antes = String(gravado.emitidos[0]!.corpo);
+
+    await recusa(
+      () => emissao.salvarCorpo({
+        orgaoId: "org-1", usuarioId: "outro", documentoId: id, corpo: "<p>invadi</p>",
+      }),
+      /outro servidor/,
+    );
+    await recusa(
+      () => emissao.confirmar({ orgaoId: "org-1", usuarioId: "outro", documentoId: id }),
+      /outro servidor/,
+    );
+    assert.equal(gravado.emitidos[0]!.corpo, antes);
+  });
+
+  it("descartar apaga o rascunho", async () => {
+    const { emissao, gravado, auditados } = await comModelo();
+    const { id } = await emissao.executar({
+      orgaoId: "org-1", usuarioId: "u-1", tipo: "DESPACHO", referenciaId: "proc-1",
+    });
+
+    await emissao.descartar({ orgaoId: "org-1", usuarioId: "u-1", documentoId: id });
+
+    assert.equal(gravado.emitidos.length, 0);
+    assert.equal(auditados.at(-1)!.tipoEvento, "DOCUMENTO_DESCARTADO");
   });
 });
