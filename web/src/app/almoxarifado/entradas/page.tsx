@@ -11,7 +11,7 @@ type IntakesPageProps = {
 };
 
 export default async function IntakesPage({ searchParams }: IntakesPageProps) {
-  const viewer = await requirePermission("stock:read", "ALMOXARIFADO");
+  const viewer = await requirePermission("stock:manage", "ALMOXARIFADO");
   const { almoxarifado, tipo, busca, pagina } = await searchParams;
 
   const [intakes, warehouses, types] = await Promise.all([

@@ -4,7 +4,7 @@ import { requirePermission } from "@/shared/auth/guards";
 import { Alert, Card, PageHeader } from "@/shared/ui/layout";
 
 export default async function StockLocationsPage() {
-  const viewer = await requirePermission("stock:read", "ALMOXARIFADO");
+  const viewer = await requirePermission("stock:manage", "ALMOXARIFADO");
   const [locations, warehouses] = await Promise.all([
     listStockLocations(),
     listWarehouses(),

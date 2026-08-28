@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { salvarFluxoSchema } from "../schemas/cadastros";
 
 export const fluxosRouter = Router();
 
-fluxosRouter.put("/:tipoProcesso", exigirPapel("ADMIN"), async (req, res, next) => {
+fluxosRouter.use(exigirPermissao("workflows:read"));
+
+fluxosRouter.put("/:tipoProcesso", exigirPermissao("workflows:write"), async (req, res, next) => {
   try {
     const dados = salvarFluxoSchema.parse(req.body);
     await container.fluxoConfiguracao.salvar({

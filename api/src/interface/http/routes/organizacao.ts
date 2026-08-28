@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { garantirExiste, garantirSemVinculos } from "../../../application/shared/ExclusaoSegura";
 import {
   criarDepartamentoSchema, criarSetorSchema, criarUnidadeSchema,
@@ -11,7 +11,12 @@ import {
 export const unidadesRouter = Router();
 export const setoresRouter = Router();
 
-const podeEditar = exigirPapel("ADMIN", "GESTOR");
+unidadesRouter.use(exigirPermissao("units:read"));
+setoresRouter.use(exigirPermissao("sectors:read"));
+
+// Unidade e setor são o mesmo cadastro para efeito de permissão: quem
+// organiza a prefeitura organiza os dois.
+const podeEditar = exigirPermissao("units:write");
 
 unidadesRouter.post("/", podeEditar, async (req, res, next) => {
   try {

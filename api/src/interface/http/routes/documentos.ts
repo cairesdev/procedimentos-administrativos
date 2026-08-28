@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { ESCOPOS, ROTULO_DO_ESCOPO } from "../../../domain/documento/Catalogo";
 import { paginacaoSchema } from "../schemas/paginacao";
 
@@ -31,6 +32,10 @@ const corpoSchema = z.object({ corpo: z.string().min(1).max(200_000) });
 
 export const documentosRouter = Router();
 
+// Piso: ver a peça de um registro que o usuário já alcança. Emitir e
+// editar o modelo são outros dois atos, declarados rota a rota.
+documentosRouter.use(exigirPermissao("documents:read"));
+
 /** Tipos disponíveis com o modelo em vigor — alimenta o botão de emissão. */
 documentosRouter.get("/modelos", async (req, res, next) => {
   try {
@@ -53,7 +58,7 @@ documentosRouter.get("/escopos", (_req, res) => {
 });
 
 /** Peça nova, criada pelo administrador da prefeitura. */
-documentosRouter.post("/modelos", async (req, res, next) => {
+documentosRouter.post("/modelos", exigirPermissao("documents:template"), async (req, res, next) => {
   try {
     const dados = novoModeloSchema.parse(req.body);
     res.status(201).json(
@@ -82,7 +87,7 @@ documentosRouter.get("/modelos/:tipo", async (req, res, next) => {
 });
 
 // Editar o modelo é ato de administração da prefeitura, não de quem despacha.
-documentosRouter.put("/modelos/:tipo", async (req, res, next) => {
+documentosRouter.put("/modelos/:tipo", exigirPermissao("documents:template"), async (req, res, next) => {
   try {
     const dados = modeloSchema.parse(req.body);
     res.json(
@@ -95,7 +100,7 @@ documentosRouter.put("/modelos/:tipo", async (req, res, next) => {
   }
 });
 
-documentosRouter.delete("/modelos/:tipo", async (req, res, next) => {
+documentosRouter.delete("/modelos/:tipo", exigirPermissao("documents:template"), async (req, res, next) => {
   try {
     await container.manterModelos.restaurarPadrao(req.sessao!.orgaoId, req.params.tipo!);
     res.json({ message: "Modelo padrão restaurado" });
@@ -105,7 +110,7 @@ documentosRouter.delete("/modelos/:tipo", async (req, res, next) => {
 });
 
 /** Excluir de vez — só peça criada pela própria prefeitura. */
-documentosRouter.delete("/modelos/:tipo/excluir", async (req, res, next) => {
+documentosRouter.delete("/modelos/:tipo/excluir", exigirPermissao("documents:template"), async (req, res, next) => {
   try {
     await container.manterModelos.excluirPersonalizado(req.sessao!.orgaoId, req.params.tipo!);
     res.json({ message: "Documento excluído" });
@@ -114,7 +119,7 @@ documentosRouter.delete("/modelos/:tipo/excluir", async (req, res, next) => {
   }
 });
 
-documentosRouter.post("/", async (req, res, next) => {
+documentosRouter.post("/", exigirPermissao("documents:issue"), async (req, res, next) => {
   try {
     const dados = emissaoSchema.parse(req.body);
     const resultado = await container.emitirDocumento.executar({
@@ -172,7 +177,7 @@ documentosRouter.get("/:id", async (req, res, next) => {
 });
 
 /** Salva o texto revisado. Só vale enquanto a peça é rascunho. */
-documentosRouter.put("/:id/corpo", async (req, res, next) => {
+documentosRouter.put("/:id/corpo", exigirPermissao("documents:issue"), async (req, res, next) => {
   try {
     const { corpo } = corpoSchema.parse(req.body);
     await container.emitirDocumento.salvarCorpo({
@@ -188,7 +193,7 @@ documentosRouter.put("/:id/corpo", async (req, res, next) => {
 });
 
 /** Confirma a emissão: a peça ganha data e passa a valer na conferência. */
-documentosRouter.post("/:id/emitir", async (req, res, next) => {
+documentosRouter.post("/:id/emitir", exigirPermissao("documents:issue"), async (req, res, next) => {
   try {
     await container.emitirDocumento.confirmar({
       orgaoId: req.sessao!.orgaoId,
@@ -202,7 +207,7 @@ documentosRouter.post("/:id/emitir", async (req, res, next) => {
 });
 
 /** Descarta o rascunho. O que já circulou se cancela, não se apaga. */
-documentosRouter.delete("/:id", async (req, res, next) => {
+documentosRouter.delete("/:id", exigirPermissao("documents:issue"), async (req, res, next) => {
   try {
     await container.emitirDocumento.descartar({
       orgaoId: req.sessao!.orgaoId,
@@ -215,7 +220,7 @@ documentosRouter.delete("/:id", async (req, res, next) => {
   }
 });
 
-documentosRouter.post("/:id/cancelar", async (req, res, next) => {
+documentosRouter.post("/:id/cancelar", exigirPermissao("documents:issue"), async (req, res, next) => {
   try {
     const { motivo } = cancelamentoSchema.parse(req.body);
     await container.emitirDocumento.cancelar({

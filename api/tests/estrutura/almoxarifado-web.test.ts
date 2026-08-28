@@ -97,7 +97,7 @@ describe("rotas do almoxarifado", () => {
     return resto.slice(0, handler ? handler.index : 200);
   };
 
-  it("entrada e liberação exigem papel de quem administra o estoque", () => {
+  it("entrada e liberação exigem a permissão de quem administra o estoque", () => {
     // Pedir é da unidade; dar entrada e liberar é de quem responde pelo
     // estoque. Confundir os dois deixaria a escola liberando para si mesma.
     //
@@ -115,13 +115,13 @@ describe("rotas do almoxarifado", () => {
       assert.ok(declaracao !== null, `${metodo.toUpperCase()} ${caminho} não existe`);
       assert.match(
         declaracao!,
-        /exigirPapel/,
-        `${metodo.toUpperCase()} ${caminho} não exige papel`,
+        /administraEstoque/,
+        `${metodo.toUpperCase()} ${caminho} não exige stock:manage`,
       );
     }
   });
 
-  it("pedir e receber NÃO exigem papel de almoxarife", () => {
+  it("pedir e receber NÃO exigem a permissão de almoxarife", () => {
     // O contrário também é regra: a escola precisa conseguir pedir e conferir
     // o que chegou sem ter papel de quem administra o estoque.
     for (const [metodo, caminho] of [
@@ -134,8 +134,8 @@ describe("rotas do almoxarifado", () => {
       const declaracao = entre(metodo, caminho);
       assert.ok(declaracao !== null, `${metodo.toUpperCase()} ${caminho} não existe`);
       assert.ok(
-        !/exigirPapel/.test(declaracao!),
-        `${metodo.toUpperCase()} ${caminho} exige papel e travaria a unidade`,
+        !/administraEstoque/.test(declaracao!),
+        `${metodo.toUpperCase()} ${caminho} exige stock:manage e travaria a unidade`,
       );
     }
   });

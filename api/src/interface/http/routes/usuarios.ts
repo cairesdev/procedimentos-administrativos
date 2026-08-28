@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { criarUsuarioSchema, editarUsuarioSchema } from "../schemas/cadastros";
 
 export const usuariosRouter = Router();
 
-usuariosRouter.post("/", exigirPapel("ADMIN"), async (req, res, next) => {
+usuariosRouter.use(exigirPermissao("users:read"));
+
+usuariosRouter.post("/", exigirPermissao("users:write"), async (req, res, next) => {
   try {
     const dados = criarUsuarioSchema.parse(req.body);
     const resultado = await container.criarUsuario.executar({
@@ -18,7 +20,7 @@ usuariosRouter.post("/", exigirPapel("ADMIN"), async (req, res, next) => {
   }
 });
 
-usuariosRouter.get("/", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+usuariosRouter.get("/", exigirPermissao("users:read"), async (req, res, next) => {
   try {
     res.json(await container.usuarios.listar(req.sessao!.orgaoId));
   } catch (error) {
@@ -26,7 +28,7 @@ usuariosRouter.get("/", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) =
   }
 });
 
-usuariosRouter.patch("/:id", exigirPapel("ADMIN"), async (req, res, next) => {
+usuariosRouter.patch("/:id", exigirPermissao("users:write"), async (req, res, next) => {
   try {
     const dados = editarUsuarioSchema.parse(req.body);
     await container.editarUsuario.executar(req.sessao!.orgaoId, req.params.id!, dados);
@@ -36,7 +38,7 @@ usuariosRouter.patch("/:id", exigirPapel("ADMIN"), async (req, res, next) => {
   }
 });
 
-usuariosRouter.delete("/:id", exigirPapel("ADMIN"), async (req, res, next) => {
+usuariosRouter.delete("/:id", exigirPermissao("users:write"), async (req, res, next) => {
   try {
     await container.editarUsuario.remover(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Usuário excluído" });

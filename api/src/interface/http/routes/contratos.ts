@@ -1,11 +1,15 @@
 import { Router } from "express";
 import { container } from "../../../container";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { criarContratoSchema, editarContratoSchema } from "../schemas/processos";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 export const contratosRouter = Router();
 
-contratosRouter.post("/", async (req, res, next) => {
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+contratosRouter.use(exigirPermissao("contracts:read"));
+
+contratosRouter.post("/", exigirPermissao("contracts:write"), async (req, res, next) => {
   try {
     const dados = criarContratoSchema.parse(req.body);
     const resultado = await container.criarContrato.executar({
@@ -74,7 +78,7 @@ contratosRouter.get("/:id/itens", async (req, res, next) => {
   }
 });
 
-contratosRouter.patch("/:id", async (req, res, next) => {
+contratosRouter.patch("/:id", exigirPermissao("contracts:write"), async (req, res, next) => {
   try {
     const dados = editarContratoSchema.parse(req.body);
     await container.editarContrato.executar(req.sessao!.orgaoId, req.params.id!, dados);
@@ -84,7 +88,7 @@ contratosRouter.patch("/:id", async (req, res, next) => {
   }
 });
 
-contratosRouter.delete("/:id", async (req, res, next) => {
+contratosRouter.delete("/:id", exigirPermissao("contracts:write"), async (req, res, next) => {
   try {
     await container.editarContrato.remover(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Contrato excluído e processo cancelado" });

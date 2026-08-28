@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { MOTIVOS_DE_PERDA } from "../../../application/almoxarifado/ReceberEstoque";
 import {
   FORMAS_DE_CONSUMO, MOTIVOS_DE_AJUSTE,
@@ -12,7 +12,9 @@ import { paginacaoSchema } from "../schemas/paginacao";
  * Quem administra o estoque: define almoxarifados, tipos e entradas.
  * A unidade que só pede não passa por aqui.
  */
-const ADMINISTRA_ESTOQUE = ["ADMIN", "GESTOR", "NUTRICIONISTA"];
+// Administrar o estoque é dar entrada, liberar e ajustar. A unidade que
+// recebe o material não faz nada disso — ela pede e confirma.
+const administraEstoque = exigirPermissao("stock:manage");
 
 /** Quantidade em três casas, como a coluna `NUMERIC(14,3)`. */
 const quantidade = z.number().positive().max(99_999_999).multipleOf(0.001);
@@ -136,6 +138,10 @@ const ajusteSchema = z.object({
 
 export const almoxarifadoRouter = Router();
 
+// Piso do módulo. A escola entra por aqui com `stock:read`; o que ela pode
+// além disso está declarado rota a rota.
+almoxarifadoRouter.use(exigirPermissao("stock:read"));
+
 // ---------------------------------------------------------------------------
 // Cadastros
 
@@ -147,7 +153,7 @@ almoxarifadoRouter.get("/almoxarifados", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.post("/almoxarifados", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.post("/almoxarifados", administraEstoque, async (req, res, next) => {
   try {
     const { nome } = nomeSchema.parse(req.body);
     const id = await container.gerenciarAlmoxarifado.criarAlmoxarifado(req.sessao!.orgaoId, nome);
@@ -169,7 +175,7 @@ almoxarifadoRouter.get("/almoxarifados/:id/lotes", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.put("/almoxarifados/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.put("/almoxarifados/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.atualizarAlmoxarifado(
       req.sessao!.orgaoId, req.params.id!, edicaoSchema.parse(req.body),
@@ -180,7 +186,7 @@ almoxarifadoRouter.put("/almoxarifados/:id", exigirPapel(...ADMINISTRA_ESTOQUE),
   }
 });
 
-almoxarifadoRouter.delete("/almoxarifados/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.delete("/almoxarifados/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.removerAlmoxarifado(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Almoxarifado excluído" });
@@ -197,7 +203,7 @@ almoxarifadoRouter.get("/tipos", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.post("/tipos", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.post("/tipos", administraEstoque, async (req, res, next) => {
   try {
     const { nome } = nomeSchema.parse(req.body);
     res.status(201).json({
@@ -208,7 +214,7 @@ almoxarifadoRouter.post("/tipos", exigirPapel(...ADMINISTRA_ESTOQUE), async (req
   }
 });
 
-almoxarifadoRouter.put("/tipos/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.put("/tipos/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.atualizarTipo(
       req.sessao!.orgaoId, req.params.id!, edicaoSchema.parse(req.body),
@@ -219,7 +225,7 @@ almoxarifadoRouter.put("/tipos/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (
   }
 });
 
-almoxarifadoRouter.delete("/tipos/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.delete("/tipos/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.removerTipo(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Tipo excluído" });
@@ -246,7 +252,7 @@ almoxarifadoRouter.get("/configuracao", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.put("/configuracao", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+almoxarifadoRouter.put("/configuracao", exigirPermissao("stock:manage"), async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.salvarConfiguracao(
       req.sessao!.orgaoId, configuracaoSchema.parse(req.body),
@@ -272,7 +278,7 @@ almoxarifadoRouter.get("/locais", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.put("/locais/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.put("/locais/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.salvarDadosDoLocal(
       req.sessao!.orgaoId, req.params.id!, dadosDoLocalSchema.parse(req.body),
@@ -312,7 +318,7 @@ almoxarifadoRouter.get("/remessas", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.post("/remessas", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.post("/remessas", administraEstoque, async (req, res, next) => {
   try {
     const dados = entradaSchema.parse(req.body);
     res.status(201).json(await container.gerenciarAlmoxarifado.registrarEntrada({
@@ -335,7 +341,7 @@ almoxarifadoRouter.get("/remessas/:id", async (req, res, next) => {
   }
 });
 
-almoxarifadoRouter.delete("/lotes/:id", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.delete("/lotes/:id", administraEstoque, async (req, res, next) => {
   try {
     await container.gerenciarAlmoxarifado.removerLote({
       orgaoId: req.sessao!.orgaoId,
@@ -445,7 +451,7 @@ almoxarifadoRouter.post("/solicitacoes/:id/cancelar", async (req, res, next) => 
 // ---------------------------------------------------------------------------
 // Liberação (almoxarifado) e recebimento (unidade)
 
-almoxarifadoRouter.get("/solicitacoes/:id/liberacao", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.get("/solicitacoes/:id/liberacao", administraEstoque, async (req, res, next) => {
   try {
     res.json(await container.liberarEstoque.preparar({
       orgaoId: req.sessao!.orgaoId,
@@ -456,7 +462,7 @@ almoxarifadoRouter.get("/solicitacoes/:id/liberacao", exigirPapel(...ADMINISTRA_
   }
 });
 
-almoxarifadoRouter.post("/solicitacoes/:id/liberar", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.post("/solicitacoes/:id/liberar", administraEstoque, async (req, res, next) => {
   try {
     res.json(await container.liberarEstoque.liberar({
       orgaoId: req.sessao!.orgaoId,
@@ -469,7 +475,7 @@ almoxarifadoRouter.post("/solicitacoes/:id/liberar", exigirPapel(...ADMINISTRA_E
   }
 });
 
-almoxarifadoRouter.post("/solicitacoes/:id/recusar", exigirPapel(...ADMINISTRA_ESTOQUE), async (req, res, next) => {
+almoxarifadoRouter.post("/solicitacoes/:id/recusar", administraEstoque, async (req, res, next) => {
   try {
     await container.liberarEstoque.recusar({
       orgaoId: req.sessao!.orgaoId,
@@ -571,7 +577,7 @@ almoxarifadoRouter.post("/devolucoes", async (req, res, next) => {
 // Quem aceita a volta do material é o almoxarifado, não a unidade.
 almoxarifadoRouter.post(
   "/devolucoes/:id/responder",
-  exigirPapel(...ADMINISTRA_ESTOQUE),
+  administraEstoque,
   async (req, res, next) => {
     try {
       const dados = respostaDevolucaoSchema.parse(req.body);
@@ -601,7 +607,7 @@ almoxarifadoRouter.get("/transferencias", async (req, res, next) => {
 
 almoxarifadoRouter.post(
   "/transferencias",
-  exigirPapel(...ADMINISTRA_ESTOQUE),
+  administraEstoque,
   async (req, res, next) => {
     try {
       const dados = transferenciaSchema.parse(req.body);

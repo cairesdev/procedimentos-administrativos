@@ -310,6 +310,29 @@ CASOS: list[tuple[str, str, bool]] = [
      "UPDATE documento_emitido SET situacao = 'PUBLICADO' "
      "WHERE id = 'd0c00000-0000-0000-0000-000000000001'",
      False),
+
+    # ---- 0026: papeis e excecoes de permissao -------------------------------
+    ("papel UNIDADE e aceito no cadastro",
+     "INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username) "
+     "VALUES ('e5c00000-0000-0000-0000-000000000001',"
+     "'11111111-1111-1111-1111-111111111111','Diretora','dir@e.br','x','UNIDADE','diretora')",
+     True),
+    ("papel inventado e recusado",
+     "INSERT INTO usuario (orgao_id, nome, email, senha_hash, papel_base, username) "
+     "VALUES ('11111111-1111-1111-1111-111111111111','X','x@e.br','x','ALMOXARIFE','xis')",
+     False),
+    ("permissao fora do formato e recusada",
+     "INSERT INTO usuario_permissao (usuario_id, permissao) VALUES "
+     "('88888888-8888-8888-8888-888888888888','estoque')",
+     False),
+    ("excecao de permissao bem formada e aceita",
+     "INSERT INTO usuario_permissao (usuario_id, permissao, concedida) VALUES "
+     "('88888888-8888-8888-8888-888888888888','fleet:read', TRUE)",
+     True),
+    ("a mesma permissao nao entra duas vezes",
+     "INSERT INTO usuario_permissao (usuario_id, permissao, concedida) VALUES "
+     "('88888888-8888-8888-8888-888888888888','fleet:read', FALSE)",
+     False),
 ]
 
 

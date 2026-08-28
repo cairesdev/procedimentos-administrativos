@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { MOTIVOS_DE_BAIXA } from "../../../application/ports/PatrimonioRepository";
 import { paginacaoSchema } from "../schemas/paginacao";
 
@@ -77,9 +77,12 @@ const conferenciaSchema = z.object({
     .min(1),
 });
 
-const podeEscrever = exigirPapel("ADMIN", "GESTOR", "PATRIMONIO");
+const podeEscrever = exigirPermissao("assets:write");
 
 export const patrimonioRouter = Router();
+
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+patrimonioRouter.use(exigirPermissao("assets:read"));
 
 patrimonioRouter.get("/locais", async (req, res, next) => {
   try {
@@ -89,7 +92,7 @@ patrimonioRouter.get("/locais", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/locais", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/locais", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = localSchema.parse(req.body);
     res.status(201).json(
@@ -100,7 +103,7 @@ patrimonioRouter.post("/locais", podeEscrever, async (req, res, next) => {
   }
 });
 
-patrimonioRouter.patch("/locais/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.patch("/locais/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoLocalSchema.parse(req.body);
     await container.gerenciarPatrimonio.atualizarLocal(req.sessao!.orgaoId, req.params.id!, dados);
@@ -110,7 +113,7 @@ patrimonioRouter.patch("/locais/:id", podeEscrever, async (req, res, next) => {
   }
 });
 
-patrimonioRouter.delete("/locais/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.delete("/locais/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.removerLocal(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Local excluído" });
@@ -127,7 +130,7 @@ patrimonioRouter.get("/categorias", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/categorias", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/categorias", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = categoriaSchema.parse(req.body);
     res.status(201).json(
@@ -138,7 +141,7 @@ patrimonioRouter.post("/categorias", podeEscrever, async (req, res, next) => {
   }
 });
 
-patrimonioRouter.patch("/categorias/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.patch("/categorias/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoCategoriaSchema.parse(req.body);
     await container.gerenciarPatrimonio.atualizarCategoria(
@@ -150,7 +153,7 @@ patrimonioRouter.patch("/categorias/:id", podeEscrever, async (req, res, next) =
   }
 });
 
-patrimonioRouter.delete("/categorias/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.delete("/categorias/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.removerCategoria(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Categoria excluída" });
@@ -184,7 +187,7 @@ patrimonioRouter.get("/remessas", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/remessas", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/remessas", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = remessaSchema.parse(req.body);
     res.status(201).json(
@@ -199,7 +202,7 @@ patrimonioRouter.post("/remessas", podeEscrever, async (req, res, next) => {
   }
 });
 
-patrimonioRouter.patch("/remessas/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.patch("/remessas/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoRemessaSchema.parse(req.body);
     await container.gerenciarPatrimonio.atualizarRemessa(req.sessao!.orgaoId, req.params.id!, dados);
@@ -209,7 +212,7 @@ patrimonioRouter.patch("/remessas/:id", podeEscrever, async (req, res, next) => 
   }
 });
 
-patrimonioRouter.delete("/remessas/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.delete("/remessas/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.removerRemessa(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -220,7 +223,7 @@ patrimonioRouter.delete("/remessas/:id", podeEscrever, async (req, res, next) =>
   }
 });
 
-patrimonioRouter.patch("/bens/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.patch("/bens/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoBemSchema.parse(req.body);
     await container.gerenciarPatrimonio.atualizarBem(req.sessao!.orgaoId, req.params.id!, dados);
@@ -230,7 +233,7 @@ patrimonioRouter.patch("/bens/:id", podeEscrever, async (req, res, next) => {
   }
 });
 
-patrimonioRouter.delete("/bens/:id", podeEscrever, async (req, res, next) => {
+patrimonioRouter.delete("/bens/:id", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.removerBem(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -260,7 +263,7 @@ patrimonioRouter.get("/transferencias", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/bens/:id/transferir", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/bens/:id/transferir", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const { localDestinoId } = transferenciaSchema.parse(req.body);
     res.status(201).json(
@@ -273,7 +276,7 @@ patrimonioRouter.post("/bens/:id/transferir", podeEscrever, async (req, res, nex
   }
 });
 
-patrimonioRouter.post("/transferencias/:id/aceitar", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/transferencias/:id/aceitar", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.aceitarTransferencia(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -284,7 +287,7 @@ patrimonioRouter.post("/transferencias/:id/aceitar", podeEscrever, async (req, r
   }
 });
 
-patrimonioRouter.post("/transferencias/:id/recusar", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/transferencias/:id/recusar", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.recusarTransferencia(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -303,7 +306,7 @@ patrimonioRouter.get("/baixas", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/bens/:id/baixa", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/bens/:id/baixa", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = baixaSchema.parse(req.body);
     await container.gerenciarPatrimonio.darBaixa(
@@ -323,7 +326,7 @@ patrimonioRouter.get("/inventarios", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/inventarios", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/inventarios", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const { localId, dataInicio } = inventarioSchema.parse(req.body);
     res.status(201).json(
@@ -351,7 +354,7 @@ patrimonioRouter.get("/inventarios/:id", async (req, res, next) => {
   }
 });
 
-patrimonioRouter.post("/inventarios/:id/conferencias", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/inventarios/:id/conferencias", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     const { itens } = conferenciaSchema.parse(req.body);
     await container.gerenciarPatrimonio.conferir(req.sessao!.orgaoId, req.params.id!, itens);
@@ -361,7 +364,7 @@ patrimonioRouter.post("/inventarios/:id/conferencias", podeEscrever, async (req,
   }
 });
 
-patrimonioRouter.post("/inventarios/:id/concluir", podeEscrever, async (req, res, next) => {
+patrimonioRouter.post("/inventarios/:id/concluir", exigirPermissao("assets:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarPatrimonio.concluirInventario(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,

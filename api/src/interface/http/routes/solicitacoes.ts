@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { container } from "../../../container";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import {
   cancelarSolicitacaoSchema, enviarSolicitacaoSchema, rascunhoSolicitacaoSchema,
 } from "../schemas/processos";
@@ -7,7 +8,10 @@ import { paginacaoSchema } from "../schemas/paginacao";
 
 export const solicitacoesRouter = Router();
 
-solicitacoesRouter.post("/", async (req, res, next) => {
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+solicitacoesRouter.use(exigirPermissao("requests:read"));
+
+solicitacoesRouter.post("/", exigirPermissao("requests:create"), async (req, res, next) => {
   try {
     const dados = rascunhoSolicitacaoSchema.parse(req.body);
     const resultado = await container.montarRascunho.executar({
@@ -21,7 +25,7 @@ solicitacoesRouter.post("/", async (req, res, next) => {
   }
 });
 
-solicitacoesRouter.put("/:id/itens", async (req, res, next) => {
+solicitacoesRouter.put("/:id/itens", exigirPermissao("requests:create"), async (req, res, next) => {
   try {
     const dados = rascunhoSolicitacaoSchema.parse(req.body);
     const resultado = await container.montarRascunho.executar({
@@ -36,7 +40,7 @@ solicitacoesRouter.put("/:id/itens", async (req, res, next) => {
   }
 });
 
-solicitacoesRouter.post("/:id/enviar", async (req, res, next) => {
+solicitacoesRouter.post("/:id/enviar", exigirPermissao("requests:create"), async (req, res, next) => {
   try {
     const dados = enviarSolicitacaoSchema.parse(req.body ?? {});
     const resultado = await container.enviarSolicitacao.executar({
@@ -51,7 +55,7 @@ solicitacoesRouter.post("/:id/enviar", async (req, res, next) => {
   }
 });
 
-solicitacoesRouter.post("/:id/cancelar", async (req, res, next) => {
+solicitacoesRouter.post("/:id/cancelar", exigirPermissao("requests:create"), async (req, res, next) => {
   try {
     const { motivo } = cancelarSolicitacaoSchema.parse(req.body ?? {});
     await container.cancelarSolicitacao.executar({

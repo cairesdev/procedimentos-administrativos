@@ -203,7 +203,9 @@ export const workspaces: Workspace[] = [
           {
             href: "/almoxarifado/transferencias",
             label: "Transferências",
-            permission: "stock:read",
+            // Material passando de um almoxarifado para outro não é assunto da
+            // escola: ela recebe de um só e não move nada entre eles.
+            permission: "stock:manage",
           },
           { href: "/almoxarifado/ajustes", label: "Ajustes", permission: "stock:read" },
         ],

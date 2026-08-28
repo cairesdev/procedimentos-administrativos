@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { container } from "../../../container";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { criarLicitacaoSchema, editarLicitacaoSchema } from "../schemas/processos";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 export const licitacoesRouter = Router();
 
-licitacoesRouter.post("/", async (req, res, next) => {
+// Licitação e ata são a mesma atribuição: quem registra uma registra a outra.
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+licitacoesRouter.use(exigirPermissao("bids:read"));
+
+licitacoesRouter.post("/", exigirPermissao("bids:write"), async (req, res, next) => {
   try {
     const dados = criarLicitacaoSchema.parse(req.body);
     const resultado = await container.criarLicitacao.executar({
@@ -27,7 +32,7 @@ licitacoesRouter.get("/", async (req, res, next) => {
   }
 });
 
-licitacoesRouter.patch("/:id", async (req, res, next) => {
+licitacoesRouter.patch("/:id", exigirPermissao("bids:write"), async (req, res, next) => {
   try {
     const dados = editarLicitacaoSchema.parse(req.body);
     await container.editarLicitacao.executar(req.sessao!.orgaoId, req.params.id!, dados);
@@ -37,7 +42,7 @@ licitacoesRouter.patch("/:id", async (req, res, next) => {
   }
 });
 
-licitacoesRouter.delete("/:id", async (req, res, next) => {
+licitacoesRouter.delete("/:id", exigirPermissao("bids:write"), async (req, res, next) => {
   try {
     await container.editarLicitacao.remover(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Licitação excluída" });

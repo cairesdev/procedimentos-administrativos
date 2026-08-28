@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const veiculoSchema = z.object({
@@ -93,9 +93,12 @@ const texto = (valor: unknown): string | undefined =>
   typeof valor === "string" && valor.length > 0 ? valor : undefined;
 
 // Quem opera a frota: gestor de frota, gestor da prefeitura ou admin.
-const podeEscrever = exigirPapel("ADMIN", "GESTOR", "FROTAS");
+const podeEscrever = exigirPermissao("fleet:write");
 
 export const frotasRouter = Router();
+
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+frotasRouter.use(exigirPermissao("fleet:read"));
 
 // ---- Veículos --------------------------------------------------------------
 
@@ -107,7 +110,7 @@ frotasRouter.get("/veiculos", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/veiculos", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/veiculos", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = veiculoSchema.parse(req.body);
     res.status(201).json(
@@ -118,7 +121,7 @@ frotasRouter.post("/veiculos", podeEscrever, async (req, res, next) => {
   }
 });
 
-frotasRouter.patch("/veiculos/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.patch("/veiculos/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoVeiculoSchema.parse(req.body);
     await container.gerenciarFrota.atualizarVeiculo(req.sessao!.orgaoId, req.params.id!, dados);
@@ -128,7 +131,7 @@ frotasRouter.patch("/veiculos/:id", podeEscrever, async (req, res, next) => {
   }
 });
 
-frotasRouter.delete("/veiculos/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.delete("/veiculos/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarFrota.removerVeiculo(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Veículo excluído" });
@@ -147,7 +150,7 @@ frotasRouter.get("/motoristas", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/motoristas", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/motoristas", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = motoristaSchema.parse(req.body);
     res.status(201).json(
@@ -158,7 +161,7 @@ frotasRouter.post("/motoristas", podeEscrever, async (req, res, next) => {
   }
 });
 
-frotasRouter.patch("/motoristas/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.patch("/motoristas/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = edicaoMotoristaSchema.parse(req.body);
     await container.gerenciarFrota.atualizarMotorista(req.sessao!.orgaoId, req.params.id!, dados);
@@ -168,7 +171,7 @@ frotasRouter.patch("/motoristas/:id", podeEscrever, async (req, res, next) => {
   }
 });
 
-frotasRouter.delete("/motoristas/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.delete("/motoristas/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarFrota.removerMotorista(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Motorista excluído" });
@@ -212,7 +215,7 @@ frotasRouter.get("/viagens/:id", async (req, res, next) => {
 });
 
 // Solicitar é aberto a qualquer servidor autenticado: a unidade pede, o gestor decide.
-frotasRouter.post("/viagens", async (req, res, next) => {
+frotasRouter.post("/viagens", exigirPermissao("fleet:write"), async (req, res, next) => {
   try {
     const dados = viagemSchema.parse(req.body);
     res.status(201).json(
@@ -223,7 +226,7 @@ frotasRouter.post("/viagens", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/viagens/:id/aprovar", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/aprovar", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarFrota.aprovarViagem(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -234,7 +237,7 @@ frotasRouter.post("/viagens/:id/aprovar", podeEscrever, async (req, res, next) =
   }
 });
 
-frotasRouter.post("/viagens/:id/recusar", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/recusar", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const { motivo } = recusaSchema.parse(req.body);
     await container.gerenciarFrota.recusarViagem(
@@ -246,7 +249,7 @@ frotasRouter.post("/viagens/:id/recusar", podeEscrever, async (req, res, next) =
   }
 });
 
-frotasRouter.post("/viagens/:id/remarcar", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/remarcar", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const { dataHora } = remarcacaoSchema.parse(req.body);
     res.json(
@@ -259,7 +262,7 @@ frotasRouter.post("/viagens/:id/remarcar", podeEscrever, async (req, res, next) 
   }
 });
 
-frotasRouter.post("/viagens/:id/cancelar", async (req, res, next) => {
+frotasRouter.post("/viagens/:id/cancelar", exigirPermissao("fleet:write"), async (req, res, next) => {
   try {
     await container.gerenciarFrota.cancelarViagem(
       req.sessao!.orgaoId, req.params.id!, req.sessao!.usuarioId,
@@ -270,7 +273,7 @@ frotasRouter.post("/viagens/:id/cancelar", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/viagens/:id/retirada", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/retirada", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = retiradaSchema.parse(req.body);
     await container.gerenciarFrota.registrarRetirada(
@@ -282,7 +285,7 @@ frotasRouter.post("/viagens/:id/retirada", podeEscrever, async (req, res, next) 
   }
 });
 
-frotasRouter.post("/viagens/:id/finalizar", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/finalizar", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = finalizacaoSchema.parse(req.body);
     await container.gerenciarFrota.finalizarViagem(
@@ -304,7 +307,7 @@ frotasRouter.get("/viagens/:id/abastecimentos", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/viagens/:id/abastecimentos", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/viagens/:id/abastecimentos", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = abastecimentoSchema.parse(req.body);
     res.status(201).json(
@@ -317,7 +320,7 @@ frotasRouter.post("/viagens/:id/abastecimentos", podeEscrever, async (req, res, 
   }
 });
 
-frotasRouter.delete("/abastecimentos/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.delete("/abastecimentos/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarFrota.removerAbastecimento(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Abastecimento excluído" });
@@ -366,7 +369,7 @@ frotasRouter.get("/manutencoes", async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/manutencoes", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/manutencoes", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = manutencaoSchema.parse(req.body);
     res.status(201).json(
@@ -379,7 +382,7 @@ frotasRouter.post("/manutencoes", podeEscrever, async (req, res, next) => {
   }
 });
 
-frotasRouter.post("/manutencoes/:id/encerrar", podeEscrever, async (req, res, next) => {
+frotasRouter.post("/manutencoes/:id/encerrar", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     const dados = encerramentoSchema.parse(req.body);
     await container.gerenciarFrota.encerrarManutencao(
@@ -391,7 +394,7 @@ frotasRouter.post("/manutencoes/:id/encerrar", podeEscrever, async (req, res, ne
   }
 });
 
-frotasRouter.delete("/manutencoes/:id", podeEscrever, async (req, res, next) => {
+frotasRouter.delete("/manutencoes/:id", exigirPermissao("fleet:write"), podeEscrever, async (req, res, next) => {
   try {
     await container.gerenciarFrota.removerManutencao(req.sessao!.orgaoId, req.params.id!);
     res.json({ message: "Manutenção excluída" });

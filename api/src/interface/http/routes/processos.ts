@@ -4,7 +4,7 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { LIMIAR_ALERTA_DIAS } from "../../../domain/shared/Prazos";
 import { enviarArquivo } from "../enviarArquivo";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { despacharSchema, ordemFornecimentoSchema, parecerSchema } from "../schemas/tramitacao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
@@ -16,6 +16,10 @@ const anexarSchema = z.object({
 });
 
 export const processosRouter = Router();
+
+// Piso do módulo: ver o processo. Despachar, opinar e ordenar são atos
+// distintos, e cada um declara o seu logo abaixo.
+processosRouter.use(exigirPermissao("processes:read"));
 
 processosRouter.get("/", async (req, res, next) => {
   try {
@@ -46,7 +50,7 @@ processosRouter.get("/:id", async (req, res, next) => {
   }
 });
 
-processosRouter.post("/:id/despachos", async (req, res, next) => {
+processosRouter.post("/:id/despachos", exigirPermissao("processes:dispatch"), async (req, res, next) => {
   try {
     const dados = despacharSchema.parse(req.body);
     const resultado = await container.despacharProcesso.executar({
@@ -63,7 +67,7 @@ processosRouter.post("/:id/despachos", async (req, res, next) => {
 
 processosRouter.post(
   "/:id/parecer",
-  exigirPapel("CONTROLADORIA", "ADMIN"),
+  exigirPermissao("processes:opinion"),
   async (req, res, next) => {
     try {
       const dados = parecerSchema.parse(req.body);
@@ -80,7 +84,7 @@ processosRouter.post(
   },
 );
 
-processosRouter.post("/:id/anexos", upload.single("arquivo"), async (req, res, next) => {
+processosRouter.post("/:id/anexos", exigirPermissao("processes:dispatch"), upload.single("arquivo"), async (req, res, next) => {
   try {
     if (!req.file) {
       res.status(422).json({ message: "Arquivo ausente — envie no campo 'arquivo'" });
@@ -123,7 +127,7 @@ processosRouter.get("/:id/anexos/:anexoId/download", async (req, res, next) => {
   }
 });
 
-processosRouter.delete("/:id/anexos/:anexoId", async (req, res, next) => {
+processosRouter.delete("/:id/anexos/:anexoId", exigirPermissao("processes:dispatch"), async (req, res, next) => {
   try {
     await container.anexosDeProcesso.remover(
       req.sessao!.orgaoId, req.params.anexoId!, req.sessao!.usuarioId,
@@ -138,7 +142,7 @@ processosRouter.delete("/:id/anexos/:anexoId", async (req, res, next) => {
 // também não precisa da lista para emitir o documento dela.
 processosRouter.get(
   "/:id/ordens",
-  exigirPapel("COMPRAS", "ADMIN"),
+  exigirPermissao("processes:order"),
   async (req, res, next) => {
     try {
       const ordens = await container.tramitacao.listarOrdens(
@@ -154,7 +158,7 @@ processosRouter.get(
 
 processosRouter.post(
   "/:id/ordens",
-  exigirPapel("COMPRAS", "ADMIN"),
+  exigirPermissao("processes:order"),
   async (req, res, next) => {
     try {
       const dados = ordemFornecimentoSchema.parse(req.body);

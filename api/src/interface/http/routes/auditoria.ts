@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const filtroSchema = z.object({
@@ -13,11 +13,14 @@ const filtroSchema = z.object({
 
 export const auditoriaRouter = Router();
 
+// A trilha é a conduta dos próprios servidores: só o administrador.
+auditoriaRouter.use(exigirPermissao("audit:read"));
+
 // Trilha de auditoria: só o ADMIN da prefeitura. A trilha mostra o que cada
 // servidor fez, em todos os módulos — é registro de conduta, não relatório
 // operacional, e ver o trabalho alheio não é atribuição de gestor nem de
 // controladoria.
-auditoriaRouter.get("/", exigirPapel("ADMIN"), async (req, res, next) => {
+auditoriaRouter.get("/", exigirPermissao("audit:read"), async (req, res, next) => {
   try {
     const filtro = filtroSchema.parse(req.query);
     res.json(

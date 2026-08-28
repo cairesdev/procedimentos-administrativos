@@ -15,7 +15,7 @@ const formatar = (valor: number) =>
   new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(valor);
 
 export default async function StockTransfersPage({ searchParams }: TransfersPageProps) {
-  const viewer = await requirePermission("stock:read", "ALMOXARIFADO");
+  const viewer = await requirePermission("stock:manage", "ALMOXARIFADO");
   const { almoxarifado, pagina } = await searchParams;
 
   const [transferencias, almoxarifados] = await Promise.all([

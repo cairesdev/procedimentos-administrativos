@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { container } from "../../../container";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { atualizarFornecedorSchema, criarFornecedorSchema } from "../schemas/cadastros";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 export const fornecedoresRouter = Router();
 
-fornecedoresRouter.post("/", async (req, res, next) => {
+// Fornecedor é cadastro global, mas só quem trabalha com contratação o altera.
+// Piso do módulo: sem isto, a regra real de cada rota era "tem sessão".
+fornecedoresRouter.use(exigirPermissao("suppliers:read"));
+
+fornecedoresRouter.post("/", exigirPermissao("suppliers:write"), async (req, res, next) => {
   try {
     const dados = criarFornecedorSchema.parse(req.body);
     const resultado = await container.manterFornecedor.criar(dados);
@@ -24,7 +29,7 @@ fornecedoresRouter.get("/", async (req, res, next) => {
   }
 });
 
-fornecedoresRouter.patch("/:id", async (req, res, next) => {
+fornecedoresRouter.patch("/:id", exigirPermissao("suppliers:write"), async (req, res, next) => {
   try {
     const dados = atualizarFornecedorSchema.parse(req.body);
     await container.manterFornecedor.atualizar(

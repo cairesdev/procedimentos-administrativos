@@ -27,6 +27,8 @@ export type Role =
   | "COMPRAS"
   | "CONTROLADORIA"
   | "NUTRICIONISTA"
+  // A escola, a creche, o posto: quem recebe material e responde por ele.
+  | "UNIDADE"
   | "PATRIMONIO"
   | "FROTAS";
 

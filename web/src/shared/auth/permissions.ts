@@ -30,8 +30,9 @@ export type Permission =
   | "fleet:read"
   | "fleet:write"
   | "trips:create"
-  // Emitir peça é ato de quem conduz o processo; editar o modelo é
-  // administração da prefeitura — por isso são duas permissões.
+  // Três atos diferentes: ver a peça de um registro que já se alcança,
+  // emitir uma nova, e mexer no modelo — este último é administração.
+  | "documents:read"
   | "documents:issue"
   | "documents:template"
   // Protocolo é sistema próprio: quem atende no balcão não precisa de
@@ -46,69 +47,166 @@ export type Permission =
   | "stock:receive"
   | "stock:manage";
 
-const READ_ONLY: Permission[] = [
-  "fleet:read",
-  "trips:create",
-  "units:read",
-  "sectors:read",
-  "suppliers:read",
-  "bids:read",
-  "contracts:read",
-  "requests:read",
-  "processes:read",
-];
-
-// Do nível mais amplo ao mais básico.
+/**
+ * Espelho da matriz da API (`domain/shared/Permissoes.ts`), que é a
+ * autoridade. Aqui serve só para esconder o que o usuário não pode fazer —
+ * a decisão de verdade acontece do outro lado, em `exigirPermissao`.
+ *
+ * Não existe mais herança comum entre papéis. Havia um `READ_ONLY` que
+ * quase todos herdavam, carregando frotas, licitações, contratos e
+ * processos: fazia sentido quando o produto era um sistema só, e com cinco
+ * módulos virou passe livre — era por ele que a nutricionista enxergava a
+ * frota. Um teste na API recusa qualquer divergência entre os dois lados.
+ */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
-    "assets:read", "assets:write",
-    "fleet:read", "fleet:write", "trips:create",
-    "units:read", "units:write",
-    "sectors:read", "sectors:write",
-    "users:read", "users:write",
-    "suppliers:read", "suppliers:write",
-    "bids:read", "bids:write",
-    "contracts:read", "contracts:write",
-    "workflows:read", "workflows:write",
-    "requests:read", "requests:create",
-    "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
+    "assets:read",
+    "assets:write",
     "audit:read",
-    "documents:issue", "documents:template",
-    "protocol:read", "protocol:serve", "protocol:manage",
-    "stock:read", "stock:request", "stock:receive", "stock:manage",
+    "bids:read",
+    "bids:write",
+    "contracts:read",
+    "contracts:write",
+    "documents:issue",
+    "documents:read",
+    "documents:template",
+    "fleet:read",
+    "fleet:write",
+    "processes:dispatch",
+    "processes:opinion",
+    "processes:order",
+    "processes:read",
+    "protocol:manage",
+    "protocol:read",
+    "protocol:serve",
+    "requests:create",
+    "requests:read",
+    "sectors:read",
+    "sectors:write",
+    "stock:manage",
+    "stock:read",
+    "stock:receive",
+    "stock:request",
+    "suppliers:read",
+    "suppliers:write",
+    "trips:create",
+    "units:read",
+    "units:write",
+    "users:read",
+    "users:write",
+    "workflows:read",
+    "workflows:write",
   ],
   GESTOR: [
-    ...READ_ONLY,
-    "assets:read", "assets:write",
-    "fleet:read", "fleet:write", "trips:create",
-    "users:read",
-    "suppliers:write",
+    "assets:read",
+    "assets:write",
+    "bids:read",
     "bids:write",
+    "contracts:read",
     "contracts:write",
-    "workflows:read",
-    "requests:create",
-    "processes:dispatch",
-    "documents:issue", "documents:template",
-    "protocol:read", "protocol:serve", "protocol:manage",
-    "stock:read", "stock:request", "stock:receive", "stock:manage",
-  ],
-  CONTROLADORIA: [...READ_ONLY, "workflows:read", "processes:dispatch", "processes:opinion", "assets:read", "documents:issue"],
-  COMPRAS: [...READ_ONLY, "suppliers:write", "contracts:write", "processes:dispatch", "processes:order", "documents:issue"],
-  // Só o protocolo. Sem READ_ONLY: aquele conjunto carrega contratos,
-  // licitações e solicitações, que não são atribuição de quem atende no balcão.
-  PROTOCOLO: ["protocol:read", "protocol:serve", "documents:issue"],
-  // A nutricionista responde pela alimentação escolar: dá entrada, libera para
-  // as escolas e emite os comprovantes.
-  NUTRICIONISTA: [
-    ...READ_ONLY, "requests:create",
-    "stock:read", "stock:request", "stock:receive", "stock:manage",
     "documents:issue",
+    "documents:read",
+    "documents:template",
+    "fleet:read",
+    "fleet:write",
+    "processes:dispatch",
+    "processes:order",
+    "processes:read",
+    "protocol:manage",
+    "protocol:read",
+    "protocol:serve",
+    "requests:create",
+    "requests:read",
+    "sectors:read",
+    "sectors:write",
+    "stock:manage",
+    "stock:read",
+    "stock:receive",
+    "stock:request",
+    "suppliers:read",
+    "suppliers:write",
+    "trips:create",
+    "units:read",
+    "units:write",
+    "users:read",
+    "users:write",
+    "workflows:read",
+    "workflows:write",
   ],
-  SERVIDOR: [...READ_ONLY, "requests:create", "stock:read", "stock:request", "stock:receive"],
-  // `documents:issue` nos dois: termo de transferência, termo de baixa e
-  // autorização de viagem são o papel que estes cargos produzem no dia a dia.
-  PATRIMONIO: ["assets:read", "assets:write", "units:read", "processes:read", "documents:issue"],
-  FROTAS: ["fleet:read", "fleet:write", "trips:create", "units:read", "documents:issue"],
+  COMPRAS: [
+    "bids:read",
+    "bids:write",
+    "contracts:read",
+    "contracts:write",
+    "documents:issue",
+    "documents:read",
+    "processes:dispatch",
+    "processes:order",
+    "processes:read",
+    "requests:read",
+    "suppliers:read",
+    "suppliers:write",
+  ],
+  CONTROLADORIA: [
+    "assets:read",
+    "audit:read",
+    "bids:read",
+    "contracts:read",
+    "documents:issue",
+    "documents:read",
+    "processes:dispatch",
+    "processes:opinion",
+    "processes:read",
+    "requests:read",
+    "suppliers:read",
+    "workflows:read",
+  ],
+  SERVIDOR: [
+    "bids:read",
+    "contracts:read",
+    "documents:read",
+    "processes:read",
+    "requests:create",
+    "requests:read",
+    "suppliers:read",
+  ],
+  PROTOCOLO: [
+    "documents:issue",
+    "documents:read",
+    "protocol:read",
+    "protocol:serve",
+  ],
+  NUTRICIONISTA: [
+    "documents:issue",
+    "documents:read",
+    "stock:manage",
+    "stock:read",
+    "stock:receive",
+    "stock:request",
+    "units:read",
+  ],
+  UNIDADE: [
+    "documents:issue",
+    "documents:read",
+    "stock:read",
+    "stock:receive",
+    "stock:request",
+  ],
+  PATRIMONIO: [
+    "assets:read",
+    "assets:write",
+    "documents:issue",
+    "documents:read",
+    "units:read",
+  ],
+  FROTAS: [
+    "documents:issue",
+    "documents:read",
+    "fleet:read",
+    "fleet:write",
+    "trips:create",
+    "units:read",
+  ],
 };
 
 export const hasPermission = (role: Role, permission: Permission): boolean =>

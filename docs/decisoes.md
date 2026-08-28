@@ -564,3 +564,60 @@ pedir. Com `contenteditable` o HTML é o próprio estado. Quem decide o que pode
 ficar continua sendo `limparCorpo`, o mesmo sanitizador do modelo — e a colagem
 entra como texto puro, para o usuário não ver uma formatação na tela e outra
 depois de salvar.
+
+## Níveis de acesso: papéis enxutos e a API decidindo
+
+**Problema:** com cinco módulos no ar, os papéis viraram uma confusão. A
+nutricionista enxergava a frota; quem recebe material na escola só podia ser
+SERVIDOR, papel que dá contratos, licitações e processos da prefeitura a uma
+diretora que precisa pedir arroz.
+
+**A causa** era uma lista `READ_ONLY` herdada por quase todo papel, carregando
+frotas, licitações, contratos, fornecedores e processos. Fazia sentido quando o
+produto era um sistema só; com cinco módulos, virou passe livre.
+
+**O que era pior que o sintoma.** As 41 permissões existiam apenas no web, para
+esconder botão. Na API havia `resolveTenant(modulo)` — que confere se a
+prefeitura contratou o módulo — e `exigirPapel` em 40 das ~219 rotas. Nas
+outras, a regra real era "tem sessão e a prefeitura tem o módulo": bastava
+chamar a rota direto para passar por cima da tela.
+
+### Decisões
+
+1. **A matriz vive na API** (`domain/shared/Permissoes.ts`) e é a autoridade.
+   O web a espelha para esconder o que o usuário não pode; um teste recusa
+   qualquer divergência entre os dois lados.
+2. **Nenhuma herança entre papéis.** Cada papel lista o que aquele cargo faz. A
+   repetição é deliberada: é o que permite ler uma linha e saber o alcance dela.
+3. **Toda rota declara a permissão que exige.** Cada router tem um piso
+   (`router.use(exigirPermissao(...))`) e as ações de escrita declaram a sua.
+   Um teste recusa arquivo de rotas sem piso, e outro recusa permissão que não
+   exista no catálogo — erro de digitação numa guarda a tornaria impossível de
+   satisfazer, recusando até o ADMIN.
+4. **Papel novo: `UNIDADE`.** A escola, a creche, o posto. Pede, confirma o que
+   chegou, registra consumo, devolve a sobra e imprime o comprovante. O papel
+   abre a porta; a lotação diz de qual armário se fala — `SolicitarEstoque` já
+   limita quem tem lotação de unidade ao local dela.
+5. **`usuario_permissao` passou a valer.** Existia desde a 0001 e nunca havia
+   sido lida. É a válvula para o caso que não cabe em papel nenhum, e **revoga**
+   além de conceder: tirar acesso de alguém é tão necessário quanto dar. Vem do
+   banco a cada requisição, não do token — revogar não pode esperar as oito
+   horas de validade do JWT.
+
+### Alcance de cada papel, depois da revisão
+
+| Papel | Alcança |
+| --- | --- |
+| ADMIN | tudo que a prefeitura contratou |
+| GESTOR | contratação, cadastros, todos os módulos operacionais — menos a auditoria |
+| COMPRAS | fornecedor, licitação, contrato, ordem de fornecimento |
+| CONTROLADORIA | leitura para parecer, e a auditoria |
+| SERVIDOR | solicitação e acompanhamento do trâmite |
+| PROTOCOLO | só o balcão |
+| NUTRICIONISTA | almoxarifado inteiro, e nada de frota, patrimônio ou licitação |
+| UNIDADE | o ciclo do material da própria unidade |
+| PATRIMONIO | bens, tombamento, inventário |
+| FROTAS | veículos, motoristas, viagens |
+
+A auditoria ficou com ADMIN e CONTROLADORIA — é a conduta dos próprios
+servidores, e quem é auditado não escolhe o que aparece.

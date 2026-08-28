@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
-import { exigirPapel } from "../middlewares/exigirPapel";
+import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const TIPOS_DE_REQUERENTE = ["CIDADAO", "FORNECEDOR", "OUTRO_ORGAO", "SERVIDOR"] as const;
@@ -29,6 +29,9 @@ const aberturaSchema = z.object({
 
 export const protocoloRouter = Router();
 
+// Piso do balcão: ver. Atender e administrar assuntos são outros dois atos.
+protocoloRouter.use(exigirPermissao("protocol:read"));
+
 // ---- Assuntos: cadastro da prefeitura ---------------------------------------
 
 protocoloRouter.get("/assuntos", async (req, res, next) => {
@@ -40,7 +43,7 @@ protocoloRouter.get("/assuntos", async (req, res, next) => {
   }
 });
 
-protocoloRouter.post("/assuntos", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+protocoloRouter.post("/assuntos", exigirPermissao("protocol:manage"), async (req, res, next) => {
   try {
     const dados = assuntoSchema.parse(req.body);
     res.status(201).json({
@@ -51,7 +54,7 @@ protocoloRouter.post("/assuntos", exigirPapel("ADMIN", "GESTOR"), async (req, re
   }
 });
 
-protocoloRouter.put("/assuntos/:id", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+protocoloRouter.put("/assuntos/:id", exigirPermissao("protocol:manage"), async (req, res, next) => {
   try {
     const dados = assuntoSchema.parse(req.body);
     await container.protocolo.atualizarAssunto(req.sessao!.orgaoId, req.params.id!, dados);
@@ -61,7 +64,7 @@ protocoloRouter.put("/assuntos/:id", exigirPapel("ADMIN", "GESTOR"), async (req,
   }
 });
 
-protocoloRouter.delete("/assuntos/:id", exigirPapel("ADMIN", "GESTOR"), async (req, res, next) => {
+protocoloRouter.delete("/assuntos/:id", exigirPermissao("protocol:manage"), async (req, res, next) => {
   try {
     const assunto = await container.protocolo.buscarAssunto(req.sessao!.orgaoId, req.params.id!);
     if (!assunto) {
@@ -105,7 +108,7 @@ protocoloRouter.get("/requerentes/:documento", async (req, res, next) => {
 
 protocoloRouter.post(
   "/atendimentos",
-  exigirPapel("PROTOCOLO", "ADMIN", "GESTOR"),
+  exigirPermissao("protocol:serve"),
   async (req, res, next) => {
     try {
       const dados = aberturaSchema.parse(req.body);
@@ -175,7 +178,7 @@ protocoloRouter.get("/processos/:processoId/exigencias", async (req, res, next) 
   }
 });
 
-protocoloRouter.post("/processos/:processoId/exigencias", async (req, res, next) => {
+protocoloRouter.post("/processos/:processoId/exigencias", exigirPermissao("protocol:serve"), async (req, res, next) => {
   try {
     const dados = exigenciaSchema.parse(req.body);
     res.status(201).json(
@@ -191,7 +194,7 @@ protocoloRouter.post("/processos/:processoId/exigencias", async (req, res, next)
   }
 });
 
-protocoloRouter.post("/exigencias/:id/cancelar", async (req, res, next) => {
+protocoloRouter.post("/exigencias/:id/cancelar", exigirPermissao("protocol:serve"), async (req, res, next) => {
   try {
     const { motivo } = cancelamentoSchema.parse(req.body);
     await container.exigirDoRequerente.cancelarExigencia({

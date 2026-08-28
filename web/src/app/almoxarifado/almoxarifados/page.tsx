@@ -6,7 +6,7 @@ import { Card, PageHeader } from "@/shared/ui/layout";
 import { ModalTrigger } from "@/shared/ui/Modal";
 
 export default async function WarehousesPage() {
-  const viewer = await requirePermission("stock:read", "ALMOXARIFADO");
+  const viewer = await requirePermission("stock:manage", "ALMOXARIFADO");
   const warehouses = await listWarehouses();
   const canWrite = viewer.can("stock:manage");
 

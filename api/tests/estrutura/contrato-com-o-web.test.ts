@@ -97,46 +97,12 @@ describe("escopos de documento", () => {
   });
 });
 
-describe("alcance dos papéis", () => {
-  const permissoes = ler(raizWeb, "shared", "auth", "permissions.ts");
-  const somenteLeitura = aspas(
-    /const READ_ONLY: Permission\[\] = \[(.*?)\];/s.exec(permissoes)![1]!,
-  );
-
-  const porPapel = new Map<string, string[]>();
-  for (const achado of
-    (/ROLE_PERMISSIONS: Record<Role, Permission\[\]> = \{(.*?)^\};/ms.exec(permissoes)![1]!)
-      .matchAll(/^ {2}(\w+): \[(.*?)\],$/gms)) {
-    const lista = aspas(achado[2]!);
-    porPapel.set(
-      achado[1]!,
-      achado[2]!.includes("...READ_ONLY") ? [...somenteLeitura, ...lista] : lista,
-    );
-  }
-
-  it("o balcão só alcança o protocolo", () => {
-    // Quem atende no balcão não precisa de licitação, contrato nem solicitação.
-    const balcao = porPapel.get("PROTOCOLO")!;
-    assert.deepEqual(
-      [...balcao].sort(),
-      ["documents:issue", "protocol:read", "protocol:serve"],
-    );
-  });
-
-  it("a trilha de auditoria é só do administrador", () => {
-    // É registro de conduta dos servidores, não relatório operacional.
-    const comAuditoria = [...porPapel]
-      .filter(([, lista]) => lista.includes("audit:read"))
-      .map(([papel]) => papel);
-    assert.deepEqual(comAuditoria, ["ADMIN"]);
-  });
-
-  it("todo papel declarado tem alguma permissão", () => {
-    for (const [papel, lista] of porPapel) {
-      assert.ok(lista.length > 0, `papel ${papel} não pode fazer nada`);
-    }
-  });
-});
+/*
+ * O alcance de cada papel mudou de casa: agora a matriz vive na API, em
+ * `domain/shared/Permissoes.ts`, e quem a confere é `permissoes.test.ts` —
+ * inclusive o espelho que o web mantém. Este arquivo continua responsável
+ * pelas listas que os dois lados repetem por outras razões.
+ */
 
 describe("espaçamento das páginas", () => {
   /**
