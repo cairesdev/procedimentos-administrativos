@@ -50,10 +50,26 @@ export type Permissao = (typeof PERMISSOES)[number];
 export const ehPermissao = (valor: string): valor is Permissao =>
   (PERMISSOES as readonly string[]).includes(valor);
 
+/**
+ * O organograma da prefeitura: nome de unidade e de setor.
+ *
+ * **Isto não é o `READ_ONLY` de volta.** Aquela lista carregava frotas,
+ * licitações, contratos e processos — dados de outros módulos, que é o que
+ * fazia a nutricionista enxergar a frota. Aqui são dois cadastros que devolvem
+ * `id`, `nome` e `ativo` da própria prefeitura, e sem eles a tela não consegue
+ * escrever "Setor de Compras" ao lado do processo nem oferecer a unidade numa
+ * solicitação. Todo papel opera em alguma tela que precisa deles.
+ *
+ * Escrever continua sendo administração: `units:write` e `sectors:write` ficam
+ * com quem organiza a prefeitura.
+ */
+const LE_O_ORGANOGRAMA: Permissao[] = ["units:read", "sectors:read"];
+
 /** Administração da prefeitura: cadastros, fluxos, modelos e a auditoria. */
 const ADMINISTRA_A_PREFEITURA: Permissao[] = [
-  "units:read", "units:write",
-  "sectors:read", "sectors:write",
+  ...LE_O_ORGANOGRAMA,
+  "units:write",
+  "sectors:write",
   "users:read", "users:write",
   "workflows:read", "workflows:write",
   "documents:template",
@@ -92,6 +108,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Setor de compras: emite a ordem e cuida de fornecedor e contrato.
   COMPRAS: [
+    ...LE_O_ORGANOGRAMA,
     "suppliers:read", "suppliers:write",
     "bids:read", "bids:write",
     "contracts:read", "contracts:write",
@@ -102,6 +119,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Controladoria: lê para dar parecer, e não escreve cadastro nenhum.
   CONTROLADORIA: [
+    ...LE_O_ORGANOGRAMA,
     "suppliers:read", "bids:read", "contracts:read", "requests:read",
     "workflows:read",
     "processes:read", "processes:dispatch", "processes:opinion",
@@ -113,6 +131,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Servidor de setor administrativo: abre solicitação e acompanha o trâmite.
   SERVIDOR: [
+    ...LE_O_ORGANOGRAMA,
     "suppliers:read", "bids:read", "contracts:read",
     "requests:read", "requests:create",
     "processes:read",
@@ -121,13 +140,17 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Balcão de atendimento. Sem contrato, licitação nem solicitação: quem
   // atende o cidadão não precisa deles para fazer o trabalho.
-  PROTOCOLO: ["protocol:read", "protocol:serve", "documents:read", "documents:issue"],
+  // O balcão encaminha para setores: precisa saber os nomes deles.
+  PROTOCOLO: [
+    ...LE_O_ORGANOGRAMA,
+    "protocol:read", "protocol:serve", "documents:read", "documents:issue",
+  ],
 
   // Alimentação escolar. Dá entrada, libera para as escolas e presta contas —
   // e não tem nada que fazer em frotas, patrimônio ou licitação.
   NUTRICIONISTA: [
+    ...LE_O_ORGANOGRAMA,
     "stock:read", "stock:request", "stock:receive", "stock:manage",
-    "units:read",
     "documents:read", "documents:issue",
   ],
 
@@ -141,13 +164,25 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
    * O papel abre a porta; a lotação diz de qual armário se está falando.
    */
   UNIDADE: [
+    ...LE_O_ORGANOGRAMA,
     "stock:read", "stock:request", "stock:receive",
     "documents:read", "documents:issue",
   ],
 
-  PATRIMONIO: ["assets:read", "assets:write", "units:read", "documents:read", "documents:issue"],
+  // A entrada de bens registra de quem veio o bem — daí o fornecedor. Ler o
+  // cadastro não é o mesmo que conduzir a contratação: `suppliers:write`,
+  // licitação e contrato continuam de fora.
+  PATRIMONIO: [
+    ...LE_O_ORGANOGRAMA,
+    "assets:read", "assets:write",
+    "suppliers:read",
+    "documents:read", "documents:issue",
+  ],
 
-  FROTAS: ["fleet:read", "fleet:write", "trips:create", "units:read", "documents:read", "documents:issue"],
+  FROTAS: [
+    ...LE_O_ORGANOGRAMA,
+    "fleet:read", "fleet:write", "trips:create", "documents:read", "documents:issue",
+  ],
 };
 
 /**

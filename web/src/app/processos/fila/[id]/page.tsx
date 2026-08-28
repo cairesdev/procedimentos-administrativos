@@ -37,8 +37,10 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
       listDocumentsFor(id),
     ]);
 
-  // O override de destino é configurado por tipo de processo.
-  const workflow = await getWorkflow(process.tipoProcesso);
+  // O override de destino é configurado por tipo de processo. Serve só para
+  // liberar a escolha manual do setor: quem não lê fluxos vê a tela sem essa
+  // opção, em vez de não ver a tela.
+  const workflow = await getWorkflow(process.tipoProcesso).catch(() => null);
 
   // O processo nasce de uma solicitação: quem despacha precisa ver o que foi
   // pedido, de qual contrato e por qual valor — sem sair da tela.

@@ -669,3 +669,38 @@ Cada lado tem vida própria: trocar um não apaga o outro, salvar o texto do
 timbre não apaga nenhum, e excluir tira só o lado pedido. Ao remover, o registro
 sai antes do objeto no storage — a ordem inversa deixaria o timbre apontando
 para um arquivo que já não existe, e a folha sairia com imagem quebrada.
+
+## Correção: o organograma é vocabulário, não administração
+
+Ao apertar os papéis, joguei `units:read` e `sectors:read` no bloco de
+administração da prefeitura. COMPRAS e CONTROLADORIA passaram a entrar em
+Processos e a tela morria com 403 — a fila precisa escrever o nome do setor ao
+lado do processo, e a solicitação precisa oferecer a unidade.
+
+**Não é o `READ_ONLY` de volta.** Aquela lista carregava frotas, licitações,
+contratos e processos: dados de outros módulos, e era o que fazia a
+nutricionista enxergar a frota. `units:read` e `sectors:read` devolvem `id`,
+`nome` e `ativo` da própria prefeitura — o organograma, que toda tela de todo
+módulo precisa nomear. Escrever continua sendo administração.
+
+Na mesma passada, `PATRIMONIO` ganhou `suppliers:read`: a entrada de bens
+registra de quem veio o bem. Ler o cadastro não é conduzir a contratação —
+`suppliers:write`, licitação e contrato seguem de fora.
+
+### O teste que faltava
+
+O erro não aparecia em teste nenhum: o web escondia botão certo, a API guardava
+rota certo, e ninguém conferia se as duas coisas cabiam na mesma tela.
+`telas-alcancaveis.test.ts` amarra as três pontas — a permissão que a página
+exige para abrir, as rotas que ela chama e a permissão de cada rota — e falha
+quando algum papel abre a tela e levaria 403 no meio.
+
+Ele achou mais três buracos além do relatado: patrimônio e fornecedor, e o
+detalhe do processo buscando fluxo e exigências sem tolerar a falta.
+
+**Busca acessória não conta.** A tela tem duas formas legítimas de conviver com
+a falta de uma permissão, e o código já usava as duas: perguntar antes
+(`viewer.can("x") ? consulta() : []`) ou tolerar a falha (`.catch(...)`). Nos
+dois casos ela abre inteira, com menos informação — que é o certo para o que é
+complementar. Sem essa distinção o teste exigiria dar a permissão, e o jeito
+mais fácil de calar um teste de acesso é abrir o acesso.
