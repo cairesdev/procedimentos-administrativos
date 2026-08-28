@@ -34,6 +34,25 @@ processosRouter.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * Encerrados que passaram pelo setor informado.
+ *
+ * Fica antes de `/:id` de propósito: o Express casa na ordem de registro, e
+ * "encerrados" seria lido como um id de processo.
+ */
+processosRouter.get("/encerrados", async (req, res, next) => {
+  try {
+    const setorId = typeof req.query.setor === "string" ? req.query.setor : undefined;
+    res.json(
+      await container.tramitacao.listarEncerrados(
+        req.sessao!.orgaoId, paginacaoSchema.parse(req.query), setorId,
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 processosRouter.get("/:id", async (req, res, next) => {
   try {
     const processo = await container.tramitacao.buscarProcesso(req.sessao!.orgaoId, req.params.id!);

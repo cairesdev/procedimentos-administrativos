@@ -32,6 +32,9 @@ export type FilaDeProcessos = Pagina<ProcessoDetalhe> & {
   limiarAlertaDias: number;
 };
 
+/** Processo fora de circulação, com a data do último ato. */
+export type ProcessoEncerrado = ProcessoDetalhe & { encerradoEm: string | null };
+
 export type NovoDespacho = {
   processoId: string;
   setorId: string;
@@ -80,6 +83,13 @@ export type OrdemDoProcesso = {
 export interface TramitacaoRepository {
   buscarProcesso(orgaoId: string, processoId: string): Promise<ProcessoDetalhe | null>;
   listarFila(orgaoId: string, paginacao: Paginacao, setorId?: string): Promise<FilaDeProcessos>;
+  /**
+   * Encerrados que passaram pelo setor. Sem setor, os do órgão inteiro — é o
+   * caso de quem já enxerga a fila toda.
+   */
+  listarEncerrados(
+    orgaoId: string, paginacao: Paginacao, setorId?: string,
+  ): Promise<Pagina<ProcessoEncerrado>>;
   listarDespachos(processoId: string): Promise<unknown[]>;
   registrarDespacho(dados: NovoDespacho, tx: Tx): Promise<string>;
   moverProcesso(processoId: string, destino: DestinoEtapa, tx: Tx): Promise<void>;

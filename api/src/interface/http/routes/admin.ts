@@ -149,9 +149,26 @@ adminRouter.put("/orgaos/:id/timbre", async (req, res, next) => {
   }
 });
 
+// `?lado=DIREITA` escolhe a segunda imagem; sem o parâmetro, a primeira — que
+// era a única antes da 0027, e é o que todo link existente continua pedindo.
+const ladoDaRequisicao = (req: { query: Record<string, unknown> }) =>
+  req.query.lado === "DIREITA" ? "DIREITA" as const : "ESQUERDA" as const;
+
 adminRouter.get("/orgaos/:id/timbre/logomarca", async (req, res, next) => {
   try {
-    enviarArquivo(res, await container.administrarSistema.abrirLogomarca(req.params.id!));
+    enviarArquivo(
+      res,
+      await container.administrarSistema.abrirLogomarca(req.params.id!, ladoDaRequisicao(req)),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete("/orgaos/:id/timbre/logomarca", async (req, res, next) => {
+  try {
+    await container.administrarSistema.removerLogomarca(req.params.id!, ladoDaRequisicao(req));
+    res.json({ message: "Logomarca removida" });
   } catch (error) {
     next(error);
   }
@@ -172,6 +189,7 @@ adminRouter.put(
           conteudo: req.file.buffer,
           mimeType: req.file.mimetype,
           nomeOriginal: req.file.originalname,
+          lado: ladoDaRequisicao(req),
         }),
       );
     } catch (error) {

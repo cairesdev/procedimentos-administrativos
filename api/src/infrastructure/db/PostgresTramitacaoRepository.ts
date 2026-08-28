@@ -7,7 +7,7 @@ import {
 import type { Tx } from "../../application/ports/Transacao";
 import type {
   DestinoEtapa, FilaDeProcessos, NovaOrdemFornecimento, NovoDespacho, OrdemDoProcesso,
-  ProcessoDetalhe, TramitacaoRepository,
+  ProcessoDetalhe, ProcessoEncerrado, TramitacaoRepository,
 } from "../../application/ports/TramitacaoRepository";
 
 /** Colunas de apoio da query da fila — não fazem parte do contrato. */
@@ -74,6 +74,29 @@ const SQL = {
      -- Quem está mais perto de estourar (ou já estourou) primeiro; sem prazo, por antiguidade.
      ORDER BY "diasParaVencer" NULLS LAST, "dataAbertura", id
      LIMIT $4 OFFSET $5`,
+  /**
+   * Processos encerrados que passaram por um setor.
+   *
+   * O corte não é "está aqui agora" — processo encerrado não está em setor
+   * nenhum. É "passou por aqui": existe despacho deste setor no processo. Quem
+   * atuou numa etapa continua alcançando a peça depois de encerrada, e quem
+   * nunca atuou não passa a ver o processo dos outros.
+   *
+   * Sem setor informado, devolve os encerrados do órgão — é o caso de quem
+   * administra a prefeitura, que já enxerga a fila inteira.
+   */
+  listarEncerrados: `
+    SELECT ${COLUNAS_PROCESSO}, p.data_abertura AS "dataAbertura",
+           ${TOTAL_DA_JANELA},
+           (SELECT max(d.data) FROM despacho d WHERE d.processo_id = p.id) AS "encerradoEm"
+      FROM processo p
+     WHERE p.orgao_id = $1
+       AND p.status IN ('ENCERRADO', 'CANCELADO')
+       AND ($2::uuid IS NULL OR EXISTS (
+             SELECT 1 FROM despacho d
+              WHERE d.processo_id = p.id AND d.setor_id = $2))
+     ORDER BY "encerradoEm" DESC NULLS LAST, p.id
+     LIMIT $3 OFFSET $4`,
   listarDespachos: `
     SELECT d.id, d.tipo, d.texto, d.data, d.setor_id AS "setorId",
            d.departamento_id AS "departamentoId", u.nome AS "usuarioNome"
@@ -237,6 +260,17 @@ export class PostgresTramitacaoRepository implements TramitacaoRepository {
       dados.numeroNotaFiscal ?? null,
     ]);
     return rows[0].id;
+  };
+
+  listarEncerrados = async (
+    orgaoId: string,
+    paginacao: Paginacao,
+    setorId?: string,
+  ) => {
+    const { rows } = await pool.query(SQL.listarEncerrados, [
+      orgaoId, setorId ?? null, paginacao.porPagina, deslocamentoDe(paginacao),
+    ]);
+    return montarPagina<ProcessoEncerrado>(rows as never, paginacao);
   };
 
   listarOrdens = async (orgaoId: string, processoId: string): Promise<OrdemDoProcesso[]> => {

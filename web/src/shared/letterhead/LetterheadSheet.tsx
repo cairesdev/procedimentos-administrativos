@@ -28,7 +28,9 @@ export const LetterheadSheet = ({
   emitidoEm?: string;
   children: ReactNode;
 }) => {
-  const semTimbre = !letterhead.cabecalhoTimbre && !letterhead.arquivoLogomarca;
+  const semTimbre = !letterhead.cabecalhoTimbre
+    && !letterhead.arquivoLogomarca
+    && !letterhead.arquivoLogomarcaDireita;
 
   return (
     <>
@@ -54,6 +56,16 @@ export const LetterheadSheet = ({
               />
             ) : null}
             <p className={styles.cabecalho}>{letterhead.cabecalhoTimbre ?? orgName}</p>
+
+            {letterhead.arquivoLogomarcaDireita ? (
+              // eslint-disable-next-line @next/next/no-img-element -- streaming da API, sem otimização
+              <img
+                src="/api/proxy/auth/timbre/logomarca?lado=DIREITA"
+                alt=""
+                className={styles.logo}
+                aria-hidden="true"
+              />
+            ) : null}
           </header>
         )}
 

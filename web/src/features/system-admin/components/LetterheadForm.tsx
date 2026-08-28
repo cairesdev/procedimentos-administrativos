@@ -7,7 +7,7 @@ import { InputField, TextareaField } from "@/shared/ui/form-field";
 import { Alert } from "@/shared/ui/layout";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
-import { saveLetterhead, uploadLetterheadLogo } from "../actions";
+import { removeLetterheadLogo, saveLetterhead, uploadLetterheadLogo, type LogoSide } from "../actions";
 import { letterheadSchema, type LetterheadInput } from "../schemas";
 import type { Letterhead, Tenant } from "../types";
 
@@ -19,12 +19,15 @@ export const LetterheadForm = ({
   letterhead: Letterhead;
 }) => {
   const closeModal = useModalClose();
-  const campoArquivo = useRef<HTMLInputElement>(null);
   const [enviando, iniciarEnvio] = useTransition();
   // Muda a query da imagem depois do upload: sem isso o navegador serve a
   // logomarca antiga do cache e parece que nada aconteceu.
   const [versaoLogo, setVersaoLogo] = useState(() => Date.now());
-  const [temLogo, setTemLogo] = useState(Boolean(letterhead.arquivoLogomarca));
+  const [temEsquerda, setTemEsquerda] = useState(Boolean(letterhead.arquivoLogomarca));
+  const [temDireita, setTemDireita] = useState(Boolean(letterhead.arquivoLogomarcaDireita));
+
+  const campoEsquerda = useRef<HTMLInputElement>(null);
+  const campoDireita = useRef<HTMLInputElement>(null);
 
   const { form, onSubmit, isSubmitting } = useResourceForm<LetterheadInput>({
     schema: letterheadSchema as never,
@@ -37,8 +40,17 @@ export const LetterheadForm = ({
     onDone: closeModal,
   });
 
-  const enviarLogomarca = () => {
-    const arquivo = campoArquivo.current?.files?.[0];
+  const campoDo = (lado: LogoSide) =>
+    lado === "ESQUERDA" ? campoEsquerda : campoDireita;
+
+  const marcar = (lado: LogoSide, tem: boolean) => {
+    if (lado === "ESQUERDA") setTemEsquerda(tem);
+    else setTemDireita(tem);
+  };
+
+  const enviarLogomarca = (lado: LogoSide) => {
+    const campo = campoDo(lado);
+    const arquivo = campo.current?.files?.[0];
     if (!arquivo) {
       toast.error("Escolha um arquivo de imagem");
       return;
@@ -48,17 +60,79 @@ export const LetterheadForm = ({
     dados.append("arquivo", arquivo);
 
     iniciarEnvio(async () => {
-      const resultado = await uploadLetterheadLogo(tenant.id, dados);
+      const resultado = await uploadLetterheadLogo(tenant.id, dados, lado);
       if (resultado.error) {
         toast.error(resultado.error);
         return;
       }
       toast.success(resultado.success);
-      if (campoArquivo.current) campoArquivo.current.value = "";
-      setTemLogo(true);
+      if (campo.current) campo.current.value = "";
+      marcar(lado, true);
       setVersaoLogo(Date.now());
     });
   };
+
+  const removerLogomarca = (lado: LogoSide) => {
+    iniciarEnvio(async () => {
+      const resultado = await removeLetterheadLogo(tenant.id, lado);
+      if (resultado.error) {
+        toast.error(resultado.error);
+        return;
+      }
+      toast.success(resultado.success);
+      marcar(lado, false);
+      setVersaoLogo(Date.now());
+    });
+  };
+
+  /** Um lado do timbre: prévia, escolha do arquivo, enviar e excluir. */
+  const bloco = (lado: LogoSide, rotulo: string, tem: boolean, dica: string) => (
+    <div style={{ display: "grid", gap: "10px", alignContent: "start" }}>
+      <strong style={{ fontSize: "13px" }}>{rotulo}</strong>
+
+      {tem ? (
+        // eslint-disable-next-line @next/next/no-img-element -- servida pela API, sem otimização
+        <img
+          src={`/admin/prefeituras/${tenant.id}/logomarca?lado=${lado}&v=${versaoLogo}`}
+          alt={`Logomarca ${rotulo.toLowerCase()}`}
+          style={{ height: "72px", width: "auto", objectFit: "contain", justifySelf: "start" }}
+        />
+      ) : (
+        <span style={{ fontSize: "12px", color: "var(--texto_apagado)" }}>Nenhuma imagem.</span>
+      )}
+
+      <InputField
+        ref={campoDo(lado)}
+        name={`arquivo_${lado}`}
+        type="file"
+        label="Imagem"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        hint={dica}
+      />
+
+      <div style={{ display: "flex", gap: "8px" }}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => enviarLogomarca(lado)}
+          disabled={enviando}
+        >
+          {enviando ? "Enviando…" : tem ? "Trocar" : "Enviar"}
+        </Button>
+
+        {tem ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => removerLogomarca(lado)}
+            disabled={enviando}
+          >
+            Excluir
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: "grid", gap: "18px" }}>
@@ -86,29 +160,16 @@ export const LetterheadForm = ({
       </form>
 
       {/* Fora do form de cima: upload é requisição própria, não pode ir junto. */}
-      <div style={{ display: "grid", gap: "10px", borderTop: "1px solid var(--borda)", paddingTop: "14px" }}>
-        {temLogo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- servida pela API, sem otimização
-          <img
-            src={`/admin/prefeituras/${tenant.id}/logomarca?v=${versaoLogo}`}
-            alt="Logomarca atual"
-            style={{ height: "72px", width: "auto", objectFit: "contain", justifySelf: "start" }}
-          />
-        ) : null}
+      <div style={{ borderTop: "1px solid var(--borda)", paddingTop: "14px" }}>
+        <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--texto_suave)" }}>
+          As duas saem lado a lado no topo da folha, com o cabeçalho entre elas. Prefeitura
+          costuma pôr o brasão do município à esquerda e a marca do programa ou da secretaria à
+          direita — FUNDEB, PNAE, Governo do Estado.
+        </p>
 
-        <InputField
-          ref={campoArquivo}
-          name="arquivo"
-          type="file"
-          label="Logomarca"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          hint="PNG, JPEG, WEBP ou SVG, até 2 MB."
-        />
-
-        <div>
-          <Button type="button" variant="secondary" onClick={enviarLogomarca} disabled={enviando}>
-            {enviando ? "Enviando…" : temLogo ? "Trocar logomarca" : "Enviar logomarca"}
-          </Button>
+        <div style={{ display: "grid", gap: "20px", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+          {bloco("ESQUERDA", "Logomarca à esquerda", temEsquerda, "PNG, JPEG, WEBP ou SVG, até 2 MB.")}
+          {bloco("DIREITA", "Logomarca à direita", temDireita, "Opcional.")}
         </div>
       </div>
     </div>

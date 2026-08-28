@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { findTemplate, getMarkerCatalog } from "@/features/documents/queries";
 import { TemplateForm } from "@/features/documents/components/TemplateForm";
+import { TemplateSectorsForm } from "@/features/documents/components/TemplateSectorsForm";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { PageHeader } from "@/shared/ui/layout";
@@ -46,6 +47,14 @@ export default async function TemplatePage({ params }: TemplatePageProps) {
       />
 
       <TemplateForm modelo={modelo} catalogo={catalogo} />
+
+      <TemplateSectorsForm
+        tipo={modelo.tipo}
+        atuais={modelo.setores}
+        // Só a versão da prefeitura aceita restrição: mexer no global daqui
+        // mudaria a regra de todas as outras prefeituras de uma vez.
+        podeRestringir={modelo.origem === "PREFEITURA"}
+      />
     </>
   );
 }

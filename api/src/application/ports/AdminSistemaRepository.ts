@@ -32,8 +32,16 @@ export type EdicaoOrgao = Partial<Omit<NovoOrgao, "endereco">> & {
   ativo?: boolean;
 };
 
+/**
+ * Duas logomarcas: prefeitura costuma imprimir o brasão do município de um
+ * lado e a marca do programa ou da secretaria do outro — FUNDEB, PNAE,
+ * "Governo do Estado".
+ */
+export type LadoDaLogomarca = "ESQUERDA" | "DIREITA";
+
 export type TimbreDoOrgao = {
   arquivoLogomarca: string | null;
+  arquivoLogomarcaDireita: string | null;
   cabecalhoTimbre: string | null;
   rodapeTimbre: string | null;
 };

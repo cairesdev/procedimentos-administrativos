@@ -8,7 +8,8 @@ import { toDateTime } from "@/shared/ui/labels";
 
 export default async function DocumentTemplatesPage() {
   await requirePermission("documents:template");
-  const [modelos, escopos] = await Promise.all([listTemplates(), listScopes()]);
+  // `todos`: a administração precisa enxergar até a peça restrita a um setor.
+  const [modelos, escopos] = await Promise.all([listTemplates(undefined, true), listScopes()]);
 
   return (
     <>

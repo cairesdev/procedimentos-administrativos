@@ -108,6 +108,19 @@ export const container = {
   contratos,
   solicitacoes,
   usuarios,
+
+  /**
+   * Tipos de setor onde o servidor atua — é o que decide quais peças ele
+   * alcança. Lotação de unidade não tem setor e não entra.
+   */
+  setoresDoUsuario: async (usuarioId: string): Promise<string[]> => {
+    const perfil = await usuarios.buscarPerfil(usuarioId);
+    return [...new Set(
+      (perfil?.lotacoes ?? [])
+        .map((lotacao) => lotacao.tipoSetor)
+        .filter((tipo): tipo is string => Boolean(tipo)),
+    )];
+  },
   organizacao,
   fornecedores,
   fluxoConfiguracao,

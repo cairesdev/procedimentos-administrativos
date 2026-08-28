@@ -3,6 +3,7 @@ import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { ESCOPOS, ROTULO_DO_ESCOPO } from "../../../domain/documento/Catalogo";
+import { TIPOS_DE_SETOR } from "../../../domain/shared/Papeis";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 // O tipo deixou de ser vocabulário fechado: a prefeitura cria os dela. O
@@ -26,6 +27,9 @@ const novoModeloSchema = modeloSchema.extend({ escopo: z.enum(ESCOPOS) });
 
 const cancelamentoSchema = z.object({ motivo: z.string().min(3).max(500) });
 
+// Lista vazia devolve a peça a todos — é como desfazer a restrição.
+const setoresSchema = z.object({ setores: z.array(z.enum(TIPOS_DE_SETOR)) });
+
 // O corpo vem do editor e é sanitizado no caso de uso; o teto existe para o
 // payload não virar vetor de abuso. Documento oficial não passa disso.
 const corpoSchema = z.object({ corpo: z.string().min(1).max(200_000) });
@@ -36,15 +40,53 @@ export const documentosRouter = Router();
 // editar o modelo são outros dois atos, declarados rota a rota.
 documentosRouter.use(exigirPermissao("documents:read"));
 
-/** Tipos disponíveis com o modelo em vigor — alimenta o botão de emissão. */
+/**
+ * Tipos disponíveis com o modelo em vigor — alimenta o botão de emissão.
+ *
+ * `?todos=1` desliga o filtro por setor, para a tela de administração de
+ * modelos poder enxergar até a peça restrita. Exige `documents:template`, que
+ * é quem administra os modelos.
+ */
 documentosRouter.get("/modelos", async (req, res, next) => {
   try {
     const modulo = typeof req.query.modulo === "string" ? req.query.modulo : undefined;
-    res.json(await container.manterModelos.listarParaOrgao(req.sessao!.orgaoId, modulo));
+    const administrando = req.query.todos === "1" && req.permissoes?.has("documents:template");
+
+    const setores = administrando
+      ? undefined
+      : await container.setoresDoUsuario(req.sessao!.usuarioId);
+
+    res.json(await container.manterModelos.listarParaOrgao(req.sessao!.orgaoId, modulo, setores));
   } catch (error) {
     next(error);
   }
 });
+
+/** Setores que alcançam a peça. Vazio = todos. */
+documentosRouter.get("/modelos/:tipo/setores", async (req, res, next) => {
+  try {
+    const modelo = await container.manterModelos.resolver(req.sessao!.orgaoId, req.params.tipo!);
+    res.json(await container.manterModelos.setoresDoModelo(modelo.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+documentosRouter.put(
+  "/modelos/:tipo/setores",
+  exigirPermissao("documents:template"),
+  async (req, res, next) => {
+    try {
+      const { setores } = setoresSchema.parse(req.body);
+      await container.manterModelos.definirSetores(
+        req.sessao!.orgaoId, req.params.tipo!, setores,
+      );
+      res.json({ message: "Setores atualizados" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /** Escopos disponíveis, para a tela de criação oferecer as opções. */
 documentosRouter.get("/escopos", (_req, res) => {

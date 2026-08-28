@@ -31,6 +31,9 @@ export type Dispatch = {
   usuarioNome: string;
 };
 
+/** Processo fora de circulação, com a data do último ato registrado. */
+export type ClosedProcess = Process & { encerradoEm: string | null };
+
 export type ProcessDetail = Process & { despachos: Dispatch[]; limiarAlertaDias: number };
 
 /**

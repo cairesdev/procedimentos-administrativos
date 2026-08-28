@@ -77,14 +77,17 @@ const SQL = {
     DO UPDATE SET ativo = TRUE, data_ativacao = now(), data_desativacao = NULL`,
   buscarTimbre: `
     SELECT arquivo_logomarca AS "arquivoLogomarca",
+           arquivo_logomarca_direita AS "arquivoLogomarcaDireita",
            cabecalho_timbre AS "cabecalhoTimbre",
            rodape_timbre AS "rodapeTimbre"
       FROM orgao_documento_config WHERE orgao_id = $1`,
   salvarTimbre: `
-    INSERT INTO orgao_documento_config (orgao_id, arquivo_logomarca, cabecalho_timbre, rodape_timbre)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO orgao_documento_config
+      (orgao_id, arquivo_logomarca, arquivo_logomarca_direita, cabecalho_timbre, rodape_timbre)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (orgao_id)
-    DO UPDATE SET arquivo_logomarca = $2, cabecalho_timbre = $3, rodape_timbre = $4`,
+    DO UPDATE SET arquivo_logomarca = $2, arquivo_logomarca_direita = $3,
+                  cabecalho_timbre = $4, rodape_timbre = $5`,
 };
 
 const converter = (linha: Record<string, unknown>): OrgaoResumo => ({
@@ -188,7 +191,8 @@ export class PostgresAdminSistemaRepository implements AdminSistemaRepository {
 
   salvarTimbre = async (orgaoId: string, dados: TimbreDoOrgao): Promise<void> => {
     await pool.query(SQL.salvarTimbre, [
-      orgaoId, dados.arquivoLogomarca, dados.cabecalhoTimbre, dados.rodapeTimbre,
+      orgaoId, dados.arquivoLogomarca, dados.arquivoLogomarcaDireita,
+      dados.cabecalhoTimbre, dados.rodapeTimbre,
     ]);
   };
 }

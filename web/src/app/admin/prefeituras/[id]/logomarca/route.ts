@@ -6,12 +6,15 @@ import { apiBaseUrl } from "@/shared/api/http-client";
  * Pré-visualização da logomarca no painel do produto. O `/api/proxy` usa a
  * sessão do servidor da prefeitura; aqui quem manda é o token de admin.
  */
-export const GET = async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
   const token = await readAdminToken();
   if (!token) return NextResponse.json({ message: "Sessão expirada" }, { status: 401 });
 
   const { id } = await params;
-  const resposta = await fetch(`${apiBaseUrl}/admin/orgaos/${id}/timbre/logomarca`, {
+  // O lado vem da query e é repassado; sem ele, a API entende ESQUERDA.
+  const lado = new URL(request.url).searchParams.get("lado") === "DIREITA" ? "DIREITA" : "ESQUERDA";
+
+  const resposta = await fetch(`${apiBaseUrl}/admin/orgaos/${id}/timbre/logomarca?lado=${lado}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

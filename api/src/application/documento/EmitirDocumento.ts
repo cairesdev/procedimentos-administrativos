@@ -52,7 +52,21 @@ export class EmitirDocumento {
    * registro: existe só para quem a está escrevendo.
    */
   executar = async (entrada: EmissaoEntrada): Promise<{ id: string; codigo: string }> => {
-    const modelo = await this.documentos.resolverModelo(entrada.orgaoId, entrada.tipo);
+    const perfil = await this.usuarios.buscarPerfil(entrada.usuarioId);
+    if (!perfil) throw new NaoEncontrado("Usuário não encontrado");
+
+    /**
+     * Peça amarrada a setor só é alcançada por quem está lotado num deles.
+     *
+     * O filtro acontece na consulta, e não depois: assim o servidor de fora do
+     * setor recebe o mesmo "não há modelo" de um tipo inexistente, sem ficar
+     * sabendo que existe um parecer da controladoria que ele não pode emitir.
+     */
+    const setores = tiposDeSetorDe(perfil);
+
+    const modelo = await this.documentos.resolverModelo(
+      entrada.orgaoId, entrada.tipo, setores,
+    );
     if (!modelo) {
       throw new NaoEncontrado(
         `Não há modelo de documento cadastrado para ${entrada.tipo}`,
@@ -61,9 +75,6 @@ export class EmitirDocumento {
     if (!modelo.ativo) {
       throw new ErroDeNegocio("Esta prefeitura desativou este tipo de documento");
     }
-
-    const perfil = await this.usuarios.buscarPerfil(entrada.usuarioId);
-    if (!perfil) throw new NaoEncontrado("Usuário não encontrado");
 
     const dados = await this.contexto.montar(entrada.orgaoId, modelo.escopo, entrada.referenciaId);
     if (!dados) throw new NaoEncontrado("Registro não encontrado para emitir o documento");
@@ -279,6 +290,19 @@ const cargoDe = (
   const papel = perfil.papelBase.charAt(0) + perfil.papelBase.slice(1).toLowerCase();
   return lotacao ? `${papel} — ${lotacao.destino}` : papel;
 };
+
+/**
+ * Tipos de setor onde o servidor atua, sem repetição.
+ *
+ * Lotação de unidade não tem setor e entra como nada: quem está na escola
+ * alcança as peças sem restrição, e nenhuma das restritas.
+ */
+const tiposDeSetorDe = (perfil: { lotacoes: { tipoSetor?: string | null }[] }): string[] =>
+  [...new Set(
+    perfil.lotacoes
+      .map((lotacao) => lotacao.tipoSetor)
+      .filter((tipo): tipo is string => Boolean(tipo)),
+  )];
 
 const emSaoPaulo = (momento: Date, opcoes: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opcoes }).format(momento);

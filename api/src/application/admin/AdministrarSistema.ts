@@ -4,7 +4,8 @@ import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/Erro
 import { garantirExiste } from "../shared/ExclusaoSegura";
 import { sanitizarNomeDeArquivo as sanitizar } from "../shared/NomeDeArquivo";
 import type {
-  AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, NovoOrgao, TimbreDoOrgao,
+  AdministradorDaEntidade, AdminSistemaRepository, EdicaoOrgao, LadoDaLogomarca, NovoOrgao,
+  TimbreDoOrgao,
 } from "../ports/AdminSistemaRepository";
 import type {
   ArmazenamentoArquivos, ArquivoParaLeitura,
@@ -27,6 +28,13 @@ export type PrimeiroAdmin = {
 /** Tipos que um brasão pode ter — o que navegador e impressão renderizam. */
 const IMAGENS_ACEITAS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const TAMANHO_MAXIMO = 2 * 1024 * 1024;
+
+/** Caminho guardado para um dos lados do timbre. */
+const caminhoDoLado = (
+  timbre: TimbreDoOrgao | null,
+  lado: LadoDaLogomarca,
+): string | null =>
+  (lado === "ESQUERDA" ? timbre?.arquivoLogomarca : timbre?.arquivoLogomarcaDireita) ?? null;
 
 export class AdministrarSistema {
   constructor(
@@ -74,13 +82,15 @@ export class AdministrarSistema {
    */
   salvarTimbre = async (
     id: string,
-    dados: Omit<TimbreDoOrgao, "arquivoLogomarca">,
+    dados: Omit<TimbreDoOrgao, "arquivoLogomarca" | "arquivoLogomarcaDireita">,
   ): Promise<void> => {
     garantirExiste(await this.admins.buscarOrgao(id), "Prefeitura");
+    // As imagens têm rota própria: salvar o texto do timbre não pode apagá-las.
     const atual = await this.admins.buscarTimbre(id);
     await this.admins.salvarTimbre(id, {
       ...dados,
       arquivoLogomarca: atual?.arquivoLogomarca ?? null,
+      arquivoLogomarcaDireita: atual?.arquivoLogomarcaDireita ?? null,
     });
   };
 
@@ -89,6 +99,8 @@ export class AdministrarSistema {
     conteudo: Buffer;
     mimeType: string;
     nomeOriginal: string;
+    /** Padrão ESQUERDA: era o único lado até a 0027. */
+    lado?: LadoDaLogomarca;
   }): Promise<{ arquivoLogomarca: string }> => {
     garantirExiste(await this.admins.buscarOrgao(dados.orgaoId), "Prefeitura");
     if (!IMAGENS_ACEITAS.includes(dados.mimeType)) {
@@ -98,7 +110,9 @@ export class AdministrarSistema {
       throw new ErroDeNegocio("Logomarca acima de 2 MB");
     }
 
+    const lado = dados.lado ?? "ESQUERDA";
     const atual = await this.admins.buscarTimbre(dados.orgaoId);
+    const anterior = caminhoDoLado(atual, lado);
     const caminho = `${dados.orgaoId}/timbre/${randomUUID()}-${sanitizar(dados.nomeOriginal)}`;
 
     // Grava o arquivo antes do banco; só apaga o antigo depois que o novo
@@ -109,26 +123,60 @@ export class AdministrarSistema {
       await this.admins.salvarTimbre(dados.orgaoId, {
         cabecalhoTimbre: atual?.cabecalhoTimbre ?? null,
         rodapeTimbre: atual?.rodapeTimbre ?? null,
-        arquivoLogomarca: caminho,
+        arquivoLogomarca: lado === "ESQUERDA" ? caminho : atual?.arquivoLogomarca ?? null,
+        arquivoLogomarcaDireita:
+          lado === "DIREITA" ? caminho : atual?.arquivoLogomarcaDireita ?? null,
       });
     } catch (error) {
       await this.armazenamento.remover(caminho);
       throw error;
     }
 
-    if (atual?.arquivoLogomarca) {
+    if (anterior) {
       await this.armazenamento
-        .remover(atual.arquivoLogomarca)
+        .remover(anterior)
         .catch((erro) => console.error("Logomarca antiga não removida", erro));
     }
     return { arquivoLogomarca: caminho };
   };
 
+  /**
+   * Tira a logomarca do timbre.
+   *
+   * O registro sai primeiro: se a remoção do objeto falhar, sobra um arquivo
+   * órfão no storage — barato. A ordem inversa deixaria o timbre apontando
+   * para um objeto que já não existe, e a folha sairia com imagem quebrada.
+   */
+  removerLogomarca = async (
+    orgaoId: string,
+    lado: LadoDaLogomarca = "ESQUERDA",
+  ): Promise<void> => {
+    garantirExiste(await this.admins.buscarOrgao(orgaoId), "Prefeitura");
+    const atual = await this.admins.buscarTimbre(orgaoId);
+    const caminho = caminhoDoLado(atual, lado);
+    if (!caminho) throw new NaoEncontrado("Não há logomarca deste lado");
+
+    await this.admins.salvarTimbre(orgaoId, {
+      cabecalhoTimbre: atual?.cabecalhoTimbre ?? null,
+      rodapeTimbre: atual?.rodapeTimbre ?? null,
+      arquivoLogomarca: lado === "ESQUERDA" ? null : atual?.arquivoLogomarca ?? null,
+      arquivoLogomarcaDireita: lado === "DIREITA" ? null : atual?.arquivoLogomarcaDireita ?? null,
+    });
+
+    await this.armazenamento
+      .remover(caminho)
+      .catch((erro) => console.error("Logomarca não removida do storage", erro));
+  };
+
   /** Bytes da logomarca do órgão, para a API servir a imagem. */
-  abrirLogomarca = async (orgaoId: string): Promise<ArquivoParaLeitura> => {
+  abrirLogomarca = async (
+    orgaoId: string,
+    lado: LadoDaLogomarca = "ESQUERDA",
+  ): Promise<ArquivoParaLeitura> => {
     const timbre = await this.admins.buscarTimbre(orgaoId);
-    if (!timbre?.arquivoLogomarca) throw new NaoEncontrado("Logomarca não configurada");
-    return this.armazenamento.abrir(timbre.arquivoLogomarca);
+    const caminho = caminhoDoLado(timbre, lado);
+    if (!caminho) throw new NaoEncontrado("Logomarca não configurada");
+    return this.armazenamento.abrir(caminho);
   };
 
   // ---- Administradores do produto -----------------------------------------

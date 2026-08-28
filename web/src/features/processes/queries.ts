@@ -1,7 +1,8 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { withPage } from "@/shared/api/pagination";
-import type { ProcessDetail, ProcessQueue, SupplyOrder } from "./types";
+import type { ClosedProcess, ProcessDetail, ProcessQueue, SupplyOrder } from "./types";
+import type { Page } from "@/shared/api/pagination";
 
 export const listProcesses = (sectorId?: string, pagina?: string) => {
   const query = new URLSearchParams();
@@ -9,6 +10,21 @@ export const listProcesses = (sectorId?: string, pagina?: string) => {
   withPage(query, pagina);
   return apiRequest<ProcessQueue>(
     `${endpoints.processes}${query.size > 0 ? `?${query}` : ""}`,
+  );
+};
+
+/**
+ * Encerrados que passaram pelo setor. Sem setor, os do órgão inteiro.
+ *
+ * O corte é "passou por aqui", não "está aqui": processo encerrado não está em
+ * setor nenhum, e quem atuou numa etapa continua tendo de alcançá-lo.
+ */
+export const listClosedProcesses = (sectorId?: string, pagina?: string) => {
+  const query = new URLSearchParams();
+  if (sectorId) query.set("setor", sectorId);
+  withPage(query, pagina);
+  return apiRequest<Page<ClosedProcess>>(
+    `${endpoints.processes}/encerrados${query.size > 0 ? `?${query}` : ""}`,
   );
 };
 

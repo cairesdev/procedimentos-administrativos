@@ -333,6 +333,29 @@ CASOS: list[tuple[str, str, bool]] = [
      "INSERT INTO usuario_permissao (usuario_id, permissao, concedida) VALUES "
      "('88888888-8888-8888-8888-888888888888','fleet:read', FALSE)",
      False),
+
+    # ---- 0027: modelo por setor e segunda logomarca -------------------------
+    ("modelo amarrado a tipo de setor conhecido e aceito",
+     "INSERT INTO documento_modelo_setor (modelo_id, tipo_setor) "
+     "SELECT id, 'CONTROLADORIA' FROM documento_modelo LIMIT 1",
+     True),
+    ("tipo de setor inventado e recusado",
+     "INSERT INTO documento_modelo_setor (modelo_id, tipo_setor) "
+     "SELECT id, 'JURIDICO' FROM documento_modelo LIMIT 1",
+     False),
+    ("o mesmo setor nao entra duas vezes no modelo",
+     "INSERT INTO documento_modelo_setor (modelo_id, tipo_setor) "
+     "SELECT id, 'CONTROLADORIA' FROM documento_modelo LIMIT 1",
+     False),
+    ("apagar o modelo leva os setores junto",
+     "DELETE FROM documento_modelo WHERE id IN "
+     "(SELECT modelo_id FROM documento_modelo_setor LIMIT 1)",
+     True),
+    ("as duas logomarcas convivem",
+     "INSERT INTO orgao_documento_config "
+     "(orgao_id, arquivo_logomarca, arquivo_logomarca_direita, cabecalho_timbre) VALUES "
+     "('11111111-1111-1111-1111-111111111111','a/brasao.png','b/fundeb.png','PREFEITURA')",
+     True),
 ]
 
 

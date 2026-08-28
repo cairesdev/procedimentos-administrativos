@@ -5,6 +5,7 @@ import {
 import { limparCorpo, tagsRemovidas } from "../../domain/documento/CorpoSeguro";
 import { validarContraCatalogo } from "../../domain/documento/Marcadores";
 import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
+import { ehTipoDeSetor } from "../../domain/shared/Papeis";
 import type { DocumentoRepository, ModeloDeDocumento } from "../ports/DocumentoRepository";
 
 export type DadosDoModelo = {
@@ -26,8 +27,43 @@ export type NovoModeloPersonalizado = DadosDoModelo & {
 export class ManterModelos {
   constructor(private readonly documentos: DocumentoRepository) {}
 
-  listarParaOrgao = (orgaoId: string, modulo?: string) =>
-    this.documentos.listarModelosResolvidos(orgaoId, modulo);
+  /**
+   * Peças que este servidor alcança.
+   *
+   * `setores` são os tipos de setor da lotação dele. Sem o argumento, a lista
+   * vem inteira — é a tela de administração de modelos, que precisa enxergar
+   * até a peça restrita para poder editá-la.
+   */
+  listarParaOrgao = (orgaoId: string, modulo?: string, setores?: string[]) =>
+    this.documentos.listarModelosResolvidos(orgaoId, modulo, setores);
+
+  /** Tipos de setor que alcançam uma peça. Vazio = todos. */
+  setoresDoModelo = (modeloId: string) => this.documentos.setoresDoModelo(modeloId);
+
+  /**
+   * Amarra a peça a setores. Lista vazia devolve a peça a todo mundo.
+   *
+   * Só a versão da prefeitura pode ser amarrada: mexer no modelo global daqui
+   * mudaria a regra de todas as outras prefeituras de uma vez.
+   */
+  definirSetores = async (
+    orgaoId: string,
+    tipo: string,
+    setores: string[],
+  ): Promise<void> => {
+    const invalido = setores.find((setor) => !ehTipoDeSetor(setor));
+    if (invalido) throw new ErroDeNegocio(`Tipo de setor desconhecido: ${invalido}`);
+
+    const atual = await this.documentos.resolverModelo(orgaoId, tipo);
+    if (!atual) throw new NaoEncontrado("Modelo não encontrado");
+    if (atual.origem === "GLOBAL") {
+      throw new ErroDeNegocio(
+        "Este é o modelo padrão do produto. Salve uma versão da prefeitura antes de "
+        + "restringir quem a emite.",
+      );
+    }
+    await this.documentos.definirSetoresDoModelo(atual.id, [...new Set(setores)]);
+  };
 
   listarGlobais = () => this.documentos.listarModelosGlobais();
 

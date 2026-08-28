@@ -14,6 +14,7 @@ export type Tenant = {
 
 export type Letterhead = {
   arquivoLogomarca: string | null;
+  arquivoLogomarcaDireita: string | null;
   cabecalhoTimbre: string | null;
   rodapeTimbre: string | null;
 };

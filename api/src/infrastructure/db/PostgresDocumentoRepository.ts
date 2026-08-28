@@ -22,22 +22,50 @@ const COLUNAS_EMITIDO = `
   cancelado_em AS "canceladoEm", cancelado_motivo AS "canceladoMotivo"`;
 
 /**
+ * Setores que alcançam o modelo, e o teste de alcance.
+ *
+ * Sem linha em `documento_modelo_setor`, a peça vale para todos — é o que
+ * mantém no ar os modelos semeados antes da 0027. Com linhas, só quem está
+ * lotado em setor de um daqueles tipos.
+ *
+ * `$N` é um array de tipos; array vazio significa "usuário sem lotação de
+ * setor", e nesse caso ele só alcança as peças sem restrição.
+ */
+const SETORES_DO_MODELO = `
+  (SELECT coalesce(array_agg(ms.tipo_setor), ARRAY[]::varchar[])
+     FROM documento_modelo_setor ms WHERE ms.modelo_id = documento_modelo.id)`;
+
+/**
+ * `NULL` desliga o filtro: é a administração de modelos, que precisa enxergar
+ * a peça restrita para poder editá-la ou restaurá-la. Quem emite sempre manda
+ * um array — vazio, se não tem lotação de setor.
+ */
+const ALCANCA = `
+  ($3::varchar[] IS NULL
+   OR NOT EXISTS (SELECT 1 FROM documento_modelo_setor ms WHERE ms.modelo_id = documento_modelo.id)
+   OR EXISTS (SELECT 1 FROM documento_modelo_setor ms
+               WHERE ms.modelo_id = documento_modelo.id
+                 AND ms.tipo_setor = ANY($3::varchar[])))`;
+
+/**
  * Resolução global → prefeitura em uma consulta: a linha do órgão, quando
  * existe, ordena antes da global e o DISTINCT ON fica com ela. Fazer em dois
  * SELECTs abriria janela para o modelo trocar entre a leitura e o uso.
  */
 const RESOLVIDOS = `
   SELECT DISTINCT ON (tipo) ${COLUNAS_MODELO},
-         CASE WHEN orgao_id IS NULL THEN 'GLOBAL' ELSE 'PREFEITURA' END AS origem
+         CASE WHEN orgao_id IS NULL THEN 'GLOBAL' ELSE 'PREFEITURA' END AS origem,
+         ${SETORES_DO_MODELO} AS setores
     FROM documento_modelo
    WHERE (orgao_id = $1 OR orgao_id IS NULL)`;
 
 const SQL = {
-  resolverModelo: `${RESOLVIDOS} AND tipo = $2
+  resolverModelo: `${RESOLVIDOS} AND tipo = $2 AND ${ALCANCA}
      ORDER BY tipo, (orgao_id IS NULL)`,
   listarResolvidos: `
     SELECT * FROM (${RESOLVIDOS}
        AND ($2::text IS NULL OR modulo = $2)
+       AND ${ALCANCA}
      ORDER BY tipo, (orgao_id IS NULL)) AS resolvidos
      ORDER BY modulo, nome`,
   listarGlobais: `
@@ -56,6 +84,13 @@ const SQL = {
        SET nome = $2, titulo = $3, corpo = $4, ativo = $5, updated_at = now()
      WHERE id = $1`,
   removerModelo: `DELETE FROM documento_modelo WHERE id = $1`,
+  setoresDoModelo: `
+    SELECT tipo_setor AS "tipoSetor" FROM documento_modelo_setor
+     WHERE modelo_id = $1 ORDER BY tipo_setor`,
+  limparSetoresDoModelo: `DELETE FROM documento_modelo_setor WHERE modelo_id = $1`,
+  gravarSetoresDoModelo: `
+    INSERT INTO documento_modelo_setor (modelo_id, tipo_setor)
+    SELECT $1, unnest($2::varchar[])`,
 
   // Nasce em rascunho: `data` fica nula até alguém confirmar. `corpo_original`
   // guarda o texto do modelo, para a edição poder ser comparada — e desfeita.
@@ -110,17 +145,35 @@ const SQL = {
 };
 
 export class PostgresDocumentoRepository implements DocumentoRepository {
-  resolverModelo = async (orgaoId: string, tipo: string): Promise<ModeloResolvido | null> => {
-    const { rows } = await pool.query(SQL.resolverModelo, [orgaoId, tipo]);
+  resolverModelo = async (
+    orgaoId: string,
+    tipo: string,
+    setores?: string[],
+  ): Promise<ModeloResolvido | null> => {
+    const { rows } = await pool.query(SQL.resolverModelo, [orgaoId, tipo, setores ?? null]);
     return rows[0] ?? null;
   };
 
   listarModelosResolvidos = async (
     orgaoId: string,
     modulo?: string,
+    setores?: string[],
   ): Promise<ModeloResolvido[]> => {
-    const { rows } = await pool.query(SQL.listarResolvidos, [orgaoId, modulo ?? null]);
+    const { rows } = await pool.query(SQL.listarResolvidos, [
+      orgaoId, modulo ?? null, setores ?? null,
+    ]);
     return rows;
+  };
+
+  setoresDoModelo = async (modeloId: string): Promise<string[]> => {
+    const { rows } = await pool.query(SQL.setoresDoModelo, [modeloId]);
+    return rows.map((linha) => linha.tipoSetor as string);
+  };
+
+  definirSetoresDoModelo = async (modeloId: string, setores: string[]): Promise<void> => {
+    // Troca o conjunto inteiro: a tela manda a lista final, não um diff.
+    await pool.query(SQL.limparSetoresDoModelo, [modeloId]);
+    if (setores.length > 0) await pool.query(SQL.gravarSetoresDoModelo, [modeloId, setores]);
   };
 
   listarModelosGlobais = async (): Promise<ModeloDeDocumento[]> => {

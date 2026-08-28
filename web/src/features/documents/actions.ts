@@ -89,6 +89,21 @@ export const saveTemplate = async (tipo: string, input: TemplateInput) =>
     revalidatePath(`/administracao/documentos/${tipo}`);
   }, "Modelo salvo");
 
+/**
+ * Amarra a peça a setores. Lista vazia devolve a peça a todo mundo.
+ *
+ * Só a versão da prefeitura aceita restrição: mexer no modelo global daqui
+ * mudaria a regra de todas as outras prefeituras de uma vez.
+ */
+export const saveTemplateSectors = async (tipo: string, setores: string[]) =>
+  runAction(async () => {
+    await apiRequest(`/documentos/modelos/${tipo}/setores`, {
+      method: "PUT",
+      body: { setores },
+    });
+    revalidatePath(`/administracao/documentos/${tipo}`);
+  }, "Setores atualizados");
+
 export const restoreDefaultTemplate = async (tipo: string) =>
   runAction(async () => {
     await apiRequest(`/documentos/modelos/${tipo}`, { method: "DELETE" });

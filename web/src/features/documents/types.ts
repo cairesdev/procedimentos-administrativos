@@ -45,7 +45,23 @@ export type DocumentTemplate = {
   personalizado: boolean;
   atualizadoEm: string;
   origem: "GLOBAL" | "PREFEITURA";
+  /** Tipos de setor que alcançam a peça. Vazio = todos, como sempre foi. */
+  setores: string[];
 };
+
+/**
+ * Setores aos quais uma peça pode ser amarrada. Mesmo vocabulário do cadastro
+ * de setores — um teste na API recusa divergência.
+ */
+export const SECTOR_TYPES = [
+  { value: "PROTOCOLO", label: "Protocolo" },
+  { value: "COMPRAS", label: "Compras" },
+  { value: "CONTROLADORIA", label: "Controladoria" },
+  { value: "ALIMENTACAO_ESCOLAR", label: "Alimentação escolar" },
+  { value: "FROTAS", label: "Frotas" },
+  { value: "PATRIMONIO", label: "Patrimônio" },
+  { value: "OPERACIONAL", label: "Operacional" },
+] as const;
 
 /** Rascunho é peça em revisão: sem data e fora da conferência pública. */
 export type DocumentStatus = "RASCUNHO" | "EMITIDO";

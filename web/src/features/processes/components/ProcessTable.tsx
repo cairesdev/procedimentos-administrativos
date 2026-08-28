@@ -16,15 +16,18 @@ export const ProcessTable = ({
   processes,
   sectors,
   limiarAlertaDias,
+  vazio,
 }: {
   processes: Process[];
   sectors: Sector[];
   limiarAlertaDias: number;
+  /** A aba de encerrados diz outra coisa quando não há nada. */
+  vazio?: string;
 }) => (
   <Table
     columns={["Protocolo", "Processo", "Tipo", "Setor atual", "Prazo", "Situação"]}
     isEmpty={processes.length === 0}
-    emptyMessage="Nenhum processo na fila."
+    emptyMessage={vazio ?? "Nenhum processo na fila."}
   >
     {processes.map((process) => {
       const prazo = deadlineOf(process, limiarAlertaDias);

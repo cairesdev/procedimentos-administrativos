@@ -33,3 +33,6 @@ export const TIPOS_DE_SETOR = [
 ] as const;
 
 export type TipoDeSetor = (typeof TIPOS_DE_SETOR)[number];
+
+export const ehTipoDeSetor = (valor: string): valor is TipoDeSetor =>
+  (TIPOS_DE_SETOR as readonly string[]).includes(valor);

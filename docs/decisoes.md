@@ -621,3 +621,51 @@ chamar a rota direto para passar por cima da tela.
 
 A auditoria ficou com ADMIN e CONTROLADORIA — é a conduta dos próprios
 servidores, e quem é auditado não escolhe o que aparece.
+
+## Documento por setor, encerrados na fila e a segunda logomarca
+
+### Documento amarrado ao setor
+
+Três recortes passam a conviver: o **global** do produto, o **da prefeitura**
+(que já existiam, resolvidos por `orgao_id`) e agora o **do setor** — o parecer
+que só a controladoria emite, a ordem que só compras emite.
+
+**O vínculo é com o tipo do setor, não com a linha da tabela `setor`.** Um
+modelo global tem `orgao_id NULL` e precisa valer em toda prefeitura; apontar
+para o setor de Compras de um município o deixaria inútil nos demais. O tipo
+(`COMPRAS`, `CONTROLADORIA`…) é o mesmo vocabulário em todas.
+
+**"Cargo" ficou sendo o setor da lotação, não o papel.** O processo tramita
+entre setores, e é lá que a peça nasce: um servidor com papel `SERVIDOR` lotado
+em Compras emite a ordem; o mesmo papel na escola, não.
+
+**Restringe de verdade.** Sem setor marcado, a peça vale para todos — é o que
+mantém no ar os 20 modelos semeados antes da 0027. Com setores, ela some da
+lista de quem não é deles. O filtro acontece na consulta, e não depois: quem
+está de fora recebe o mesmo "não há modelo" de um tipo inexistente, sem ficar
+sabendo que existe um parecer que não pode emitir.
+
+Só a versão da prefeitura aceita restrição. Restringir o modelo global mudaria
+a regra de todas as outras prefeituras de uma vez.
+
+### Processos encerrados
+
+O corte não é "está aqui agora" — processo encerrado não está em setor nenhum, e
+filtrar por `setor_atual_id` devolveria lista vazia para todo mundo. É **passou
+por aqui**: existe despacho daquele setor no processo. Quem atuou numa etapa
+continua alcançando o processo depois de ele sair de circulação, e quem nunca
+atuou não passa a ver o dos outros.
+
+Ficou como aba na própria fila, não como tela nova: o servidor procura onde já
+está acostumado.
+
+### Segunda logomarca
+
+O timbre tinha uma imagem só, à esquerda. Prefeitura costuma imprimir duas — o
+brasão do município de um lado, a marca do programa ou da secretaria do outro
+(FUNDEB, PNAE, "Governo do Estado").
+
+Cada lado tem vida própria: trocar um não apaga o outro, salvar o texto do
+timbre não apaga nenhum, e excluir tira só o lado pedido. Ao remover, o registro
+sai antes do objeto no storage — a ordem inversa deixaria o timbre apontando
+para um arquivo que já não existe, e a folha sairia com imagem quebrada.

@@ -20,6 +20,8 @@ export type ModeloDeDocumento = {
 /** Modelo em uso para um tipo, com a origem explícita para a tela mostrar. */
 export type ModeloResolvido = ModeloDeDocumento & {
   origem: "GLOBAL" | "PREFEITURA";
+  /** Tipos de setor que alcançam a peça. Vazio = todos. */
+  setores: string[];
 };
 
 export type NovoModelo = {
@@ -93,9 +95,14 @@ export interface DocumentoRepository {
    * Modelo em vigor para o tipo: o da prefeitura quando existe, senão o
    * global. É a regra que faz "restaurar padrão" ser só apagar a linha.
    */
-  resolverModelo(orgaoId: string, tipo: string): Promise<ModeloResolvido | null>;
-  /** Todos os tipos disponíveis para o órgão, já resolvidos. */
-  listarModelosResolvidos(orgaoId: string, modulo?: string): Promise<ModeloResolvido[]>;
+  resolverModelo(orgaoId: string, tipo: string, setores?: string[]): Promise<ModeloResolvido | null>;
+  /** Tipos disponíveis para o órgão, filtrados pelos setores do usuário. */
+  listarModelosResolvidos(
+    orgaoId: string, modulo?: string, setores?: string[],
+  ): Promise<ModeloResolvido[]>;
+  setoresDoModelo(modeloId: string): Promise<string[]>;
+  /** Substitui o conjunto inteiro; lista vazia devolve a peça a todos. */
+  definirSetoresDoModelo(modeloId: string, setores: string[]): Promise<void>;
   /** Um tipo já existe para este órgão (global ou próprio)? */
   tipoEmUso(orgaoId: string | null, tipo: string): Promise<boolean>;
   listarModelosGlobais(): Promise<ModeloDeDocumento[]>;

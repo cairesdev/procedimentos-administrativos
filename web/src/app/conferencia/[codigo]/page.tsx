@@ -38,7 +38,12 @@ export default async function ConferirDocumentoPage({ params }: ConferenciaProps
         // A conferência é pública e não tem sessão: sem timbre da prefeitura,
         // porque a logomarca só desce autenticada. O que atesta a origem aqui
         // é o próprio registro, não o brasão.
-        letterhead={{ arquivoLogomarca: null, cabecalhoTimbre: documento.orgaoNome, rodapeTimbre: null }}
+        letterhead={{
+          arquivoLogomarca: null,
+          arquivoLogomarcaDireita: null,
+          cabecalhoTimbre: documento.orgaoNome,
+          rodapeTimbre: null,
+        }}
         orgName={documento.orgaoNome}
         baseUrl={baseUrl}
       />

@@ -45,6 +45,7 @@ authRouter.get("/timbre", authenticate, async (req, res, next) => {
     res.json(
       (await container.adminSistema.buscarTimbre(req.sessao!.orgaoId)) ?? {
         arquivoLogomarca: null,
+        arquivoLogomarcaDireita: null,
         cabecalhoTimbre: null,
         rodapeTimbre: null,
       },
@@ -57,9 +58,12 @@ authRouter.get("/timbre", authenticate, async (req, res, next) => {
 /** A imagem em si — o `arquivoLogomarca` é caminho privado no storage. */
 authRouter.get("/timbre/logomarca", authenticate, async (req, res, next) => {
   try {
-    enviarArquivo(res, await container.administrarSistema.abrirLogomarca(req.sessao!.orgaoId), {
-      cacheSegundos: 300,
-    });
+    const lado = req.query.lado === "DIREITA" ? "DIREITA" as const : "ESQUERDA" as const;
+    enviarArquivo(
+      res,
+      await container.administrarSistema.abrirLogomarca(req.sessao!.orgaoId, lado),
+      { cacheSegundos: 300 },
+    );
   } catch (error) {
     next(error);
   }

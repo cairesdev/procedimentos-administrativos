@@ -47,14 +47,19 @@ const SQL = {
      WHERE u.id = $1`,
   modulosDoOrgao: `
     SELECT modulo FROM orgao_modulo WHERE orgao_id = $1 AND ativo ORDER BY modulo`,
+  // O tipo do setor vem junto: é ele que decide quais modelos de documento o
+  // servidor alcança. Lotação em departamento herda o tipo do setor-pai —
+  // quem está na "Divisão de Empenho" está, para todo efeito, em Compras.
   lotacoesDoUsuario: `
     SELECT l.id, l.unidade_id AS "unidadeId", l.setor_id AS "setorId",
            l.departamento_id AS "departamentoId",
+           coalesce(s.tipo, ds.tipo) AS "tipoSetor",
            coalesce(un.nome, d.nome, s.nome) AS destino
       FROM lotacao l
       LEFT JOIN unidade un ON un.id = l.unidade_id
       LEFT JOIN setor s ON s.id = l.setor_id
       LEFT JOIN departamento d ON d.id = l.departamento_id
+      LEFT JOIN setor ds ON ds.id = d.setor_id
      WHERE l.usuario_id = $1 AND l.ativo
      ORDER BY destino`,
   primeiraEtapa: `

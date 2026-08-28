@@ -95,7 +95,13 @@ const IMAGENS_ACEITAS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml
  * Upload da logomarca. Multipart não passa por `apiRequest` (que serializa
  * JSON), então a chamada é feita à mão com o token de administrador.
  */
-export const uploadLetterheadLogo = async (id: string, formData: FormData) =>
+export type LogoSide = "ESQUERDA" | "DIREITA";
+
+export const uploadLetterheadLogo = async (
+  id: string,
+  formData: FormData,
+  lado: LogoSide = "ESQUERDA",
+) =>
   runAction(async () => {
     const arquivo = formData.get("arquivo");
     if (!(arquivo instanceof File) || arquivo.size === 0) {
@@ -111,18 +117,28 @@ export const uploadLetterheadLogo = async (id: string, formData: FormData) =>
     const corpo = new FormData();
     corpo.append("arquivo", arquivo, arquivo.name);
 
-    const resposta = await fetch(`${apiBaseUrl}/admin/orgaos/${id}/timbre/logomarca`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
-      body: corpo,
-      cache: "no-store",
-    });
+    const resposta = await fetch(
+      `${apiBaseUrl}/admin/orgaos/${id}/timbre/logomarca?lado=${lado}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: corpo,
+        cache: "no-store",
+      },
+    );
     if (!resposta.ok) {
       const dados = await resposta.json().catch(() => null);
       throw new ApiError(resposta.status, dados?.message ?? "Falha ao enviar a logomarca");
     }
     revalidarPrefeitura(id);
   }, "Logomarca atualizada");
+
+/** Tira a logomarca do timbre. O outro lado continua onde está. */
+export const removeLetterheadLogo = async (id: string, lado: LogoSide = "ESQUERDA") =>
+  runAction(async () => {
+    await withAdminToken(`/admin/orgaos/${id}/timbre/logomarca?lado=${lado}`, "DELETE");
+    revalidarPrefeitura(id);
+  }, "Logomarca removida");
 
 export const createEntityAdmin = async (id: string, input: FirstAdminInput) =>
   runAction(async () => {

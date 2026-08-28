@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { PAPEIS } from "../../src/domain/shared/Papeis";
+import { PAPEIS, TIPOS_DE_SETOR } from "../../src/domain/shared/Papeis";
 import {
   PERMISSOES, PERMISSOES_DO_PAPEL, permissoesDe,
 } from "../../src/domain/shared/Permissoes";
@@ -235,5 +235,120 @@ describe("web espelha a matriz da API", () => {
         `${papel} tem permissões diferentes no web e na API`,
       );
     }
+  });
+});
+
+/**
+ * Documento amarrado a setor.
+ *
+ * Três recortes convivem: o global do produto, o da prefeitura e agora o do
+ * setor — o parecer que só a controladoria emite. O vínculo é com o TIPO do
+ * setor, não com a linha da tabela: um modelo global precisa valer em toda
+ * prefeitura, e apontar para o setor de Compras de um município o deixaria
+ * inútil nos demais.
+ */
+describe("documento por setor", () => {
+  const repositorio = ler(
+    raizApi, "src", "infrastructure", "db", "PostgresDocumentoRepository.ts",
+  );
+
+  it("sem restricao, a peca continua valendo para todos", () => {
+    // É o que mantém no ar os modelos semeados antes da 0027 — nenhum deles
+    // tem linha em documento_modelo_setor.
+    assert.match(
+      repositorio,
+      /NOT EXISTS \(SELECT 1 FROM documento_modelo_setor/,
+      "sem este ramo, todo modelo antigo sumiria da lista de emissão",
+    );
+  });
+
+  it("a administracao enxerga a peca restrita", () => {
+    // Sem o ramo de NULL, o administrador não conseguiria editar nem restaurar
+    // um modelo que ele mesmo restringiu a outro setor.
+    assert.match(repositorio, /\$3::varchar\[\] IS NULL/, "o filtro não tem como ser desligado");
+  });
+
+  it("a emissao filtra pelos setores de quem emite", () => {
+    const caso = ler(raizApi, "src", "application", "documento", "EmitirDocumento.ts");
+    assert.match(caso, /tiposDeSetorDe\(perfil\)/, "a emissão não olha a lotação");
+    assert.match(
+      caso,
+      /resolverModelo\(\s*\n?\s*entrada\.orgaoId, entrada\.tipo, setores,/,
+      "os setores não chegam à resolução do modelo",
+    );
+  });
+
+  it("os tipos de setor batem entre a migration, o dominio e o web", () => {
+    // Três lugares repetem a lista. Divergir faz o banco recusar um valor que
+    // a tela ofereceu — erro que só aparece na hora de salvar.
+    const migration = ler(raizApi, "db", "migrations", "0027_modelo_por_setor_e_logomarca.sql");
+    const noBanco = [...(/CHECK \(tipo_setor IN \(([\s\S]*?)\)\)/.exec(migration)![1]!)
+      .matchAll(/'(\w+)'/g)].map((achado) => achado[1]!);
+
+    assert.deepEqual([...noBanco].sort(), [...TIPOS_DE_SETOR].sort());
+
+    const web = ler(raizWeb, "features", "documents", "types.ts");
+    const bloco = /SECTOR_TYPES = \[([\s\S]*?)\] as const;/.exec(web)![1]!;
+    const noWeb = [...bloco.matchAll(/value: "(\w+)"/g)].map((achado) => achado[1]!);
+
+    assert.deepEqual([...noWeb].sort(), [...TIPOS_DE_SETOR].sort());
+  });
+});
+
+/**
+ * Processo encerrado sai de circulação e não fica em setor nenhum. Quem atuou
+ * numa etapa continua tendo de alcançá-lo — pela lotação, não pelo nome.
+ */
+describe("processos encerrados", () => {
+  const repositorio = ler(
+    raizApi, "src", "infrastructure", "db", "PostgresTramitacaoRepository.ts",
+  );
+  const consulta = /listarEncerrados: `([\s\S]*?)`,/.exec(repositorio)![1]!;
+
+  it("traz encerrado e cancelado, e nada em andamento", () => {
+    assert.match(consulta, /status IN \('ENCERRADO', 'CANCELADO'\)/);
+    assert.ok(!/TRAMITANDO/.test(consulta), "processo em andamento entraria no arquivo");
+  });
+
+  it("o corte e ter passado pelo setor, nao estar nele", () => {
+    // `setor_atual_id` é nulo ou irrelevante depois do encerramento: filtrar
+    // por ele devolveria lista vazia para todo mundo.
+    assert.match(consulta, /EXISTS \(\s*SELECT 1 FROM despacho d/);
+    assert.match(consulta, /d\.setor_id = \$2/);
+    assert.ok(
+      !/p\.setor_atual_id = \$2/.test(consulta),
+      "o filtro usa o setor atual, que processo encerrado não tem",
+    );
+  });
+
+  it("continua isolado por orgao", () => {
+    assert.match(consulta, /p\.orgao_id = \$1/);
+  });
+});
+
+/** Duas logomarcas no timbre, cada uma com vida própria. */
+describe("segunda logomarca", () => {
+  const caso = ler(raizApi, "src", "application", "admin", "AdministrarSistema.ts");
+
+  it("trocar um lado nao apaga o outro", () => {
+    // O bug fácil: gravar o timbre com o lado oposto em `null` e a prefeitura
+    // perder o brasão ao subir a marca do programa.
+    assert.match(caso, /lado === "ESQUERDA" \? caminho : atual\?\.arquivoLogomarca/);
+    assert.match(caso, /lado === "DIREITA" \? caminho : atual\?\.arquivoLogomarcaDireita/);
+  });
+
+  it("salvar o texto do timbre preserva as duas imagens", () => {
+    const salvar = /salvarTimbre = async[\s\S]*?\n  \};/.exec(caso)![0];
+    assert.match(salvar, /arquivoLogomarca: atual\?\.arquivoLogomarca/);
+    assert.match(salvar, /arquivoLogomarcaDireita: atual\?\.arquivoLogomarcaDireita/);
+  });
+
+  it("remover tira do banco antes do storage", () => {
+    // A ordem inversa deixaria o timbre apontando para objeto inexistente, e a
+    // folha sairia com imagem quebrada.
+    const remover = /removerLogomarca = async[\s\S]*?\n  \};/.exec(caso)![0];
+    const posBanco = remover.indexOf("salvarTimbre");
+    const posStorage = remover.indexOf("armazenamento");
+    assert.ok(posBanco < posStorage, "o storage é limpo antes do registro sair");
   });
 });

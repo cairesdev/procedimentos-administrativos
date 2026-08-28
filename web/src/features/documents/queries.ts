@@ -2,10 +2,23 @@ import { apiRequest } from "@/shared/api/http-client";
 import { withPage, type Page } from "@/shared/api/pagination";
 import type { DocumentTemplate, IssuedDocument, MarkerCatalog, ScopeOption } from "./types";
 
-export const listTemplates = (modulo?: string) =>
-  apiRequest<DocumentTemplate[]>(
-    `/documentos/modelos${modulo ? `?modulo=${modulo}` : ""}`,
+/**
+ * Peças que este servidor alcança. `todos` traz também as restritas a outros
+ * setores — é a tela de administração de modelos, e a API exige
+ * `documents:template` para atender.
+ */
+export const listTemplates = (modulo?: string, todos = false) => {
+  const query = new URLSearchParams();
+  if (modulo) query.set("modulo", modulo);
+  if (todos) query.set("todos", "1");
+  return apiRequest<DocumentTemplate[]>(
+    `/documentos/modelos${query.size > 0 ? `?${query}` : ""}`,
   );
+};
+
+/** Setores que alcançam a peça. Vazio = todos. */
+export const listTemplateSectors = (tipo: string) =>
+  apiRequest<string[]>(`/documentos/modelos/${tipo}/setores`);
 
 export const findTemplate = (tipo: string) =>
   apiRequest<DocumentTemplate>(`/documentos/modelos/${tipo}`);

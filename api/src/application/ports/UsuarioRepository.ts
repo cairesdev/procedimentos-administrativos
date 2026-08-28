@@ -40,6 +40,8 @@ export type LotacaoDoUsuario = {
   unidadeId: string | null;
   setorId: string | null;
   departamentoId: string | null;
+  /** Tipo do setor (COMPRAS, CONTROLADORIA…); nulo em lotação de unidade. */
+  tipoSetor: string | null;
   destino: string;
 };
 
