@@ -1,0 +1,109 @@
+.seletor {
+  display: grid;
+  gap: 16px;
+}
+
+.titulo {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opcao,
+.marcada {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--texto_suave);
+}
+
+.marcada {
+  border-color: var(--acao);
+  background: var(--acao_suave);
+  color: var(--acao);
+  font-weight: 600;
+}
+
+.ordem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+  font-size: 13px;
+}
+
+/* O número diz a posição no texto — é o que o usuário confere contra o PDF. */
+.posicao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--acao_suave);
+  color: var(--acao);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rotulo {
+  flex: 1;
+  font-weight: 600;
+}
+
+.tipo {
+  font-size: 11px;
+  color: var(--texto_apagado);
+  white-space: nowrap;
+}
+
+.setas {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.setas button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto_suave);
+  cursor: pointer;
+}
+
+.setas button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.setas button:not(:disabled):hover {
+  border-color: var(--acao);
+  color: var(--acao);
+}

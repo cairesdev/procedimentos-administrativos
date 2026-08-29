@@ -797,3 +797,46 @@ comece com "MATERIAL DE LIMPEZA" casaria com o sinônimo "material".
 - **`Item nº` é lido como produto**, porque `item` é sinônimo legítimo de
   produto em muita planilha. A sugestão erra nesse caso, e não há dicionário que
   resolva — é precisamente por isso que ela é sugestão, com a amostra ao lado.
+
+## Colagem de PDF: extração por âncora
+
+A importação por colunas resolve o que vem do Excel. De um PDF vem outra coisa:
+a tabela chega como um **parágrafo só**, sem tabulação e, muitas vezes, sem nem
+quebra de linha. Não há coluna para mapear.
+
+O que existe é **tipo**. Número é reconhecível, unidade é uma palavra curta, e o
+texto do serviço é tudo que sobra. Então o usuário marca quais campos o texto
+traz e em que ordem — a ordem de marcação vira a sequência, e ele reordena com
+as setas —, e a extração ancora nos campos reconhecíveis.
+
+**A leitura vai das pontas para o meio.** Os campos antes do texto livre saem do
+começo, os de depois saem do fim, e a especificação fica com o intervalo. Ler da
+esquerda para a direita exigiria saber onde a descrição termina, que é
+exatamente o que não se sabe.
+
+Só pode haver **um campo de texto longo**: com dois, não há como decidir onde um
+acaba e o outro começa. A tela recusa.
+
+### Por que a ordem não pode ser adivinhada
+
+No termo de referência real, o cabeçalho dizia `UND QTD` e o dado vinha
+`12 Mês` — invertido. Confiar no título gravaria a unidade como quantidade.
+
+### O corte entre itens
+
+A âncora é a numeração (`1`, `1.1`, `2.1`) **precedida de um número**, que é
+como todo item termina. Cortar em toda numeração partiria a descrição:
+"TELHADOS DE ATÉ 2 ÁGUAS" tem número seguido de texto e não começa item nenhum —
+e "COM VALOR ENTRE 1.000.000,01 E 3.000.000,00" também não.
+
+Texto que já vem quebrado em linhas usa as linhas, que são mais confiáveis.
+
+### Bloco incompleto é descartado, nunca meio-preenchido
+
+"1 SERVIÇOS PRELIMINARES 6.263,65" é subtotal de grupo, não item: tem um número
+e a sequência pede sete. Importá-lo somaria o mesmo dinheiro duas vezes no total
+do contrato. Valor ausente que parece preenchido é pior que a linha faltando.
+
+Número do item, fonte (SINAPI/ORSE) e código não têm coluna no contrato e vão
+para a descrição — jogá-los fora perderia a ligação com a planilha orçamentária
+aprovada.

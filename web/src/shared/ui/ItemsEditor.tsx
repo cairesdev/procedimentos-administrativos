@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import { Button } from "./button";
 import { Alert } from "./layout";
 import {
-  CAMPOS_DO_ITEM, converterItensComSequencia, sugerirSequenciaDeItens,
-  type PastedItem,
+  CAMPOS_DO_ITEM, CAMPOS_DO_PDF, converterItensComSequencia, converterItensDoPdf,
+  sugerirSequenciaDeItens, type PastedItem,
 } from "@/shared/lib/spreadsheet-paste";
 import type { ColumnChoice } from "@/shared/lib/column-mapping";
+import type { FieldSpec } from "@/shared/lib/pdf-paste";
 import { ColumnMapper } from "@/shared/ui/ColumnMapper";
+import { FieldSequencePicker } from "@/shared/ui/FieldSequencePicker";
 import { toCurrency } from "./labels";
 import styles from "./ItemsEditor.module.css";
 
@@ -67,6 +69,17 @@ export const ItemsEditor = <T extends FieldValues>({
   const [textoColado, setTextoColado] = useState("");
   const [sequencia, setSequencia] = useState<ColumnChoice<keyof PastedItem>[]>([]);
 
+  /**
+   * Planilha e PDF são dois problemas diferentes.
+   *
+   * Do Excel vêm colunas separadas por tabulação, e basta dizer o que é cada
+   * uma. De um PDF vem texto corrido, muitas vezes sem nem quebra de linha —
+   * não há coluna para mapear, e o usuário precisa declarar quais campos
+   * existem e em que ordem, para a extração ancorar nos números.
+   */
+  const [modo, setModo] = useState<"planilha" | "pdf">("planilha");
+  const [camposPdf, setCamposPdf] = useState<FieldSpec<string>[]>([]);
+
   const watched = useWatch({ control, name: name as unknown as Path<T> }) as
     | PastedItem[]
     | undefined;
@@ -79,6 +92,45 @@ export const ItemsEditor = <T extends FieldValues>({
     setTextoColado(text);
     setSequencia(sugerirSequenciaDeItens(text) ?? []);
     setShowPasteBox(true);
+
+    // Texto sem tabulação e sem quebra de linha só pode ter vindo de PDF: a
+    // planilha sempre traz um separador. Propor o modo certo poupa o usuário
+    // de descobrir sozinho por que a importação trouxe um item só.
+    const semSeparador = !text.includes("\t") && !text.includes(";");
+    const umaLinhaSo = text.split(/\r?\n/).filter((linha) => linha.trim()).length <= 1;
+    if (semSeparador && umaLinhaSo && text.length > 120) setModo("pdf");
+  };
+
+  const importarDoPdf = () => {
+    if (!camposPdf.some((campo) => campo.tipo === "texto")) {
+      toast.error("Marque o campo de texto longo — é ele que recebe a especificação.");
+      return;
+    }
+    if (camposPdf.filter((campo) => campo.tipo === "texto").length > 1) {
+      toast.error("Só um campo pode ser texto longo.");
+      return;
+    }
+
+    const result = converterItensDoPdf(textoColado, camposPdf);
+    if (result.items.length === 0) {
+      toast.error("Nada extraído. Confira a ordem dos campos contra o texto colado.");
+      return;
+    }
+
+    const current = (watched ?? []).filter((item) => item?.produto?.trim());
+    const incoming = result.items.map((item) => ({ ...emptyItem, ...item }));
+    items.replace([...current, ...incoming] as FieldArray<T, ArrayPath<T>>[]);
+
+    setShowPasteBox(false);
+    setTextoColado("");
+    setCamposPdf([]);
+
+    toast.success(
+      `${result.items.length} ${result.items.length === 1 ? "item extraído" : "itens extraídos"}`
+        + (result.descartados > 0
+          ? ` · ${result.descartados} bloco(s) sem números suficientes (seção ou subtotal)`
+          : ""),
+    );
   };
 
   const importar = () => {
@@ -132,6 +184,62 @@ export const ItemsEditor = <T extends FieldValues>({
           />
 
           {textoColado ? (
+            <>
+              <div style={{ display: "flex", gap: "6px", margin: "12px 0" }}>
+                {([
+                  { valor: "planilha", rotulo: "Planilha (colunas separadas)" },
+                  { valor: "pdf", rotulo: "PDF (texto corrido)" },
+                ] as const).map((opcao) => (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    onClick={() => setModo(opcao.valor)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      border: `1px solid ${modo === opcao.valor ? "var(--acao)" : "var(--borda)"}`,
+                      background: modo === opcao.valor ? "var(--acao_suave)" : "transparent",
+                      color: modo === opcao.valor ? "var(--acao)" : "var(--texto_suave)",
+                      fontWeight: modo === opcao.valor ? 600 : 400,
+                    }}
+                  >
+                    {opcao.rotulo}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {textoColado && modo === "pdf" ? (
+            <>
+              <FieldSequencePicker
+                disponiveis={CAMPOS_DO_PDF as FieldSpec<string>[]}
+                sequencia={camposPdf}
+                onChange={setCamposPdf}
+              />
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <Button type="button" onClick={importarDoPdf}>
+                  Extrair itens
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setTextoColado("");
+                    setCamposPdf([]);
+                    setShowPasteBox(false);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </>
+          ) : null}
+
+          {textoColado && modo === "planilha" ? (
             <>
               <ColumnMapper
                 texto={textoColado}

@@ -1,6 +1,7 @@
 import {
   aplicarSequencia, sugerirSequencia, type ColumnChoice,
 } from "./column-mapping";
+import { extrairDoPdf, removerCabecalho, type FieldSpec } from "./pdf-paste";
 
 export type PastedItem = {
   produto: string;
@@ -216,3 +217,83 @@ export const converterItensComSequencia = (
 /** Sinônimos usados só para sugerir a sequência a partir do cabeçalho. */
 export const sugerirSequenciaDeItens = (texto: string) =>
   sugerirSequencia<keyof PastedItem>(texto, COLUMN_ALIASES);
+
+
+/**
+ * Campos oferecidos na colagem de PDF, com o tipo que ancora a extração.
+ *
+ * `texto` absorve o meio do bloco; `numero` e `palavra` consomem um token cada.
+ * A numeração do item (1, 1.1) e o código entram como campos descartáveis: o
+ * orçamento os traz, e o contrato não tem onde guardá-los — marcá-los é o que
+ * permite ao extrator saber que existem e pular.
+ */
+export const CAMPOS_DO_PDF: FieldSpec<keyof PastedItem | "numeracao" | "codigo" | "fonte">[] = [
+  { campo: "numeracao", rotulo: "Nº do item", tipo: "numero" },
+  { campo: "codigo", rotulo: "Código", tipo: "palavra" },
+  { campo: "produto", rotulo: "Especificação", tipo: "texto" },
+  { campo: "fonte", rotulo: "Fonte (SINAPI/ORSE)", tipo: "palavra" },
+  { campo: "unidadeMedida", rotulo: "Unidade", tipo: "palavra" },
+  { campo: "marca", rotulo: "Marca", tipo: "palavra" },
+  { campo: "quantidade", rotulo: "Quantidade", tipo: "numero" },
+  { campo: "valorUnitario", rotulo: "Valor unitário", tipo: "numero" },
+  { campo: "valorTotal", rotulo: "Valor total", tipo: "numero" },
+];
+
+/** Rótulos que aparecem no cabeçalho copiado junto e precisam ser cortados. */
+const ROTULOS_DE_CABECALHO = [
+  "ITEM", "CÓDIGO", "ESPECIFICAÇÃO", "DESCRIÇÃO", "FONTE", "UNIDADE", "UND",
+  "QTD", "QUANTIDADE", "VALOR UNIT", "VALOR TOTAL", "PREÇO UNITÁRIO",
+  "PREÇO TOTAL", "CUSTO DIRETO", "MÃO DE OBRA", "MATERIAL", "BDI",
+];
+
+export type PdfPasteResult = PasteResult & {
+  /** Blocos sem números suficientes: cabeçalho, seção ou subtotal. */
+  descartados: number;
+};
+
+/**
+ * Colagem de PDF: texto corrido, com os campos declarados pelo usuário.
+ *
+ * O cabeçalho vem grudado no primeiro item quando o PDF não preserva quebras,
+ * então ele é cortado antes de separar os blocos.
+ */
+export const converterItensDoPdf = (
+  texto: string,
+  sequencia: FieldSpec<string>[],
+): PdfPasteResult => {
+  const semCabecalho = removerCabecalho(texto, ROTULOS_DE_CABECALHO);
+  const { linhas, descartados } = extrairDoPdf(semCabecalho, sequencia);
+
+  const items = linhas.map((linha) => {
+    const quantidade = parseNumber(linha.quantidade ?? "");
+    const unitarioCelula = parseNumber(linha.valorUnitario ?? "");
+    const totalCelula = parseNumber(linha.valorTotal ?? "");
+
+    const valorTotal = totalCelula || quantidade * unitarioCelula;
+    const unitario = unitarioCelula || (quantidade > 0 ? valorTotal / quantidade : 0);
+
+    // Código e fonte não têm coluna no contrato, e jogá-los fora perderia o
+    // rastro do orçamento. Vão para a descrição, que é campo livre.
+    const rastro = [linha.numeracao, linha.fonte, linha.codigo]
+      .filter(Boolean)
+      .join(" · ");
+
+    return {
+      produto: (linha.produto ?? "").slice(0, 150),
+      descricao: [rastro, linha.produto].filter(Boolean).join(" — "),
+      unidadeMedida: (linha.unidadeMedida || "UN").toUpperCase(),
+      marca: linha.marca ?? "",
+      quantidade,
+      valorUnitario: Number(unitario.toFixed(4)),
+      valorTotal: Number(valorTotal.toFixed(2)),
+    };
+  });
+
+  return {
+    items,
+    ignoredLines: descartados,
+    hasHeader: semCabecalho.length < texto.length,
+    columns: [],
+    descartados,
+  };
+};
