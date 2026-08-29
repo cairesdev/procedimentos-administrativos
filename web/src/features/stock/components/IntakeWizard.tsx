@@ -8,7 +8,12 @@ import { InputField, SelectField } from "@/shared/ui/form-field";
 import { Alert, Card, Stack, SummaryGrid, Table } from "@/shared/ui/layout";
 import { toDate } from "@/shared/ui/labels";
 import { registerIntake } from "../actions";
-import { converterPlanilha, type PastedLine } from "../paste";
+import {
+  CAMPOS_DA_ENTRADA, converterPlanilhaComSequencia, sugerirSequenciaDaEntrada,
+  type PastedLine,
+} from "../paste";
+import type { ColumnChoice } from "@/shared/lib/column-mapping";
+import { ColumnMapper } from "@/shared/ui/ColumnMapper";
 import type { StockType, Warehouse } from "../types";
 
 type Linha = PastedLine & { chave: string };
@@ -57,6 +62,10 @@ export const IntakeWizard = ({
     [linhas],
   );
 
+  // O texto colado fica retido até o almoxarife confirmar o que é cada coluna.
+  const [textoColado, setTextoColado] = useState("");
+  const [sequencia, setSequencia] = useState<ColumnChoice<keyof PastedLine>[]>([]);
+
   /** A que vence antes, para o almoxarife ver o que precisa girar primeiro. */
   const primeiraValidade = useMemo(
     () =>
@@ -67,16 +76,35 @@ export const IntakeWizard = ({
     [preenchidas],
   );
 
-  const colar = (evento: ClipboardEvent<HTMLTextAreaElement>) => {
-    evento.preventDefault();
-    const { linhas: coladas, ignoradas, datasInvalidas } = converterPlanilha(
-      evento.clipboardData.getData("text/plain"),
+  /**
+   * Colar não importa: retém o texto e abre o mapeamento das colunas.
+   *
+   * Adivinhar a ordem funcionava até chegar a planilha com uma coluna a mais,
+   * e aí a validade entrava como quantidade sem ninguém perceber. Agora o
+   * almoxarife diz o que é cada coluna antes de qualquer linha entrar.
+   */
+  const receber = (texto: string) => {
+    setTextoColado(texto);
+    setSequencia(sugerirSequenciaDaEntrada(texto) ?? []);
+  };
+
+  const importar = () => {
+    if (!sequencia.some((campo) => campo === "nome")) {
+      toast.error("Aponte qual coluna é o produto — sem ela não dá para importar.");
+      return;
+    }
+
+    const { linhas: coladas, ignoradas, datasInvalidas } = converterPlanilhaComSequencia(
+      textoColado, sequencia,
     );
 
     if (coladas.length === 0) {
-      toast.error("Nenhuma linha reconhecida. Confira se há as colunas nome e quantidade.");
+      toast.error("Nenhuma linha com produto e quantidade. Confira o que você marcou.");
       return;
     }
+
+    setTextoColado("");
+    setSequencia([]);
 
     setLinhas((atuais) => {
       // Descarta as linhas em branco que já estavam na tela: colar sobre um
@@ -219,19 +247,46 @@ export const IntakeWizard = ({
       <Card title="Itens">
         <Stack>
           <Alert tone="info">
-            Cole aqui a planilha, com as colunas <strong>nome</strong>, <strong>unidade</strong>,{" "}
-            <strong>quantidade</strong> e <strong>validade</strong>. O cabeçalho é reconhecido
-            sozinho, e a validade aceita 31/12/2026 ou 2026-12-31. Produto que ainda não existe
-            entra no catálogo.
+            Cole a planilha aqui e diga o que é cada coluna. A validade aceita 31/12/2026 ou
+            2026-12-31, e produto que ainda não existe entra no catálogo.
           </Alert>
 
           <textarea
-            onPaste={colar}
+            value={textoColado}
+            onChange={(evento) => receber(evento.target.value)}
             placeholder="Clique aqui e cole (Ctrl+V) as linhas copiadas do Excel"
             rows={2}
             aria-label="Colar planilha"
             style={{ width: "100%", fontFamily: "ui-monospace, monospace", fontSize: "12px" }}
           />
+
+          {textoColado ? (
+            <>
+              <ColumnMapper
+                texto={textoColado}
+                campos={CAMPOS_DA_ENTRADA}
+                sequencia={sequencia}
+                onChange={setSequencia}
+                sugestao={sugerirSequenciaDaEntrada(textoColado)}
+              />
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button type="button" onClick={importar}>
+                  Importar linhas
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setTextoColado("");
+                    setSequencia([]);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </>
+          ) : null}
 
           <Table
             columns={["Produto", "Unidade", "Quantidade", "Validade", ""]}

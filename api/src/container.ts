@@ -8,6 +8,8 @@ import { PostgresOrganizacaoRepository } from "./infrastructure/db/PostgresOrgan
 import { PostgresFornecedorRepository } from "./infrastructure/db/PostgresFornecedorRepository";
 import { PostgresFluxoConfiguracaoRepository } from "./infrastructure/db/PostgresFluxoConfiguracaoRepository";
 import { PostgresTramitacaoRepository } from "./infrastructure/db/PostgresTramitacaoRepository";
+import { ApurarConsumo } from "./application/almoxarifado/ApurarConsumo";
+import { PostgresRelatorioConsumoRepository } from "./infrastructure/db/PostgresRelatorioConsumoRepository";
 import { DespacharProcesso } from "./application/tramitacao/DespacharProcesso";
 import { EmitirParecer } from "./application/tramitacao/EmitirParecer";
 import { EmitirOrdemFornecimento } from "./application/tramitacao/EmitirOrdemFornecimento";
@@ -108,6 +110,10 @@ export const container = {
   contratos,
   solicitacoes,
   usuarios,
+
+  apurarConsumo: new ApurarConsumo(
+    new PostgresRelatorioConsumoRepository(), almoxarifado,
+  ),
 
   /**
    * Tipos de setor onde o servidor atua — é o que decide quais peças ele

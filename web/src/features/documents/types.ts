@@ -17,6 +17,7 @@ export const DOCUMENT_SCOPES = [
   "MANUTENCAO",
   "SOLICITACAO_ESTOQUE",
   "ENTRADA_ESTOQUE",
+  "RELATORIO_CONSUMO",
 ] as const;
 
 export type DocumentScope = (typeof DOCUMENT_SCOPES)[number];

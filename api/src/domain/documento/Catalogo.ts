@@ -19,6 +19,7 @@ export const ESCOPOS = [
   "MANUTENCAO",
   "SOLICITACAO_ESTOQUE",
   "ENTRADA_ESTOQUE",
+  "RELATORIO_CONSUMO",
 ] as const;
 
 export type EscopoDeDocumento = (typeof ESCOPOS)[number];
@@ -37,6 +38,7 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "FROTAS",
   SOLICITACAO_ESTOQUE: "ALMOXARIFADO",
   ENTRADA_ESTOQUE: "ALMOXARIFADO",
+  RELATORIO_CONSUMO: "ALMOXARIFADO",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -52,6 +54,7 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "Manutenção de veículo",
   SOLICITACAO_ESTOQUE: "Pedido de material, com itens e lotes entregues",
   ENTRADA_ESTOQUE: "Entrada no almoxarifado, com os lotes",
+  RELATORIO_CONSUMO: "Consumo por unidade e por produto, num período",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -71,6 +74,7 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "manutenção",
   SOLICITACAO_ESTOQUE: "pedido de material",
   ENTRADA_ESTOQUE: "entrada de estoque",
+  RELATORIO_CONSUMO: "relatório de consumo",
 };
 
 export type CatalogoDeMarcadores = {
@@ -232,6 +236,32 @@ const ENTRADA_ESTOQUE = [
 
 const LOTES_DA_ENTRADA = ["produto", "unidadeMedida", "quantidade", "validade"];
 
+/**
+ * Relatório de consumo — a prestação de contas da alimentação escolar.
+ *
+ * Tudo em quantidade: o almoxarifado registra o que entra sem preço, e um
+ * custo médio inventado aqui viraria número indefensável diante do conselho de
+ * alimentação escolar. O percentual de agricultura familiar é por número de
+ * remessas, pelo mesmo motivo — e o modelo diz isso na própria peça.
+ */
+const RELATORIO = [
+  "relatorio.almoxarifado", "relatorio.tipoEstoque",
+  "relatorio.periodoInicio", "relatorio.periodoFim",
+  "relatorio.totalRecebido", "relatorio.totalConsumido",
+  "relatorio.totalPerdido", "relatorio.totalDevolvido",
+  "relatorio.unidadesAtendidas",
+  "relatorio.entradasTotal", "relatorio.entradasAgriculturaFamiliar",
+  "relatorio.agriculturaFamiliarPercentual",
+];
+
+const UNIDADES_DO_RELATORIO = [
+  "nome", "cnpj", "recebido", "consumido", "perdido", "devolvido", "saldo",
+];
+
+const PRODUTOS_DO_RELATORIO = [
+  "nome", "unidadeMedida", "recebido", "consumido", "perdido", "devolvido",
+];
+
 export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
   PROCESSO: {
     valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
@@ -287,6 +317,10 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   ENTRADA_ESTOQUE: {
     valores: [...COMUNS, ...ENTRADA_ESTOQUE],
     listas: { lotes: LOTES_DA_ENTRADA },
+  },
+  RELATORIO_CONSUMO: {
+    valores: [...COMUNS, ...RELATORIO],
+    listas: { unidades: UNIDADES_DO_RELATORIO, produtos: PRODUTOS_DO_RELATORIO },
   },
 };
 

@@ -704,3 +704,96 @@ a falta de uma permissão, e o código já usava as duas: perguntar antes
 dois casos ela abre inteira, com menos informação — que é o certo para o que é
 complementar. Sem essa distinção o teste exigiria dar a permissão, e o jeito
 mais fácil de calar um teste de acesso é abrir o acesso.
+
+## Relatório de consumo (PNAE)
+
+A 2ª fatia do almoxarifado passou a registrar consumo, perda e devolução por
+unidade. O dado existia e nenhuma tela o lia — quem presta contas ao FNDE
+refazia a conta na planilha, a partir dos comprovantes impressos.
+
+**Movimento físico, em quantidade.** Valor ficou de fora por decisão: a entrada
+da remessa registra quantidade e não tem preço, e um custo médio inventado aqui
+produziria número indefensável diante do conselho de alimentação escolar. Quando
+o preço entrar no almoxarifado — na entrada do lote ou herdado do contrato —, o
+relatório passa a valorar sem mudar de forma.
+
+### As quatro grandezas, e de onde cada uma vem
+
+| Grandeza | Origem | Por quê |
+| --- | --- | --- |
+| Recebido | `liberacao_lote.quantidade_confirmada` | O que a escola **confirmou**, não o que o almoxarifado despachou — contar o despachado infla o relatório com o que se perdeu no caminho |
+| Perdido | `liberacao_lote.quantidade_perdida` | Sempre com motivo: o banco recusa perda sem ele |
+| Consumido | `consumo` | O que a unidade declarou usar |
+| Devolvido | `devolucao` com status `ACEITA` | Pendente não voltou ao saldo de ninguém; recusada nunca voltará |
+
+**O corte é pela data da confirmação**, não da liberação: material despachado em
+março e conferido em abril é movimento de abril, que é quando a escola assumiu a
+responsabilidade por ele.
+
+**`FULL JOIN` entre as três origens.** Uma escola pode ter consumido sem receber
+no período (usou o que já estava no armário), ou devolvido sem consumir. Um
+`LEFT JOIN` a partir de qualquer uma perderia essas linhas — e omitiria
+justamente a escola cujo movimento chama atenção.
+
+### Agricultura familiar
+
+`fornecedor` ganhou `agricultura_familiar`. É atributo do fornecedor, não da
+compra: uma cooperativa de agricultores é a mesma em qualquer município, e por
+isso cabe no cadastro **global**. Toda alteração continua passando por
+`fornecedor_historico`.
+
+O percentual sai **por número de remessas**, e a peça diz isso na própria folha.
+Os 30% que o FNDE cobra são financeiros; sem preço no estoque, apresentar este
+número como se fosse aquele seria mentira impressa em papel timbrado.
+
+### O relatório como entidade
+
+O motor de documentos emite por referência a uma entidade, e um relatório de
+período não tinha nenhuma. `relatorio_consumo` é essa entidade: guarda o
+**recorte** — almoxarifado, tipo de estoque, período — e nada mais.
+
+Os números são apurados na leitura. A peça emitida sobre o relatório congela o
+resultado em `documento_emitido.dados`, como toda peça do sistema. É o que faz a
+divisão valer: o relatório aberto acompanha o estoque de hoje, e o documento
+guarda o que era verdade no dia em que saiu — com código de conferência, para o
+conselho poder validar meses depois.
+
+## Importação de planilha: o usuário declara as colunas
+
+**Problema relatado:** "por existir diversas variantes, a importação pode
+ocorrer incorretamente".
+
+O sistema adivinhava. Procurava um cabeçalho conhecido e, quando não achava,
+assumia uma ordem fixa. As planilhas das prefeituras variam demais — uma tem
+"item nº" na frente, outra tem observação no meio, outra põe o valor antes da
+quantidade. Quando o palpite errava, os dados entravam **em silêncio**: sem
+erro, sem aviso, e o usuário só descobria no documento impresso.
+
+Havia até uma incoerência plantada: a ordem posicional dos itens de contrato
+listava `quantidade` antes de `marca`, e o tipo declarava o contrário.
+
+**Agora são duas etapas.** Cola, diz o que é cada coluna, importa. A prévia
+mostra as primeiras linhas sob os rótulos escolhidos — é conferindo o conteúdo
+embaixo do nome que se percebe a coluna trocada. Coluna que não interessa fica
+como *ignorar*.
+
+A detecção continua existindo, **rebaixada a sugestão**: quando reconhece o
+cabeçalho, oferece a sequência num botão. Aceitar é ato do usuário, e ela exige
+duas colunas reconhecidas — uma só é coincidência, e uma linha de dado que
+comece com "MATERIAL DE LIMPEZA" casaria com o sinônimo "material".
+
+### Três bugs que os testes desta fatia encontraram
+
+- **`trim()` comia as tabulações.** Estava no código desde o começo, nas duas
+  colagens. Numa planilha cuja primeira coluna esteja vazia — item nº em branco,
+  coluna de conferência —, `"\tARROZ\t10"` virava `"ARROZ\t10"` e **todas as
+  colunas seguintes andavam uma casa**. Agora apara-se só espaço e `\r`: a
+  tabulação é dado, ela diz que existe uma célula ali, mesmo vazia.
+- **Linha de seção passava por cabeçalho.** "HORTIFRUTI" seguido de células
+  vazias era descartado como título. O critério exigia só ausência de dígito nos
+  campos numéricos; passou a exigir também que ao menos um deles tenha **texto**
+  — senão uma planilha que comece por item de quantidade em branco perderia a
+  primeira linha de dado.
+- **`Item nº` é lido como produto**, porque `item` é sinônimo legítimo de
+  produto em muita planilha. A sugestão erra nesse caso, e não há dicionário que
+  resolva — é precisamente por isso que ela é sugestão, com a amostra ao lado.

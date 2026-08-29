@@ -1,0 +1,82 @@
+.mapeador {
+  display: grid;
+  gap: 12px;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.instrucao {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto_suave);
+  flex: 1;
+  min-width: 220px;
+}
+
+.aplicada {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sucesso, #0f7a52);
+  white-space: nowrap;
+}
+
+/* Planilha larga não pode empurrar o modal: rola só a tabela. */
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+}
+
+.tabela {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 100%;
+}
+
+.tabela th,
+.tabela td {
+  border: 1px solid var(--borda);
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabela thead th {
+  background: var(--superficie_alt);
+  position: sticky;
+  top: 0;
+}
+
+.tabela td {
+  color: var(--texto_suave);
+}
+
+.tabela select {
+  width: 100%;
+  min-width: 130px;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+/* Coluna ignorada fica apagada: a diferença tem de saltar aos olhos antes de
+   importar, não depois. */
+.ignorado {
+  opacity: 0.55;
+}
+
+.escolhido {
+  border-color: var(--acao);
+  color: var(--acao);
+  font-weight: 600;
+}

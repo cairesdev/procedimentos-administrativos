@@ -1,3 +1,7 @@
+import {
+  aplicarSequencia, sugerirSequencia, type ColumnChoice,
+} from "./column-mapping";
+
 export type PastedItem = {
   produto: string;
   descricao: string;
@@ -14,6 +18,19 @@ export type PasteResult = {
   hasHeader: boolean;
   columns: string[];
 };
+
+/** Campos que o usuário pode apontar ao colar, na ordem em que a tela os oferece. */
+export const CAMPOS_DO_ITEM: { campo: keyof PastedItem; rotulo: string }[] = [
+  { campo: "produto", rotulo: "Produto" },
+  { campo: "descricao", rotulo: "Descrição" },
+  { campo: "unidadeMedida", rotulo: "Unidade" },
+  { campo: "marca", rotulo: "Marca" },
+  { campo: "quantidade", rotulo: "Quantidade" },
+  { campo: "valorUnitario", rotulo: "Valor unitário" },
+  { campo: "valorTotal", rotulo: "Valor total" },
+];
+
+const NUMERICOS: (keyof PastedItem)[] = ["quantidade", "valorUnitario", "valorTotal"];
 
 // Sinônimos aceitos no cabeçalho — as planilhas das prefeituras variam muito.
 const COLUMN_ALIASES: Record<keyof PastedItem, string[]> = {
@@ -145,3 +162,57 @@ export const parsePastedItems = (text: string): PasteResult => {
     columns: mapping ? Object.keys(mapping) : POSITIONAL.slice(0, headerCells.length),
   };
 };
+
+
+/**
+ * Colagem com a sequência de colunas **declarada pelo usuário**.
+ *
+ * A versão que adivinha (`parsePastedItems`) continua existindo para a
+ * sugestão, mas quem manda é esta: o usuário diz o que está colando, e o
+ * sistema não inventa. Era a origem de importação trocada em silêncio —
+ * quantidade entrando como valor porque a planilha daquela prefeitura tinha
+ * uma coluna a mais no começo.
+ */
+export const converterItensComSequencia = (
+  texto: string,
+  sequencia: ColumnChoice<keyof PastedItem>[],
+): PasteResult => {
+  const { linhas, ignoradas, cabecalhoDescartado, colunasEncontradas } = aplicarSequencia(
+    texto,
+    sequencia,
+    { obrigatorio: "produto", camposNumericos: NUMERICOS },
+  );
+
+  const items = linhas.map((linha) => {
+    const quantidade = parseNumber(linha.quantidade ?? "");
+    const valorUnitarioCelula = parseNumber(linha.valorUnitario ?? "");
+    const valorTotalCelula = parseNumber(linha.valorTotal ?? "");
+
+    // Um dos dois valores basta: a planilha que traz só o total tem o unitário
+    // deduzido, e vice-versa. Trazendo os dois, o total informado vence — é o
+    // que o fornecedor assinou.
+    const valorTotal = valorTotalCelula || quantidade * valorUnitarioCelula;
+    const unitario = valorUnitarioCelula || (quantidade > 0 ? valorTotal / quantidade : 0);
+
+    return {
+      produto: linha.produto ?? "",
+      descricao: linha.descricao ?? "",
+      unidadeMedida: (linha.unidadeMedida || "UN").toUpperCase(),
+      marca: linha.marca ?? "",
+      quantidade,
+      valorUnitario: Number(unitario.toFixed(4)),
+      valorTotal: Number(valorTotal.toFixed(2)),
+    };
+  });
+
+  return {
+    items,
+    ignoredLines: ignoradas,
+    hasHeader: cabecalhoDescartado,
+    columns: Array.from({ length: colunasEncontradas }, (_, indice) => `Coluna ${indice + 1}`),
+  };
+};
+
+/** Sinônimos usados só para sugerir a sequência a partir do cabeçalho. */
+export const sugerirSequenciaDeItens = (texto: string) =>
+  sugerirSequencia<keyof PastedItem>(texto, COLUMN_ALIASES);

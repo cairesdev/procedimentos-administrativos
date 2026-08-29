@@ -7,7 +7,12 @@ import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./button";
 import { Alert } from "./layout";
-import { parsePastedItems, type PastedItem } from "@/shared/lib/spreadsheet-paste";
+import {
+  CAMPOS_DO_ITEM, converterItensComSequencia, sugerirSequenciaDeItens,
+  type PastedItem,
+} from "@/shared/lib/spreadsheet-paste";
+import type { ColumnChoice } from "@/shared/lib/column-mapping";
+import { ColumnMapper } from "@/shared/ui/ColumnMapper";
 import { toCurrency } from "./labels";
 import styles from "./ItemsEditor.module.css";
 
@@ -39,8 +44,14 @@ type ItemsEditorProps<T extends FieldValues> = {
   error?: string;
 };
 
-// Aceita colagem direta do Excel/CSV: detecta cabeçalho, converte números
-// brasileiros e preenche a tabela. Também dá para digitar linha a linha.
+/**
+ * Colagem do Excel/CSV em duas etapas: cola, diz o que é cada coluna, importa.
+ *
+ * A etapa do meio nasceu de importação que entrava trocada. O sistema
+ * adivinhava a ordem quando não reconhecia o cabeçalho, e planilha com uma
+ * coluna a mais no começo fazia quantidade virar valor — sem erro, sem aviso,
+ * e o usuário só descobria no documento impresso.
+ */
 export const ItemsEditor = <T extends FieldValues>({
   control,
   register,
@@ -52,6 +63,10 @@ export const ItemsEditor = <T extends FieldValues>({
   const items = useFieldArray({ control, name });
   const [showPasteBox, setShowPasteBox] = useState(false);
 
+  // O texto fica retido até o usuário confirmar o que é cada coluna.
+  const [textoColado, setTextoColado] = useState("");
+  const [sequencia, setSequencia] = useState<ColumnChoice<keyof PastedItem>[]>([]);
+
   const watched = useWatch({ control, name: name as unknown as Path<T> }) as
     | PastedItem[]
     | undefined;
@@ -59,22 +74,37 @@ export const ItemsEditor = <T extends FieldValues>({
   const total = (watched ?? []).reduce((sum, item) => sum + Number(item?.valorTotal ?? 0), 0);
   const divergence = expectedTotal ? Math.abs(expectedTotal - total) > 0.01 : false;
 
-  const absorb = (text: string) => {
-    const result = parsePastedItems(text);
+  /** Recebe o texto e abre o mapeamento — nada entra na tabela ainda. */
+  const receber = (text: string) => {
+    setTextoColado(text);
+    setSequencia(sugerirSequenciaDeItens(text) ?? []);
+    setShowPasteBox(true);
+  };
+
+  const importar = () => {
+    if (!sequencia.some((campo) => campo === "produto")) {
+      toast.error("Aponte qual coluna é o produto — sem ela não dá para importar.");
+      return;
+    }
+
+    const result = converterItensComSequencia(textoColado, sequencia);
     if (result.items.length === 0) {
-      toast.error("Nada reconhecido. Copie as linhas da planilha incluindo o cabeçalho.");
+      toast.error("Nenhuma linha com produto. Confira o que você marcou como coluna de produto.");
       return;
     }
 
     const current = (watched ?? []).filter((item) => item?.produto?.trim());
     const incoming = result.items.map((item) => ({ ...emptyItem, ...item }));
     items.replace([...current, ...incoming] as FieldArray<T, ArrayPath<T>>[]);
+
     setShowPasteBox(false);
+    setTextoColado("");
+    setSequencia([]);
 
     toast.success(
-      `${result.items.length} ${result.items.length === 1 ? "item importado" : "itens importados"}` +
-        (result.hasHeader ? " (cabeçalho reconhecido)" : " (ordem das colunas assumida)") +
-        (result.ignoredLines > 0 ? ` · ${result.ignoredLines} linha(s) ignorada(s)` : ""),
+      `${result.items.length} ${result.items.length === 1 ? "item importado" : "itens importados"}`
+        + (result.hasHeader ? " · linha de cabeçalho descartada" : "")
+        + (result.ignoredLines > 0 ? ` · ${result.ignoredLines} linha(s) sem produto` : ""),
     );
   };
 
@@ -82,7 +112,7 @@ export const ItemsEditor = <T extends FieldValues>({
     const text = event.clipboardData.getData("text/plain");
     if (!text.includes("\t") && !text.includes("\n") && !text.includes(";")) return;
     event.preventDefault();
-    absorb(text);
+    receber(text);
   };
 
   return (
@@ -97,18 +127,43 @@ export const ItemsEditor = <T extends FieldValues>({
             autoFocus
             className={styles.paste_input}
             placeholder={"Produto\tUnidade\tQuantidade\tValor unitário\tValor total"}
-            onPaste={(event) => {
-              event.preventDefault();
-              absorb(event.clipboardData.getData("text/plain"));
-            }}
-            onChange={(event) => {
-              if (event.target.value.includes("\n")) absorb(event.target.value);
-            }}
+            value={textoColado}
+            onChange={(event) => receber(event.target.value)}
           />
-          <p className={styles.paste_hint}>
-            Reconhece colunas por nome (produto, unidade, quantidade, marca, valor) e números no
-            formato brasileiro. Sem cabeçalho, assume a ordem padrão.
-          </p>
+
+          {textoColado ? (
+            <>
+              <ColumnMapper
+                texto={textoColado}
+                campos={CAMPOS_DO_ITEM}
+                sequencia={sequencia}
+                onChange={setSequencia}
+                sugestao={sugerirSequenciaDeItens(textoColado)}
+              />
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <Button type="button" onClick={importar}>
+                  Importar itens
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setTextoColado("");
+                    setSequencia([]);
+                    setShowPasteBox(false);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className={styles.paste_hint}>
+              Números no formato brasileiro. Depois de colar, você diz o que é cada coluna —
+              nada entra na tabela antes disso.
+            </p>
+          )}
         </div>
       ) : null}
 

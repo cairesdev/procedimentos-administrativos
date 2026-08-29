@@ -594,6 +594,56 @@ almoxarifadoRouter.post(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Relatório de consumo (PNAE)
+
+const relatorioSchema = z.object({
+  almoxarifadoId: z.string().uuid(),
+  tipoEstoqueId: z.string().uuid().optional(),
+  periodoInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  periodoFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+almoxarifadoRouter.get("/relatorios", async (req, res, next) => {
+  try {
+    res.json(await container.apurarConsumo.listar(req.sessao!.orgaoId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Montar o recorte é ato de quem responde pelo estoque: é a peça que vai ao
+// conselho de alimentação escolar.
+almoxarifadoRouter.post("/relatorios", administraEstoque, async (req, res, next) => {
+  try {
+    const dados = relatorioSchema.parse(req.body);
+    res.status(201).json(await container.apurarConsumo.criar({
+      ...dados,
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.get("/relatorios/:id", async (req, res, next) => {
+  try {
+    res.json(await container.apurarConsumo.apurar(req.sessao!.orgaoId, req.params.id!));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.delete("/relatorios/:id", administraEstoque, async (req, res, next) => {
+  try {
+    await container.apurarConsumo.excluir(req.sessao!.orgaoId, req.params.id!);
+    res.json({ message: "Relatório excluído" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 almoxarifadoRouter.get("/transferencias", async (req, res, next) => {
   try {
     res.json(await container.almoxarifado.listarTransferencias(req.sessao!.orgaoId, {

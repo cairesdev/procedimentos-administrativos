@@ -287,3 +287,49 @@ export type Adjustment = {
   usuarioNome: string;
   data: string;
 };
+
+/**
+ * Relatório de consumo (PNAE). Guarda o recorte; os números são apurados na
+ * leitura, e a peça emitida sobre ele congela o resultado.
+ */
+export type ConsumptionReport = {
+  id: string;
+  almoxarifadoId: string;
+  almoxarifadoNome: string;
+  tipoEstoqueId: string | null;
+  tipoEstoqueNome: string | null;
+  periodoInicio: string;
+  periodoFim: string;
+  criadoPorNome: string | null;
+  criadoEm: string;
+};
+
+export type ReportUnitRow = {
+  localId: string;
+  nome: string;
+  cnpj: string | null;
+  /** O que a unidade confirmou receber, não o que foi despachado. */
+  recebido: number;
+  consumido: number;
+  perdido: number;
+  devolvido: number;
+  /** Saldo de hoje no armário, não o do fim do período. */
+  saldo: number;
+};
+
+export type ReportProductRow = {
+  produtoId: string;
+  nome: string;
+  unidadeMedida: string;
+  recebido: number;
+  consumido: number;
+  perdido: number;
+  devolvido: number;
+};
+
+export type ConsumptionReportDetail = ConsumptionReport & {
+  unidades: ReportUnitRow[];
+  produtos: ReportProductRow[];
+  entradasTotal: number;
+  entradasAgriculturaFamiliar: number;
+};

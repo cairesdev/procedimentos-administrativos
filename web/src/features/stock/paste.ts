@@ -1,6 +1,9 @@
 // Import relativo, e não pelo alias `@/`: este módulo é lógica pura e o teste
 // dele roda a partir do projeto da API, onde o alias do web não é resolvido.
 import { parseNumber } from "../../shared/lib/spreadsheet-paste";
+import {
+  aplicarSequencia, sugerirSequencia, type ColumnChoice,
+} from "../../shared/lib/column-mapping";
 
 /**
  * Colagem da planilha de entrada do almoxarifado.
@@ -166,3 +169,64 @@ export const converterPlanilha = (texto: string): StockPasteResult => {
 
   return { linhas: resultado, ignoradas, temCabecalho: Boolean(mapa), datasInvalidas };
 };
+
+
+/** Campos da entrada, na ordem em que a tela os oferece. */
+export const CAMPOS_DA_ENTRADA: { campo: keyof PastedLine; rotulo: string }[] = [
+  { campo: "nome", rotulo: "Produto" },
+  { campo: "unidade", rotulo: "Unidade" },
+  { campo: "quantidade", rotulo: "Quantidade" },
+  { campo: "dataValidade", rotulo: "Validade" },
+];
+
+/**
+ * Colagem com a sequência declarada pelo usuário.
+ *
+ * Mesma razão da versão de itens de contrato: adivinhar a ordem funcionava até
+ * chegar a planilha com uma coluna a mais, e aí a validade entrava como
+ * quantidade sem ninguém perceber.
+ */
+export const converterPlanilhaComSequencia = (
+  texto: string,
+  sequencia: ColumnChoice<keyof PastedLine>[],
+): StockPasteResult => {
+  const { linhas, ignoradas, cabecalhoDescartado } = aplicarSequencia(
+    texto,
+    sequencia,
+    { obrigatorio: "nome", camposNumericos: ["quantidade"] },
+  );
+
+  let datasInvalidas = 0;
+  let semQuantidade = 0;
+  const resultado: PastedLine[] = [];
+
+  for (const linha of linhas) {
+    const quantidade = parseNumber(linha.quantidade ?? "");
+    // Produto sem quantidade não é entrada: é subtotal ou linha de seção que
+    // veio junto na cópia. Conta como ignorada, e não entra com zero.
+    if (quantidade <= 0) {
+      semQuantidade += 1;
+      continue;
+    }
+
+    const { data, invalida } = converterData(linha.dataValidade ?? "");
+    if (invalida) datasInvalidas += 1;
+
+    resultado.push({
+      nome: (linha.nome ?? "").toUpperCase(),
+      unidade: (linha.unidade || "UN").toUpperCase(),
+      quantidade,
+      dataValidade: data,
+    });
+  }
+
+  return {
+    linhas: resultado,
+    ignoradas: ignoradas + semQuantidade,
+    temCabecalho: cabecalhoDescartado,
+    datasInvalidas,
+  };
+};
+
+export const sugerirSequenciaDaEntrada = (texto: string) =>
+  sugerirSequencia<keyof PastedLine>(texto, SINONIMOS);

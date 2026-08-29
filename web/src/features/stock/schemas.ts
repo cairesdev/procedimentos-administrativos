@@ -166,3 +166,13 @@ export const adjustmentSchema = z.object({
 });
 
 export type AdjustmentInput = z.infer<typeof adjustmentSchema>;
+
+/** Recorte do relatório de consumo: almoxarifado, tipo e período. */
+export const consumptionReportSchema = z.object({
+  almoxarifadoId: z.string().uuid("Escolha o almoxarifado"),
+  tipoEstoqueId: z.string().uuid().optional(),
+  periodoInicio: z.string().min(1, "Informe o início do período"),
+  periodoFim: z.string().min(1, "Informe o fim do período"),
+});
+
+export type ConsumptionReportInput = z.infer<typeof consumptionReportSchema>;

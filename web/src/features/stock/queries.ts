@@ -5,6 +5,7 @@ import type {
   Adjustment, Availability, Consumption, Intake, IntakeDetail, LocalStock, Product,
   ReceiptPlan, ReleasePlan, StockLocation, StockRequest, StockRequestSummary,
   StockReturn, StockSettings, StockTransfer, StockType, Warehouse,
+  ConsumptionReport, ConsumptionReportDetail,
 } from "./types";
 
 export const listWarehouses = () => apiRequest<Warehouse[]>(endpoints.warehouses);
@@ -95,3 +96,10 @@ export const listTransfers = (
 export const listAdjustments = (
   filtros: { almoxarifado?: string; local?: string; pagina?: string } = {},
 ) => apiRequest<Page<Adjustment>>(comFiltros(endpoints.adjustments, filtros));
+
+export const listConsumptionReports = () =>
+  apiRequest<ConsumptionReport[]>(endpoints.consumptionReports);
+
+/** Os números do recorte, apurados agora — não os do dia em que foi criado. */
+export const getConsumptionReport = (id: string) =>
+  apiRequest<ConsumptionReportDetail>(`${endpoints.consumptionReports}/${id}`);

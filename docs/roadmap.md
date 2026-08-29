@@ -91,22 +91,67 @@ Entradas e bens têm editar/excluir com o aviso de que o tombamento não volta.
 relatório de uso, veículos e motoristas. Ciclo da viagem operado na tela de detalhe, que só oferece
 as ações que o estado aceita; abastecimentos lançados na mesma tela a partir da retirada.
 
-## Pendente (ordem sugerida)
+## Pendente
 
-1. **Importação de planilha de itens** no cadastro de contrato/ata (mapeamento de colunas → campos
-   extras).
-2. **Link externo do fornecedor** — token de acesso para fornecedor completar cadastro/documentos
-   sem login.
-3. **Protocolo externo** — 1ª fatia (balcão e consulta) entregue; faltam a abertura pelo cidadão
-   e o ciclo de exigência/resposta.
-4. **Documentos emitidos** — motor, modelos padrão e as peças de todos os módulos prontos
-   (fatias 1 a 4).
-5. **Testes automatizados** — suíte em `api/tests` (`npm test`), rodando no CI. Falta cobrir os
-   casos de uso de patrimônio e frotas, e o smoke test do módulo Processos continua exigindo
-   ambiente de pé.
-6. **Módulo Almoxarifado** — fatias 1 e 2 entregues, API e web. Falta o relatório de consumo
-   para o PNAE, que agora tem dado para existir.
-7. **Fila/worker (RabbitMQ)** — previsto na arquitetura, nenhum uso ainda.
+Revisado em agosto/2026. As fatias 3 a 5 da lista antiga (protocolo externo,
+documentos emitidos, suíte de testes) foram entregues e saíram daqui.
+
+### Bloqueia a produção
+
+1. **Repositório privado e chaves rotacionadas.** O `origin` é público no
+   GitHub, e o histórico tem as credenciais do MinIO que estiveram no
+   `.env.example`. Rotacionar não basta enquanto o repositório estiver aberto:
+   as duas coisas andam juntas. Roteiro na seção 7 do `deploy-vps.md`.
+2. **Segredos do `.env.prod` regenerados** — `JWT_SECRET`, `AUTH_SECRET`,
+   `POSTGRES_PASSWORD` e as chaves do MinIO chegaram a passar pelo
+   `.env.prod.example`. Estão queimados.
+3. **Migrations 0025, 0026 e 0027 aplicadas na VPS**, e as imagens novas de API
+   e web no ar. A matriz de permissões, o parser de `DATE` e o rascunho de
+   documento rodam no servidor — sem subir, nada disso existe para o usuário.
+4. **Papel dos usuários já cadastrados revisado.** Quem atende numa escola
+   provavelmente está como `SERVIDOR`, papel que dá contratos e licitações da
+   prefeitura. Passa a ser `UNIDADE`.
+5. **`ADMIN_SENHA` removida do `.env.prod`** depois do primeiro login — enquanto
+   a variável existir, todo deploy reaplica a senha.
+
+### Funcionalidade combinada e ainda não entregue
+
+6. **Relatório de consumo para o PNAE.** A 2ª fatia do almoxarifado gerou o
+   dado (`consumo`, `consumo_lote`), e nenhuma tela o lê.
+7. **Importação de planilha de itens** no cadastro de contrato e ata —
+   mapeamento de colunas para os campos extras.
+8. **Link externo do fornecedor** — token para o fornecedor completar o próprio
+   cadastro sem login. `fornecedor_historico` já registra `link_externo` como
+   autor; o caminho nunca existiu.
+9. **Quatro campos da Ordem de Serviço sem onde morar** — vencimento, processo
+   de dispensa, processo de inexigibilidade e cidade do fornecedor. Cada um é
+   coluna nova mais campo no formulário. Aguarda dizer quais são exigidos na
+   prestação de contas.
+10. **Registro de qualidade do lote** — existe no legado do almoxarifado,
+    adiado por decisão no levantamento.
+
+### Configuração que não faz nada
+
+11. **Visibilidade estendida da etapa.** Gravada em `fluxo_etapa`, oferecida no
+    painel de fluxos, e nenhuma consulta a lê. É a última da família que já
+    rendeu três bugs — `dados_contratante`, `usuario_permissao` e esta. Enquanto
+    ninguém a ler, o honesto é tirá-la do painel: melhor não oferecer do que
+    oferecer sem efeito.
+
+### Testes
+
+12. **Casos de uso de patrimônio e frotas** não têm teste de aplicação. São os
+    dois módulos sem repositório falso em `tests/aplicacao`.
+13. **Smoke test (`scripts/smoke.ts`) ainda exige ambiente de pé** — não entra
+    no `npm test` nem no CI.
+
+### Dívidas técnicas
+
+14. `listarFila` filtra por setor e ignora departamento.
+15. Usernames do backfill da migration 0007 são placeholders
+    (`prefixo-email.4chars`).
+16. **RabbitMQ** está na arquitetura e não tem uso nenhum. Ou aparece um caso
+    que o justifique, ou sai do desenho.
 
 ## Infraestrutura
 
@@ -140,11 +185,12 @@ Levantamento do que a interface deixa configurar e nenhum código consome. Duas 
 | Trilha de auditoria | **resolvido** — tela em `/processos/auditoria` |
 | Visibilidade estendida da etapa | gravada, nunca lida — nenhuma consulta usa |
 | Timbre da prefeitura (`/admin`) | **resolvido** — imprime a solicitação com cabeçalho, logomarca e rodapé |
-| Módulo ALMOXARIFADO no `/admin` | habilitável, sem nenhuma tela — o hub mostra o card travado |
-| `usuario_permissao` (overrides) | decidido em `decisoes.md`, sem código; permissão é só papel base |
+| Módulo ALMOXARIFADO no `/admin` | **resolvido** — duas fatias no ar, API e web |
+| `usuario_permissao` (overrides) | **resolvido** — lida a cada requisição, concede e revoga |
+| `dados_contratante` da ordem | **resolvido** — virou marcador `contratante.*` |
 
-Sobra a visibilidade estendida e os overrides de permissão — enquanto nenhum código os ler, o
-honesto é escondê-los do painel: melhor não oferecer do que oferecer sem efeito.
+Sobra a visibilidade estendida da etapa. Enquanto nenhum código a ler, o honesto é escondê-la do
+painel: melhor não oferecer do que oferecer sem efeito.
 
 ## Corrigido nesta rodada
 
@@ -156,8 +202,9 @@ honesto é escondê-los do painel: melhor não oferecer do que oferecer sem efei
 
 - Usernames do backfill da migration 0007 são placeholders (`prefixo-email.4chars`).
 - `listarFila` não filtra por departamento (só setor).
-- Sem paginação nas listagens.
-- Sem rate-limit/refresh-token no auth.
+- ~~Sem paginação nas listagens.~~ Resolvido.
+- ~~Sem rate-limit no auth.~~ Resolvido. Refresh-token continua de fora: a sessão
+  dura oito horas e expira sem renovação.
 - Backup cobre só o banco; `./data/minio` (anexos) precisa de cópia à parte.
 - Filtro de bens é `<form method="get">` (recarrega a página); sem paginação em nenhuma listagem.
 

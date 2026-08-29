@@ -208,6 +208,11 @@ export const workspaces: Workspace[] = [
             permission: "stock:manage",
           },
           { href: "/almoxarifado/ajustes", label: "Ajustes", permission: "stock:read" },
+          {
+            href: "/almoxarifado/relatorios",
+            label: "Relatório de consumo",
+            permission: "stock:read",
+          },
         ],
       },
       {

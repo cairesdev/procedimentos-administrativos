@@ -356,6 +356,34 @@ CASOS: list[tuple[str, str, bool]] = [
      "(orgao_id, arquivo_logomarca, arquivo_logomarca_direita, cabecalho_timbre) VALUES "
      "('11111111-1111-1111-1111-111111111111','a/brasao.png','b/fundeb.png','PREFEITURA')",
      True),
+
+    # ---- 0028: relatorio de consumo (PNAE) ----------------------------------
+    ("periodo invertido e recusado",
+     "INSERT INTO relatorio_consumo (orgao_id, almoxarifado_id, periodo_inicio, periodo_fim) "
+     "VALUES ('11111111-1111-1111-1111-111111111111',"
+     "'22222222-2222-2222-2222-222222222222','2026-03-31','2026-03-01')",
+     False),
+    ("periodo de um dia so e aceito",
+     "INSERT INTO relatorio_consumo (id, orgao_id, almoxarifado_id, periodo_inicio, periodo_fim) "
+     "VALUES ('4e100000-0000-0000-0000-000000000001',"
+     "'11111111-1111-1111-1111-111111111111',"
+     "'22222222-2222-2222-2222-222222222222','2026-03-01','2026-03-01')",
+     True),
+    ("relatorio sem tipo de estoque e aceito (todos os tipos)",
+     "INSERT INTO relatorio_consumo (orgao_id, almoxarifado_id, tipo_estoque_id, "
+     "periodo_inicio, periodo_fim) VALUES "
+     "('11111111-1111-1111-1111-111111111111',"
+     "'22222222-2222-2222-2222-222222222222', NULL,'2026-01-01','2026-12-31')",
+     True),
+    ("fornecedor nasce fora da agricultura familiar",
+     "INSERT INTO fornecedor (documento, razao_social) "
+     "VALUES ('11222333000144','COOPERATIVA TESTE') "
+     "RETURNING (agricultura_familiar = FALSE)",
+     True),
+    ("escopo RELATORIO_CONSUMO e aceito no modelo",
+     "INSERT INTO documento_modelo (orgao_id, modulo, escopo, tipo, nome, titulo, corpo) VALUES "
+     "(NULL,'ALMOXARIFADO','RELATORIO_CONSUMO','RELATORIO_TESTE','x','X','<p>x</p>')",
+     True),
 ]
 
 

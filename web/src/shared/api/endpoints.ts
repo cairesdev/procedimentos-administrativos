@@ -44,6 +44,7 @@ export const endpoints = {
   stockRequestAction: (id: string, acao: string) => `/almoxarifado/solicitacoes/${id}/${acao}`,
   consumption: "/almoxarifado/consumo",
   returns: "/almoxarifado/devolucoes",
+  consumptionReports: "/almoxarifado/relatorios",
   answerReturn: (id: string) => `/almoxarifado/devolucoes/${id}/responder`,
   stockTransfers: "/almoxarifado/transferencias",
   adjustments: "/almoxarifado/ajustes",

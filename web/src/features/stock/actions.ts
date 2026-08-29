@@ -9,6 +9,7 @@ import {
   adjustmentSchema, consumptionSchema, intakeSchema, receiptSchema, refuseSchema,
   releaseSchema, returnSchema, stockLocationSchema, stockRequestSchema,
   stockSettingsSchema, stockTypeSchema, transferSchema, warehouseSchema,
+  consumptionReportSchema, type ConsumptionReportInput,
   type AdjustmentInput, type ConsumptionInput, type IntakeInput, type ReceiptInput,
   type RefuseInput, type ReleaseInput, type ReturnInput, type StockLocationInput,
   type StockRequestInput, type StockSettingsInput, type StockTypeInput,
@@ -20,6 +21,7 @@ const TYPES = "/almoxarifado/tipos";
 const LOCATIONS = "/almoxarifado/locais";
 const INTAKES = "/almoxarifado/entradas";
 const REQUESTS = "/almoxarifado/solicitacoes";
+const REPORTS = "/almoxarifado/relatorios";
 
 /** Campo em branco não é valor: vai como ausente, não como string vazia. */
 const semVazio = (valor?: string) => valor?.trim() || undefined;
@@ -267,3 +269,31 @@ export const adjustStock = async (input: AdjustmentInput) =>
     revalidatePath(LOCAL_STOCK);
     revalidatePath(INTAKES);
   }, "Ajuste registrado");
+
+
+// ---------------------------------------------------------------------------
+// Relatório de consumo (PNAE)
+
+export const createConsumptionReport = async (input: ConsumptionReportInput) => {
+  let destino = "";
+
+  const resultado = await runAction(async () => {
+    const dados = consumptionReportSchema.parse(input);
+    const { id } = await apiRequest<{ id: string }>(endpoints.consumptionReports, {
+      method: "POST",
+      body: { ...dados, tipoEstoqueId: semVazio(dados.tipoEstoqueId) },
+    });
+    revalidatePath(REPORTS);
+    destino = `${REPORTS}/${id}`;
+  }, "Relatório gerado");
+
+  // Fora do runAction: `redirect` funciona lançando e seria lido como falha.
+  if (destino) redirect(destino);
+  return resultado;
+};
+
+export const deleteConsumptionReport = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.consumptionReports}/${id}`, { method: "DELETE" });
+    revalidatePath(REPORTS);
+  }, "Relatório excluído");

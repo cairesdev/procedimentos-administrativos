@@ -1,5 +1,7 @@
 import { pool } from "./pool";
 import { valorPorExtenso } from "../../domain/documento/PorExtenso";
+import { percentualDeAgriculturaFamiliar } from "../../application/almoxarifado/ApurarConsumo";
+import { PostgresRelatorioConsumoRepository } from "./PostgresRelatorioConsumoRepository";
 import type { FonteDeContexto } from "../../application/documento/EmitirDocumento";
 import type { ContextoDeDocumento } from "../../domain/documento/Marcadores";
 
@@ -416,6 +418,10 @@ const contratoParaContexto = (linha: Record<string, unknown>) => ({
 });
 
 export class PostgresFonteDeContexto implements FonteDeContexto {
+  // A apuração do relatório é a mesma que a tela mostra: se a peça a
+  // recalculasse por outro caminho, o papel e a tela poderiam divergir.
+  private readonly relatorios = new PostgresRelatorioConsumoRepository();
+
   /**
    * O escopo do modelo decide o que buscar e o que o `referenciaId` significa.
    * Antes isso era decidido pelo `tipo`, o que impedia peça nova sem código.
@@ -441,6 +447,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     if (escopo === "MANUTENCAO") return this.daManutencao(orgaoId, referenciaId, orgao);
     if (escopo === "SOLICITACAO_ESTOQUE") return this.doPedido(orgaoId, referenciaId, orgao);
     if (escopo === "ENTRADA_ESTOQUE") return this.daEntrada(orgaoId, referenciaId, orgao);
+    if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
     return null;
   };
 
@@ -806,6 +813,63 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       })),
     };
   };
+
+  /**
+   * Relatório de consumo da alimentação escolar.
+   *
+   * A apuração acontece aqui, na emissão — e o motor congela o resultado em
+   * `documento_emitido.dados`. É o que faz a peça valer como prestação de
+   * contas: o relatório aberto acompanha o estoque de hoje, e o documento
+   * emitido guarda o que era verdade no dia em que saiu.
+   */
+  private doRelatorio = async (
+    orgaoId: string,
+    relatorioId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const apuracao = await this.relatorios.apurar(orgaoId, relatorioId);
+    if (!apuracao) return null;
+
+    const somar = (valores: number[]) =>
+      Math.round(valores.reduce((total, valor) => total + valor, 0) * 1000) / 1000;
+
+    return {
+      orgao,
+      relatorio: {
+        almoxarifado: apuracao.almoxarifadoNome,
+        tipoEstoque: apuracao.tipoEstoqueNome ?? "todos os tipos",
+        periodoInicio: formatarDataSimples(apuracao.periodoInicio),
+        periodoFim: formatarDataSimples(apuracao.periodoFim),
+        totalRecebido: numero(somar(apuracao.produtos.map((p) => p.recebido))),
+        totalConsumido: numero(somar(apuracao.produtos.map((p) => p.consumido))),
+        totalPerdido: numero(somar(apuracao.produtos.map((p) => p.perdido))),
+        totalDevolvido: numero(somar(apuracao.produtos.map((p) => p.devolvido))),
+        unidadesAtendidas: String(apuracao.unidades.length),
+        entradasTotal: String(apuracao.entradasTotal),
+        entradasAgriculturaFamiliar: String(apuracao.entradasAgriculturaFamiliar),
+        agriculturaFamiliarPercentual: percentualDeAgriculturaFamiliar(
+          apuracao.entradasTotal, apuracao.entradasAgriculturaFamiliar,
+        ),
+      },
+      unidades: apuracao.unidades.map((unidade) => ({
+        nome: unidade.nome,
+        cnpj: unidade.cnpj ? mascararCnpj(unidade.cnpj) : "—",
+        recebido: numero(unidade.recebido),
+        consumido: numero(unidade.consumido),
+        perdido: numero(unidade.perdido),
+        devolvido: numero(unidade.devolvido),
+        saldo: numero(unidade.saldo),
+      })),
+      produtos: apuracao.produtos.map((produto) => ({
+        nome: produto.nome,
+        unidadeMedida: produto.unidadeMedida,
+        recebido: numero(produto.recebido),
+        consumido: numero(produto.consumido),
+        perdido: numero(produto.perdido),
+        devolvido: numero(produto.devolvido),
+      })),
+    };
+  };
 }
 
 /**
@@ -848,6 +912,10 @@ const MOTIVO_DA_PERDA: Record<string, string> = {
  * Data do banco no formato do documento. O `to_char` resolve nas consultas que
  * o usam direto; aqui a validade vem como `Date` dentro da lista.
  */
+/** CNPJ do jeito que a escola o vê no papel. */
+const mascararCnpj = (valor: string): string =>
+  valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+
 const formatarDataSimples = (valor: unknown): string =>
   new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
