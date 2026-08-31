@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
-import { criarUsuarioSchema, editarUsuarioSchema } from "../schemas/cadastros";
+import {
+  criarUsuarioSchema, editarUsuarioSchema, lotacoesDoUsuarioSchema,
+} from "../schemas/cadastros";
 
 export const usuariosRouter = Router();
 
@@ -33,6 +35,20 @@ usuariosRouter.patch("/:id", exigirPermissao("users:write"), async (req, res, ne
     const dados = editarUsuarioSchema.parse(req.body);
     await container.editarUsuario.executar(req.sessao!.orgaoId, req.params.id!, dados);
     res.json({ message: "Usuário atualizado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// A lotação decide o que a pessoa enxerga; corrigi-la não podia exigir
+// recadastrar o usuário.
+usuariosRouter.put("/:id/lotacoes", exigirPermissao("users:write"), async (req, res, next) => {
+  try {
+    const { lotacoes } = lotacoesDoUsuarioSchema.parse(req.body);
+    await container.editarUsuario.substituirLotacoes(
+      req.sessao!.orgaoId, req.params.id!, lotacoes,
+    );
+    res.json({ message: "Lotação atualizada" });
   } catch (error) {
     next(error);
   }

@@ -86,6 +86,9 @@ VALUES ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-11111111
 INSERT INTO local (id, orgao_id, codigo, nome, almoxarifado_id, cnpj, endereco)
 VALUES ('33333333-3333-3333-3333-333333333333','11111111-1111-1111-1111-111111111111','001',
         'Escola Municipal','22222222-2222-2222-2222-222222222222','06125389000188','Rua A, 100');
+INSERT INTO setor (id, orgao_id, nome, tipo)
+VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd','11111111-1111-1111-1111-111111111111',
+        'Alimentacao Escolar','ALIMENTACAO_ESCOLAR');
 INSERT INTO tipo_estoque (id, orgao_id, nome)
 VALUES ('44444444-4444-4444-4444-444444444444','11111111-1111-1111-1111-111111111111','Alimentacao');
 INSERT INTO produto (id, nome, unidade_medida)
@@ -446,6 +449,41 @@ CASOS: list[tuple[str, str, bool]] = [
      "INSERT INTO qualidade_lote (lote_id, tipo, observacao, usuario_id) VALUES "
      "('77777777-7777-7777-7777-777777777777','SUSPEITA','texto valido',"
      "'88888888-8888-8888-8888-888888888888')",
+     False),
+    # ---- 0031: a escola como lotacao, e o almoxarifado com dono ----------
+    ("lotacao apontando so para a escola e aceita",
+     "INSERT INTO lotacao (usuario_id, local_id) VALUES "
+     "('88888888-8888-8888-8888-888888888888',"
+     "'33333333-3333-3333-3333-333333333333')",
+     True),
+    ("escola e setor na mesma lotacao e recusado",
+     "INSERT INTO lotacao (usuario_id, local_id, setor_id) VALUES "
+     "('88888888-8888-8888-8888-888888888888',"
+     "'33333333-3333-3333-3333-333333333333',"
+     "'dddddddd-dddd-dddd-dddd-dddddddddddd')",
+     False),
+    ("lotacao sem destino nenhum continua recusada",
+     "INSERT INTO lotacao (usuario_id) VALUES "
+     "('88888888-8888-8888-8888-888888888888')",
+     False),
+    ("a mesma pessoa nao e lotada duas vezes na mesma escola",
+     "INSERT INTO lotacao (usuario_id, local_id) VALUES "
+     "('88888888-8888-8888-8888-888888888888',"
+     "'33333333-3333-3333-3333-333333333333')",
+     False),
+    ("almoxarifado sem setor e aceito (estado de hoje)",
+     "INSERT INTO almoxarifado (orgao_id, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Merenda')",
+     True),
+    ("almoxarifado apontando setor de verdade e aceito",
+     "INSERT INTO almoxarifado (orgao_id, nome, setor_id) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Farmacia',"
+     "'dddddddd-dddd-dddd-dddd-dddddddddddd')",
+     True),
+    ("setor inexistente no almoxarifado e recusado",
+     "INSERT INTO almoxarifado (orgao_id, nome, setor_id) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Fantasma',"
+     "'00000000-0000-0000-0000-000000000000')",
      False),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "

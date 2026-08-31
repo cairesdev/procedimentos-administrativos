@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
 import { TIPOS_DE_QUALIDADE } from "../../../application/almoxarifado/RegistrarQualidade";
+import { alcanceDe } from "../middlewares/alcance";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { MOTIVOS_DE_PERDA } from "../../../application/almoxarifado/ReceberEstoque";
 import {
@@ -30,6 +31,14 @@ const configuracaoSchema = z.object({
   reservaAtiva: z.boolean(),
   reservaPrazoHoras: z.number().int().positive().max(8760),
   alertaValidadeDias: z.number().int().positive().max(3650),
+});
+
+/** Identidade da escola: o que a distingue nas listas e nos papéis. */
+const localSchema = z.object({
+  nome: z.string().min(3).max(150),
+  // Curto de propósito: é o que o almoxarife escreve à mão no romaneio.
+  codigo: z.string().min(1).max(10),
+  almoxarifadoId: z.string().uuid().nullable(),
 });
 
 const dadosDoLocalSchema = z.object({
@@ -272,7 +281,8 @@ almoxarifadoRouter.get("/locais", async (req, res, next) => {
     const almoxarifado = typeof req.query.almoxarifado === "string"
       ? req.query.almoxarifado : undefined;
     res.json(await container.gerenciarAlmoxarifado.listarLocais(
-      req.sessao!.orgaoId, almoxarifado,
+      req.sessao!.orgaoId, await alcanceDe(req), almoxarifado,
+      req.query.inativos === "1",
     ));
   } catch (error) {
     next(error);
@@ -290,10 +300,62 @@ almoxarifadoRouter.put("/locais/:id", administraEstoque, async (req, res, next) 
   }
 });
 
+// Cadastrar escola é ato de quem administra o estoque — e passa a existir
+// aqui porque o patrimônio pode não ter sido contratado.
+almoxarifadoRouter.post("/locais", administraEstoque, async (req, res, next) => {
+  try {
+    const id = await container.gerenciarAlmoxarifado.criarLocal(
+      req.sessao!.orgaoId, localSchema.parse(req.body),
+    );
+    res.status(201).json({ id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.patch("/locais/:id", administraEstoque, async (req, res, next) => {
+  try {
+    const { nome, codigo, ativo } = localSchema
+      .omit({ almoxarifadoId: true })
+      .extend({ ativo: z.boolean().optional() })
+      .parse(req.body);
+
+    await container.gerenciarAlmoxarifado.renomearLocal(
+      req.sessao!.orgaoId, req.params.id!, { nome, codigo },
+    );
+    if (ativo !== undefined) {
+      await container.gerenciarAlmoxarifado.definirSituacaoDoLocal(
+        req.sessao!.orgaoId, req.params.id!, ativo,
+      );
+    }
+    res.json({ message: "Local atualizado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Inativa; nunca apaga.
+ *
+ * O local aparece em pedido, entrega e relatório de anos anteriores, e apagá-lo
+ * levaria a prestação de contas junto. Reativar é o mesmo `PATCH` com
+ * `ativo: true` — inativar sem volta seria porta de mão única.
+ */
+almoxarifadoRouter.delete("/locais/:id", administraEstoque, async (req, res, next) => {
+  try {
+    await container.gerenciarAlmoxarifado.definirSituacaoDoLocal(
+      req.sessao!.orgaoId, req.params.id!, false,
+    );
+    res.json({ message: "Local inativado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 almoxarifadoRouter.get("/locais/:id/estoque", async (req, res, next) => {
   try {
     res.json(await container.gerenciarAlmoxarifado.listarEstoqueDoLocal(
-      req.sessao!.orgaoId, req.params.id!,
+      req.sessao!.orgaoId, req.params.id!, await alcanceDe(req),
     ));
   } catch (error) {
     next(error);
@@ -381,7 +443,7 @@ almoxarifadoRouter.get("/solicitacoes", async (req, res, next) => {
       status: texto("status"),
       local: texto("local"),
       almoxarifado: texto("almoxarifado"),
-    }));
+    }, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }
@@ -403,7 +465,7 @@ almoxarifadoRouter.post("/solicitacoes", async (req, res, next) => {
 almoxarifadoRouter.get("/solicitacoes/:id", async (req, res, next) => {
   try {
     res.json(await container.gerenciarAlmoxarifado.buscarSolicitacao(
-      req.sessao!.orgaoId, req.params.id!,
+      req.sessao!.orgaoId, req.params.id!, await alcanceDe(req),
     ));
   } catch (error) {
     next(error);
@@ -529,7 +591,7 @@ almoxarifadoRouter.get("/consumo", async (req, res, next) => {
       produto: filtro(req, "produto"),
       de: filtro(req, "de"),
       ate: filtro(req, "ate"),
-    }));
+    }, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }
@@ -556,7 +618,7 @@ almoxarifadoRouter.get("/devolucoes", async (req, res, next) => {
       status: filtro(req, "status"),
       almoxarifado: filtro(req, "almoxarifado"),
       local: filtro(req, "local"),
-    }));
+    }, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }
@@ -615,7 +677,7 @@ almoxarifadoRouter.get("/qualidade", async (req, res, next) => {
       lote: filtro(req, "lote"),
       estoqueLocal: filtro(req, "estoqueLocal"),
       tipo: filtro(req, "tipo"),
-    }));
+    }, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }
@@ -646,7 +708,7 @@ const relatorioSchema = z.object({
 
 almoxarifadoRouter.get("/relatorios", async (req, res, next) => {
   try {
-    res.json(await container.apurarConsumo.listar(req.sessao!.orgaoId));
+    res.json(await container.apurarConsumo.listar(req.sessao!.orgaoId, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }
@@ -669,7 +731,9 @@ almoxarifadoRouter.post("/relatorios", administraEstoque, async (req, res, next)
 
 almoxarifadoRouter.get("/relatorios/:id", async (req, res, next) => {
   try {
-    res.json(await container.apurarConsumo.apurar(req.sessao!.orgaoId, req.params.id!));
+    res.json(await container.apurarConsumo.apurar(
+      req.sessao!.orgaoId, req.params.id!, await alcanceDe(req),
+    ));
   } catch (error) {
     next(error);
   }
@@ -718,7 +782,7 @@ almoxarifadoRouter.get("/ajustes", async (req, res, next) => {
       ...paginacaoSchema.parse(req.query),
       almoxarifado: filtro(req, "almoxarifado"),
       local: filtro(req, "local"),
-    }));
+    }, await alcanceDe(req)));
   } catch (error) {
     next(error);
   }

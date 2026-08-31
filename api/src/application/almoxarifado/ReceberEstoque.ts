@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "./ResolverAlcance";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar, somar } from "../../domain/almoxarifado/Fefo";
 import type {
@@ -162,7 +163,7 @@ export class ReceberEstoque {
   };
 
   private exigirLiberada = async (orgaoId: string, solicitacaoId: string) => {
-    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId);
+    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId, SEM_TRAVA);
     if (!solicitacao) throw new NaoEncontrado("Solicitação não encontrada");
 
     if (!["LIBERADA", "EM_TRANSITO"].includes(solicitacao.status)) {
@@ -192,7 +193,7 @@ export class ReceberEstoque {
       .filter((unidadeId): unidadeId is string => Boolean(unidadeId));
     if (unidades.length === 0) return;
 
-    const local = await this.almoxarifado.buscarLocal(orgaoId, localId);
+    const local = await this.almoxarifado.buscarLocal(orgaoId, localId, SEM_TRAVA);
     if (!local) throw new NaoEncontrado("Local não encontrado");
 
     if (!local.unidadeId || !unidades.includes(local.unidadeId)) {

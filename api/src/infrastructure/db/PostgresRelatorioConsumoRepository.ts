@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "../../application/ports/AlmoxarifadoRepository";
 import { pool } from "./pool";
 import type {
   ApuracaoDoRelatorio, NovoRelatorioConsumo, RelatorioConsumo,
@@ -81,6 +82,7 @@ const SQL = {
       LEFT JOIN tipo_estoque t ON t.id = r.tipo_estoque_id
       LEFT JOIN usuario u ON u.id = r.criado_por
      WHERE r.orgao_id = $1
+       AND ($2::uuid[] IS NULL OR r.almoxarifado_id = ANY($2))
      ORDER BY r.criado_em DESC`,
 
   buscar: `
@@ -89,7 +91,8 @@ const SQL = {
       JOIN almoxarifado a ON a.id = r.almoxarifado_id
       LEFT JOIN tipo_estoque t ON t.id = r.tipo_estoque_id
       LEFT JOIN usuario u ON u.id = r.criado_por
-     WHERE r.orgao_id = $1 AND r.id = $2`,
+     WHERE r.orgao_id = $1 AND r.id = $2
+       AND ($3::uuid[] IS NULL OR r.almoxarifado_id = ANY($3))`,
 
   excluir: `DELETE FROM relatorio_consumo WHERE orgao_id = $1 AND id = $2`,
 
@@ -185,13 +188,17 @@ export class PostgresRelatorioConsumoRepository implements RelatorioConsumoRepos
     return rows[0].id;
   };
 
-  listar = async (orgaoId: string): Promise<RelatorioConsumo[]> => {
-    const { rows } = await pool.query(SQL.listar, [orgaoId]);
+  listar = async (
+    orgaoId: string, alcance: AlcanceDeConsulta,
+  ): Promise<RelatorioConsumo[]> => {
+    const { rows } = await pool.query(SQL.listar, [orgaoId, alcance.almoxarifados]);
     return rows;
   };
 
-  apurar = async (orgaoId: string, id: string): Promise<ApuracaoDoRelatorio | null> => {
-    const { rows } = await pool.query(SQL.buscar, [orgaoId, id]);
+  apurar = async (
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<ApuracaoDoRelatorio | null> => {
+    const { rows } = await pool.query(SQL.buscar, [orgaoId, id, alcance.almoxarifados]);
     const relatorio = rows[0] as RelatorioConsumo | undefined;
     if (!relatorio) return null;
 

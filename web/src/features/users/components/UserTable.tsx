@@ -18,8 +18,8 @@ export const UserTable = ({
   <Table
     columns={
       canWrite
-        ? ["Nome", "E-mail", "Papel", "Situação", ""]
-        : ["Nome", "E-mail", "Papel", "Situação"]
+        ? ["Nome", "E-mail", "Função", "Lotação", "Situação", ""]
+        : ["Nome", "E-mail", "Função", "Lotação", "Situação"]
     }
     isEmpty={users.length === 0}
     emptyMessage="Nenhum usuário cadastrado."
@@ -32,6 +32,11 @@ export const UserTable = ({
           <Badge tone="accent">{humanize(user.papelBase)}</Badge>
         </td>
         <td>
+          {/* Sem lotação a pessoa não é travada por escola — e é isso que a
+              coluna precisa deixar visível de longe. */}
+          {user.lotacao ?? <Badge tone="warning">sem lotação</Badge>}
+        </td>
+        <td>
           <Badge tone={user.ativo ? "success" : "neutral"}>
             {user.ativo ? "ativo" : "inativo"}
           </Badge>
@@ -41,7 +46,7 @@ export const UserTable = ({
             <RowActions
               label={user.nome}
               editTitle="Editar usuário"
-              editDescription="Nome de usuário e lotação não mudam por aqui."
+              editDescription="O nome de usuário não muda; a lotação, sim."
               editForm={<UserForm user={user} assignmentOptions={assignmentOptions} />}
               isActive={user.ativo}
               onToggleActive={setUserActive.bind(null, user.id, !user.ativo)}

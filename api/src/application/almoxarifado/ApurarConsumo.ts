@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "../ports/AlmoxarifadoRepository";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import type { AlmoxarifadoRepository } from "../ports/AlmoxarifadoRepository";
 import type {
@@ -53,13 +54,16 @@ export class ApurarConsumo {
   };
 
   /** Os números do recorte, apurados agora. */
-  apurar = async (orgaoId: string, id: string): Promise<ApuracaoDoRelatorio> => {
-    const apuracao = await this.relatorios.apurar(orgaoId, id);
+  apurar = async (
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<ApuracaoDoRelatorio> => {
+    const apuracao = await this.relatorios.apurar(orgaoId, id, alcance);
     if (!apuracao) throw new NaoEncontrado("Relatório não encontrado");
     return apuracao;
   };
 
-  listar = (orgaoId: string) => this.relatorios.listar(orgaoId);
+  listar = (orgaoId: string, alcance: AlcanceDeConsulta) =>
+    this.relatorios.listar(orgaoId, alcance);
 
   excluir = async (orgaoId: string, id: string): Promise<void> => {
     // O relatório é só o recorte: apagá-lo não apaga a peça já emitida, que

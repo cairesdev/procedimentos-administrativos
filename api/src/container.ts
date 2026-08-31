@@ -8,6 +8,7 @@ import { PostgresOrganizacaoRepository } from "./infrastructure/db/PostgresOrgan
 import { PostgresFornecedorRepository } from "./infrastructure/db/PostgresFornecedorRepository";
 import { PostgresFluxoConfiguracaoRepository } from "./infrastructure/db/PostgresFluxoConfiguracaoRepository";
 import { PostgresTramitacaoRepository } from "./infrastructure/db/PostgresTramitacaoRepository";
+import { ResolverAlcance } from "./application/almoxarifado/ResolverAlcance";
 import { RegistrarQualidade } from "./application/almoxarifado/RegistrarQualidade";
 import { PostgresQualidadeRepository } from "./infrastructure/db/PostgresQualidadeRepository";
 import { ConvidarFornecedor } from "./application/fornecedor/ConvidarFornecedor";
@@ -118,6 +119,8 @@ export const container = {
   convidarFornecedor: new ConvidarFornecedor(
     new PostgresFornecedorConviteRepository(), fornecedores, auditoria,
   ),
+
+  resolverAlcance: new ResolverAlcance(usuarios, almoxarifado),
 
   registrarQualidade: new RegistrarQualidade(
     new PostgresQualidadeRepository(), auditoria,

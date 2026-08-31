@@ -1,6 +1,8 @@
 import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar } from "../../domain/almoxarifado/Fefo";
-import type { AlmoxarifadoRepository } from "../ports/AlmoxarifadoRepository";
+import type {
+  AlcanceDeConsulta, AlmoxarifadoRepository,
+} from "../ports/AlmoxarifadoRepository";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 
@@ -78,11 +80,48 @@ export class GerenciarAlmoxarifado {
 
   listarProdutos = (busca?: string) => this.almoxarifado.listarProdutos(busca);
 
-  listarLocais = (orgaoId: string, almoxarifadoId?: string) =>
-    this.almoxarifado.listarLocais(orgaoId, almoxarifadoId);
+  listarLocais = (
+    orgaoId: string, alcance: AlcanceDeConsulta,
+    almoxarifadoId?: string, incluirInativos?: boolean,
+  ) => this.almoxarifado.listarLocais(orgaoId, alcance, almoxarifadoId, incluirInativos);
 
   salvarDadosDoLocal: AlmoxarifadoRepository["salvarDadosDoLocal"] = (orgaoId, localId, dados) =>
     this.almoxarifado.salvarDadosDoLocal(orgaoId, localId, dados);
+
+  /**
+   * Cadastra a escola sem depender do módulo de patrimônio.
+   *
+   * Os dois módulos são vendidos separados, e criar local vivia só no
+   * patrimônio: quem comprasse apenas o almoxarifado não tinha como cadastrar
+   * uma escola — e sem escola o módulo inteiro não sai do lugar.
+   */
+  criarLocal = async (orgaoId: string, dados: {
+    nome: string; codigo: string; almoxarifadoId: string | null;
+  }): Promise<string> => {
+    await this.exigirCodigoLivre(orgaoId, dados.codigo);
+    return this.almoxarifado.criarLocal(orgaoId, dados);
+  };
+
+  renomearLocal = async (orgaoId: string, localId: string, dados: {
+    nome: string; codigo: string;
+  }): Promise<void> => {
+    await this.exigirCodigoLivre(orgaoId, dados.codigo, localId);
+    await this.almoxarifado.renomearLocal(orgaoId, localId, dados);
+  };
+
+  definirSituacaoDoLocal = (orgaoId: string, localId: string, ativo: boolean) =>
+    this.almoxarifado.definirSituacaoDoLocal(orgaoId, localId, ativo);
+
+  /**
+   * O código identifica a escola nos papéis, e o banco já o exige único por
+   * prefeitura. Conferir antes troca o erro de constraint — que chega à tela
+   * como falha genérica — por uma frase que diz o que fazer.
+   */
+  private exigirCodigoLivre = async (orgaoId: string, codigo: string, exceto?: string) => {
+    if (await this.almoxarifado.codigoDeLocalEmUso(orgaoId, codigo, exceto)) {
+      throw new ErroDeNegocio(`Já existe um local com o código ${codigo}`);
+    }
+  };
 
   buscarConfiguracao = (orgaoId: string) => this.almoxarifado.buscarConfiguracao(orgaoId);
 
@@ -217,15 +256,23 @@ export class GerenciarAlmoxarifado {
     orgaoId, almoxarifadoId, tipoEstoqueId,
   ) => this.almoxarifado.listarDisponiveis(orgaoId, almoxarifadoId, tipoEstoqueId);
 
-  listarSolicitacoes: AlmoxarifadoRepository["listarSolicitacoes"] = (orgaoId, filtros) =>
-    this.almoxarifado.listarSolicitacoes(orgaoId, filtros);
+  listarSolicitacoes: AlmoxarifadoRepository["listarSolicitacoes"] = (
+    orgaoId, filtros, alcance,
+  ) => this.almoxarifado.listarSolicitacoes(orgaoId, filtros, alcance);
 
-  buscarSolicitacao = async (orgaoId: string, id: string) => {
-    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, id);
+  /**
+   * Fora do alcance dá "não encontrada", e não "sem permissão".
+   *
+   * A escola vizinha não precisa saber que o pedido existe. Distinguir os dois
+   * erros contaria, a quem chutasse um id, que ali há alguma coisa.
+   */
+  buscarSolicitacao = async (orgaoId: string, id: string, alcance: AlcanceDeConsulta) => {
+    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, id, alcance);
     if (!solicitacao) throw new NaoEncontrado("Solicitação não encontrada");
     return solicitacao;
   };
 
-  listarEstoqueDoLocal: AlmoxarifadoRepository["listarEstoqueDoLocal"] = (orgaoId, localId) =>
-    this.almoxarifado.listarEstoqueDoLocal(orgaoId, localId);
+  listarEstoqueDoLocal: AlmoxarifadoRepository["listarEstoqueDoLocal"] = (
+    orgaoId, localId, alcance,
+  ) => this.almoxarifado.listarEstoqueDoLocal(orgaoId, localId, alcance);
 }

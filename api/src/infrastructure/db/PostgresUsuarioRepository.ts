@@ -16,8 +16,8 @@ const SQL = {
     INSERT INTO usuario (orgao_id, nome, email, username, senha_hash, papel_base)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
   criarLotacao: `
-    INSERT INTO lotacao (usuario_id, unidade_id, setor_id, departamento_id)
-    VALUES ($1, $2, $3, $4) RETURNING id`,
+    INSERT INTO lotacao (usuario_id, unidade_id, setor_id, departamento_id, local_id)
+    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
   buscarPorId: `
     SELECT id, nome, email, papel_base AS "papelBase", ativo
       FROM usuario WHERE orgao_id = $1 AND id = $2`,
@@ -37,8 +37,29 @@ const SQL = {
   remover: `DELETE FROM usuario WHERE orgao_id = $1 AND id = $2`,
   removerLotacoes: `DELETE FROM lotacao WHERE usuario_id = $1`,
   listar: `
-    SELECT id, nome, email, papel_base AS "papelBase", ativo
-      FROM usuario WHERE orgao_id = $1 ORDER BY nome`,
+    SELECT u.id, u.nome, u.email, u.papel_base AS "papelBase", u.ativo,
+           lot.rotulo AS "lotacao", lot.valor AS "lotacaoValor"
+      FROM usuario u
+      -- A lotação decide o que a pessoa enxerga, e a lista não a mostrava:
+      -- dava para trocar sem conferir onde ela estava. LATERAL porque
+      -- interessa uma — a primeira, em ordem de nome, quando há mais de uma.
+      LEFT JOIN LATERAL (
+        SELECT coalesce(un.nome, s.nome, d.nome, lo.nome) AS rotulo,
+               CASE
+                 WHEN l.unidade_id IS NOT NULL THEN 'unidade:' || l.unidade_id
+                 WHEN l.local_id   IS NOT NULL THEN 'escola:'  || l.local_id
+                 ELSE 'setor:' || coalesce(l.setor_id, l.departamento_id)
+               END AS valor
+          FROM lotacao l
+          LEFT JOIN unidade un ON un.id = l.unidade_id
+          LEFT JOIN setor s ON s.id = l.setor_id
+          LEFT JOIN departamento d ON d.id = l.departamento_id
+          LEFT JOIN local lo ON lo.id = l.local_id
+         WHERE l.usuario_id = u.id AND l.ativo
+         ORDER BY rotulo
+         LIMIT 1
+      ) lot ON TRUE
+     WHERE u.orgao_id = $1 ORDER BY u.nome`,
   perfil: `
     SELECT u.id, u.orgao_id AS "orgaoId", o.nome AS "orgaoNome",
            u.nome, u.email, u.username, u.papel_base AS "papelBase", u.ativo
@@ -52,14 +73,15 @@ const SQL = {
   // quem está na "Divisão de Empenho" está, para todo efeito, em Compras.
   lotacoesDoUsuario: `
     SELECT l.id, l.unidade_id AS "unidadeId", l.setor_id AS "setorId",
-           l.departamento_id AS "departamentoId",
+           l.departamento_id AS "departamentoId", l.local_id AS "localId",
            coalesce(s.tipo, ds.tipo) AS "tipoSetor",
-           coalesce(un.nome, d.nome, s.nome) AS destino
+           coalesce(un.nome, d.nome, s.nome, lo.nome) AS destino
       FROM lotacao l
       LEFT JOIN unidade un ON un.id = l.unidade_id
       LEFT JOIN setor s ON s.id = l.setor_id
       LEFT JOIN departamento d ON d.id = l.departamento_id
       LEFT JOIN setor ds ON ds.id = d.setor_id
+      LEFT JOIN local lo ON lo.id = l.local_id
      WHERE l.usuario_id = $1 AND l.ativo
      ORDER BY destino`,
   primeiraEtapa: `
@@ -100,7 +122,8 @@ export class PostgresUsuarioRepository implements UsuarioRepository, FluxoReposi
 
   criarLotacao = async (dados: NovaLotacao): Promise<string> => {
     const { rows } = await pool.query(SQL.criarLotacao, [
-      dados.usuarioId, dados.unidadeId ?? null, dados.setorId ?? null, dados.departamentoId ?? null,
+      dados.usuarioId, dados.unidadeId ?? null, dados.setorId ?? null,
+      dados.departamentoId ?? null, dados.localId ?? null,
     ]);
     return rows[0].id;
   };

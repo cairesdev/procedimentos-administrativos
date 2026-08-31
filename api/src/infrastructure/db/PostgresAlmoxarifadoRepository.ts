@@ -5,6 +5,7 @@ import {
 } from "../../application/shared/Paginacao";
 import type { Tx } from "../../application/ports/Transacao";
 import type {
+  AlcanceDeConsulta, AlcanceDoSetor,
   Almoxarifado, AlmoxarifadoRepository, ConfiguracaoDoAlmoxarifado,
   ConfirmacaoDeRecebimento, DisponibilidadeDeProduto, LiberacaoParaConferir,
   LocalDeEstoque, LoteComSaldo, LoteDaRemessa, NovaLiberacao, NovaRemessa,
@@ -32,6 +33,31 @@ const COLUNAS_SOLICITACAO = `
   s.motivo_recusa AS "motivoRecusa"`;
 
 const SQL = {
+  /**
+   * O alcance de quem é lotado em setor, nas duas moedas que o `WHERE` aceita.
+   *
+   * `setor_id IS NULL` no almoxarifado e `almoxarifado_id IS NULL` no local
+   * entram para qualquer setor: são os registros que ninguém classificou
+   * ainda, e a migration que criou as colunas não podia tirá-los de quem já os
+   * opera.
+   *
+   * Fica **dentro** de `SQL` de propósito. Como constante solta lá em cima ela
+   * ficava fora do alcance do extrator estático, e o verificador de migrations
+   * a deixava passar sem `PREPARE` — 345 consultas conferidas antes e depois
+   * de acrescentá-la foi o que denunciou.
+   */
+  alcanceDoSetor: `
+  SELECT
+    (SELECT coalesce(array_agg(a.id), '{}') FROM almoxarifado a
+      WHERE a.orgao_id = $1 AND (a.setor_id IS NULL OR a.setor_id = ANY($2)))
+      AS almoxarifados,
+    (SELECT coalesce(array_agg(lo.id), '{}') FROM local lo
+      WHERE lo.orgao_id = $1
+        AND (lo.almoxarifado_id IS NULL OR lo.almoxarifado_id IN (
+              SELECT a2.id FROM almoxarifado a2
+               WHERE a2.orgao_id = $1
+                 AND (a2.setor_id IS NULL OR a2.setor_id = ANY($2)))))
+      AS locais`,
   // ---- Cadastros -----------------------------------------------------------
   listarAlmoxarifados: `
     SELECT a.id, a.nome, a.ativo,
@@ -86,19 +112,55 @@ const SQL = {
   listarLocais: `
     SELECT l.id, l.nome, l.codigo, l.unidade_id AS "unidadeId",
            l.almoxarifado_id AS "almoxarifadoId", a.nome AS "almoxarifadoNome",
-           l.cnpj, l.endereco, l.responsavel
+           l.cnpj, l.endereco, l.responsavel, l.ativo
       FROM local l
       LEFT JOIN almoxarifado a ON a.id = l.almoxarifado_id
-     WHERE l.orgao_id = $1 AND l.ativo
+     WHERE l.orgao_id = $1
+       -- Inativo some dos seletores e aparece na tela de cadastro: sem isto,
+       -- inativar por engano só teria volta por dentro do banco.
+       AND (l.ativo OR $4)
        AND ($2::uuid IS NULL OR l.almoxarifado_id = $2)
-     ORDER BY l.nome`,
+       AND ($3::uuid[] IS NULL OR l.id = ANY($3))
+     ORDER BY l.ativo DESC, l.nome`,
   buscarLocal: `
     SELECT l.id, l.nome, l.codigo, l.unidade_id AS "unidadeId",
            l.almoxarifado_id AS "almoxarifadoId", a.nome AS "almoxarifadoNome",
            l.cnpj, l.endereco, l.responsavel
       FROM local l
       LEFT JOIN almoxarifado a ON a.id = l.almoxarifado_id
-     WHERE l.orgao_id = $1 AND l.id = $2`,
+     WHERE l.orgao_id = $1 AND l.id = $2
+       AND ($3::uuid[] IS NULL OR l.id = ANY($3))`,
+  /**
+   * A escola nasce aqui quando a prefeitura não comprou o patrimônio.
+   *
+   * Mesma tabela `local` que o patrimônio usa — é um local físico, e o mesmo
+   * prédio guarda bem tombado e estoque. Tabela própria faria a escola existir
+   * duas vezes, com dois CNPJs livres para divergir bem no dado que o PNAE
+   * cobra.
+   */
+  criarLocal: `
+    INSERT INTO local (orgao_id, codigo, nome, almoxarifado_id, unidade_id)
+    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+
+  renomearLocal: `
+    UPDATE local SET nome = $3, codigo = $4
+     WHERE orgao_id = $1 AND id = $2`,
+
+  /**
+   * Inativa, nunca apaga.
+   *
+   * O local aparece em pedido, entrega, consumo e relatório de anos anteriores;
+   * apagá-lo levaria a prestação de contas junto. Inativo some das listas de
+   * escolha e continua nomeando o passado.
+   */
+  definirSituacaoDoLocal: `
+    UPDATE local SET ativo = $3 WHERE orgao_id = $1 AND id = $2`,
+
+  codigoDeLocalEmUso: `
+    SELECT 1 FROM local
+     WHERE orgao_id = $1 AND codigo = $2
+       AND id <> coalesce($3, '00000000-0000-0000-0000-000000000000'::uuid)`,
+
   salvarDadosDoLocal: `
     UPDATE local
        SET almoxarifado_id = $3, cnpj = $4, endereco = $5, bairro = $6,
@@ -222,6 +284,7 @@ const SQL = {
        AND ($4::text IS NULL OR s.status = $4)
        AND ($5::uuid IS NULL OR s.local_solicitante_id = $5)
        AND ($6::uuid IS NULL OR l.almoxarifado_id = $6)
+       AND ($7::uuid[] IS NULL OR s.local_solicitante_id = ANY($7))
      ORDER BY s.data DESC, s.id
      LIMIT $2 OFFSET $3`,
   buscarSolicitacao: `
@@ -230,7 +293,8 @@ const SQL = {
       JOIN local l ON l.id = s.local_solicitante_id
       JOIN usuario u ON u.id = s.autor_usuario_id
       LEFT JOIN tipo_estoque te ON te.id = s.tipo_estoque_id
-     WHERE l.orgao_id = $1 AND s.id = $2`,
+     WHERE l.orgao_id = $1 AND s.id = $2
+       AND ($3::uuid[] IS NULL OR s.local_solicitante_id = ANY($3))`,
   itensDaSolicitacao: `
     SELECT si.id, si.produto_id AS "produtoId", p.nome AS "produtoNome",
            p.unidade_medida AS "unidadeMedida",
@@ -415,6 +479,7 @@ const SQL = {
       JOIN produto p ON p.id = el.produto_id
       JOIN local l ON l.id = el.local_id
      WHERE l.orgao_id = $1 AND el.local_id = $2 AND el.saldo > 0
+       AND ($3::uuid[] IS NULL OR el.local_id = ANY($3))
      ORDER BY p.nome, el.data_validade NULLS LAST`,
 
   // ---- Movimento -----------------------------------------------------------
@@ -497,6 +562,7 @@ const SQL = {
        AND ($5::uuid IS NULL OR c.produto_id = $5)
        AND ($6::date IS NULL OR c.data >= $6)
        AND ($7::date IS NULL OR c.data <= $7)
+       AND ($8::uuid[] IS NULL OR c.local_id = ANY($8))
      ORDER BY c.data DESC, c.id
      LIMIT $2 OFFSET $3`,
 
@@ -575,6 +641,7 @@ const SQL = {
        AND ($4::text IS NULL OR d.status = $4)
        AND ($5::uuid IS NULL OR d.almoxarifado_id = $5)
        AND ($6::uuid IS NULL OR d.local_id = $6)
+       AND ($7::uuid[] IS NULL OR d.local_id = ANY($7))
      ORDER BY d.data DESC, d.id
      LIMIT $2 OFFSET $3`,
 
@@ -662,6 +729,8 @@ const SQL = {
      WHERE coalesce(a.orgao_id, l.orgao_id) = $1
        AND ($4::uuid IS NULL OR aj.almoxarifado_id = $4)
        AND ($5::uuid IS NULL OR el.local_id = $5)
+       AND ($6::uuid[] IS NULL OR el.local_id = ANY($6)
+            OR ($7::uuid[] IS NOT NULL AND aj.almoxarifado_id = ANY($7)))
      ORDER BY aj.data DESC, aj.id
      LIMIT $2 OFFSET $3`,
 };
@@ -746,14 +815,63 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
     ]);
   };
 
-  listarLocais = async (orgaoId: string, almoxarifadoId?: string): Promise<LocalDeEstoque[]> => {
-    const { rows } = await pool.query(SQL.listarLocais, [orgaoId, almoxarifadoId ?? null]);
+  /**
+   * Traduz "os almoxarifados do meu setor" nos ids que o `WHERE` entende.
+   *
+   * Uma consulta por requisição, e só para quem é lotado em setor: quem é da
+   * escola já sabe os próprios locais, e quem não tem lotação não tem trava.
+   */
+  alcanceDoSetor = async (orgaoId: string, setores: string[]): Promise<AlcanceDoSetor> => {
+    const { rows } = await pool.query(SQL.alcanceDoSetor, [orgaoId, setores]);
+    const linha = rows[0] as { locais: string[] | null; almoxarifados: string[] | null };
+    return { locais: linha?.locais ?? [], almoxarifados: linha?.almoxarifados ?? [] };
+  };
+
+  listarLocais = async (
+    orgaoId: string, alcance: AlcanceDeConsulta,
+    almoxarifadoId?: string, incluirInativos = false,
+  ): Promise<LocalDeEstoque[]> => {
+    const { rows } = await pool.query(SQL.listarLocais, [
+      orgaoId, almoxarifadoId ?? null, alcance.locais, incluirInativos,
+    ]);
     return rows as LocalDeEstoque[];
   };
 
-  buscarLocal = async (orgaoId: string, localId: string): Promise<LocalDeEstoque | null> => {
-    const { rows } = await pool.query(SQL.buscarLocal, [orgaoId, localId]);
+  buscarLocal = async (
+    orgaoId: string, localId: string, alcance: AlcanceDeConsulta,
+  ): Promise<LocalDeEstoque | null> => {
+    const { rows } = await pool.query(SQL.buscarLocal, [orgaoId, localId, alcance.locais]);
     return (rows[0] as LocalDeEstoque) ?? null;
+  };
+
+  criarLocal = async (orgaoId: string, dados: {
+    nome: string; codigo: string; almoxarifadoId: string | null; unidadeId?: string | null;
+  }): Promise<string> => {
+    const { rows } = await pool.query(SQL.criarLocal, [
+      orgaoId, dados.codigo, dados.nome, dados.almoxarifadoId, dados.unidadeId ?? null,
+    ]);
+    return rows[0].id as string;
+  };
+
+  renomearLocal = async (
+    orgaoId: string, localId: string, dados: { nome: string; codigo: string },
+  ): Promise<void> => {
+    await pool.query(SQL.renomearLocal, [orgaoId, localId, dados.nome, dados.codigo]);
+  };
+
+  definirSituacaoDoLocal = async (
+    orgaoId: string, localId: string, ativo: boolean,
+  ): Promise<void> => {
+    await pool.query(SQL.definirSituacaoDoLocal, [orgaoId, localId, ativo]);
+  };
+
+  codigoDeLocalEmUso = async (
+    orgaoId: string, codigo: string, exceto?: string,
+  ): Promise<boolean> => {
+    const { rows } = await pool.query(
+      SQL.codigoDeLocalEmUso, [orgaoId, codigo, exceto ?? null],
+    );
+    return rows.length > 0;
   };
 
   salvarDadosDoLocal: AlmoxarifadoRepository["salvarDadosDoLocal"] = async (
@@ -859,10 +977,12 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
   listarSolicitacoes = async (
     orgaoId: string,
     filtros: Paginacao & { status?: string; local?: string; almoxarifado?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<Pagina<SolicitacaoResumo>> => {
     const { rows } = await pool.query(SQL.listarSolicitacoes, [
       orgaoId, filtros.porPagina, deslocamentoDe(filtros),
       filtros.status ?? null, filtros.local ?? null, filtros.almoxarifado ?? null,
+      alcance.locais,
     ]);
     return montarPagina<SolicitacaoResumo>(
       rows.map((linha) => ({ ...linha, totalItens: numero(linha.totalItens) })) as never,
@@ -871,9 +991,9 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
   };
 
   buscarSolicitacao = async (
-    orgaoId: string, id: string,
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
   ): Promise<SolicitacaoEstoque | null> => {
-    const { rows } = await pool.query(SQL.buscarSolicitacao, [orgaoId, id]);
+    const { rows } = await pool.query(SQL.buscarSolicitacao, [orgaoId, id, alcance.locais]);
     const solicitacao = rows[0];
     if (!solicitacao) return null;
 
@@ -1040,8 +1160,10 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
 
   // ---- Estoque da unidade --------------------------------------------------
 
-  listarEstoqueDoLocal = async (orgaoId: string, localId: string) => {
-    const { rows } = await pool.query(SQL.estoqueDoLocal, [orgaoId, localId]);
+  listarEstoqueDoLocal = async (
+    orgaoId: string, localId: string, alcance: AlcanceDeConsulta,
+  ) => {
+    const { rows } = await pool.query(SQL.estoqueDoLocal, [orgaoId, localId, alcance.locais]);
 
     type LoteNaUnidade = {
       id: string; saldo: number; dataValidade: string | null; dataEntrada: string;
@@ -1138,11 +1260,12 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
   listarConsumo = async (
     orgaoId: string,
     filtros: Paginacao & { local?: string; produto?: string; de?: string; ate?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<Pagina<ConsumoRegistrado>> => {
     const { rows } = await pool.query(SQL.listarConsumo, [
       orgaoId, filtros.porPagina, deslocamentoDe(filtros),
       filtros.local ?? null, filtros.produto ?? null,
-      filtros.de ?? null, filtros.ate ?? null,
+      filtros.de ?? null, filtros.ate ?? null, alcance.locais,
     ]);
     return montarPagina<ConsumoRegistrado>(
       rows.map((linha) => ({
@@ -1204,10 +1327,12 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
   listarDevolucoes = async (
     orgaoId: string,
     filtros: Paginacao & { status?: string; almoxarifado?: string; local?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<Pagina<DevolucaoResumo>> => {
     const { rows } = await pool.query(SQL.listarDevolucoes, [
       orgaoId, filtros.porPagina, deslocamentoDe(filtros),
       filtros.status ?? null, filtros.almoxarifado ?? null, filtros.local ?? null,
+      alcance.locais,
     ]);
     return montarPagina<DevolucaoResumo>(
       rows.map((linha) => ({ ...linha, quantidade: numero(linha.quantidade) })) as never,
@@ -1269,10 +1394,12 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
 
   listarAjustes = async (
     orgaoId: string, filtros: Paginacao & { almoxarifado?: string; local?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<Pagina<AjusteResumo>> => {
     const { rows } = await pool.query(SQL.listarAjustes, [
       orgaoId, filtros.porPagina, deslocamentoDe(filtros),
       filtros.almoxarifado ?? null, filtros.local ?? null,
+      alcance.locais, alcance.almoxarifados,
     ]);
     return montarPagina<AjusteResumo>(
       rows.map((linha) => ({

@@ -33,6 +33,7 @@ export type StockLocation = {
   cnpj: string | null;
   endereco: string | null;
   responsavel: string | null;
+  ativo: boolean;
 };
 
 export type StockSettings = {

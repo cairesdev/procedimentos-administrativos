@@ -23,6 +23,8 @@ export type NovaLotacao = {
   unidadeId?: string;
   setorId?: string;
   departamentoId?: string;
+  /** Escola, creche ou posto: o destino que o almoxarifado usa. */
+  localId?: string;
 };
 
 export type UsuarioResumo = {
@@ -31,6 +33,10 @@ export type UsuarioResumo = {
   email: string;
   papelBase: string;
   ativo: boolean;
+  /** Onde a pessoa está lotada hoje, para a tela mostrar antes de trocar. */
+  lotacao?: string | null;
+  /** O mesmo destino no formato do seletor: `escola:<uuid>`. */
+  lotacaoValor?: string | null;
 };
 
 // Contexto de atuação: o front usa as lotações para o seletor de
@@ -40,6 +46,8 @@ export type LotacaoDoUsuario = {
   unidadeId: string | null;
   setorId: string | null;
   departamentoId: string | null;
+  /** Escola em que a pessoa trabalha; é ela que trava o almoxarifado. */
+  localId: string | null;
   /** Tipo do setor (COMPRAS, CONTROLADORIA…); nulo em lotação de unidade. */
   tipoSetor: string | null;
   destino: string;

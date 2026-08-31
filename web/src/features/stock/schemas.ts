@@ -43,6 +43,21 @@ export type StockSettingsInput = z.infer<typeof stockSettingsSchema>;
  * Dados de entrega e prestação de contas do local. O CNPJ é opcional porque
  * município pequeno usa o da própria prefeitura para todas as escolas.
  */
+/**
+ * Identidade da escola.
+ *
+ * Separado de `stockLocationSchema`, que trata dos dados de entrega e
+ * prestação de contas: um cria o local, o outro completa o que ele já é.
+ */
+export const stockPlaceSchema = z.object({
+  nome: z.string().min(3, "Informe o nome").max(150),
+  // Curto porque é o que o almoxarife escreve à mão no romaneio.
+  codigo: z.string().min(1, "Informe o código").max(10),
+  almoxarifadoId: z.string().uuid("Escolha o almoxarifado").nullable(),
+});
+
+export type StockPlaceInput = z.infer<typeof stockPlaceSchema>;
+
 export const stockLocationSchema = z.object({
   almoxarifadoId: z.string().uuid("Escolha o almoxarifado").nullable(),
   cnpj: z

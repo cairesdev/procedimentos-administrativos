@@ -23,10 +23,7 @@ export class CriarUsuario {
       throw new Conflito(`Nome de usuário ${dados.username} já em uso`);
     }
     for (const lotacao of dados.lotacoes) {
-      const destinos = [lotacao.unidadeId, lotacao.setorId, lotacao.departamentoId].filter(Boolean);
-      if (destinos.length !== 1) {
-        throw new ErroDeNegocio("Cada lotação aponta para exatamente um destino: unidade, setor ou departamento");
-      }
+      exigirDestinoUnico(lotacao);
     }
 
     const senhaHash = await hash(dados.senha, 10);
@@ -44,3 +41,21 @@ export class CriarUsuario {
     return { id };
   };
 }
+
+/**
+ * Exatamente um destino, e o banco cobra o mesmo.
+ *
+ * Conferir aqui troca o erro de constraint — que chega à tela como falha
+ * genérica — por uma frase que diz o que está errado.
+ */
+export const exigirDestinoUnico = (lotacao: Omit<NovaLotacao, "usuarioId">): void => {
+  const destinos = [
+    lotacao.unidadeId, lotacao.setorId, lotacao.departamentoId, lotacao.localId,
+  ].filter(Boolean);
+
+  if (destinos.length !== 1) {
+    throw new ErroDeNegocio(
+      "Cada lotação aponta para exatamente um destino: unidade, setor, departamento ou escola",
+    );
+  }
+};

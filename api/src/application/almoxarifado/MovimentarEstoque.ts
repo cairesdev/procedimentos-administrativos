@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "./ResolverAlcance";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar, somar, sugerirRetiradas } from "../../domain/almoxarifado/Fefo";
 import type {
@@ -396,7 +397,7 @@ export class MovimentarEstoque {
       .filter((unidadeId): unidadeId is string => Boolean(unidadeId));
     if (unidades.length === 0) return;
 
-    const local = await this.almoxarifado.buscarLocal(orgaoId, localId);
+    const local = await this.almoxarifado.buscarLocal(orgaoId, localId, SEM_TRAVA);
     if (!local) throw new NaoEncontrado("Local não encontrado");
 
     if (!local.unidadeId || !unidades.includes(local.unidadeId)) {

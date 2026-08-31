@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "./ResolverAlcance";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar, somar, sugerirRetiradas } from "../../domain/almoxarifado/Fefo";
 import { situacaoDaValidade } from "../../domain/almoxarifado/Validade";
@@ -233,7 +234,7 @@ export class LiberarEstoque {
   };
 
   private exigirAguardandoLiberacao = async (orgaoId: string, solicitacaoId: string) => {
-    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId);
+    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId, SEM_TRAVA);
     if (!solicitacao) throw new NaoEncontrado("Solicitação não encontrada");
 
     if (solicitacao.status !== "SOLICITADA") {

@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "../../application/ports/AlmoxarifadoRepository";
 import { pool } from "./pool";
 import type {
   NovoRegistroDeQualidade, QualidadeRepository, RegistroDeQualidade,
@@ -33,6 +34,8 @@ const SQL = {
        AND ($2::uuid IS NULL OR q.lote_id = $2)
        AND ($3::uuid IS NULL OR q.estoque_local_id = $3)
        AND ($4::text IS NULL OR q.tipo = $4)
+       AND ($5::uuid[] IS NULL OR el.local_id = ANY($5)
+            OR ($6::uuid[] IS NOT NULL AND r.almoxarifado_id = ANY($6)))
      ORDER BY q.data DESC, q.id
      LIMIT 200`,
 
@@ -62,9 +65,11 @@ export class PostgresQualidadeRepository implements QualidadeRepository {
   listar = async (
     orgaoId: string,
     filtros: { lote?: string; estoqueLocal?: string; tipo?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<RegistroDeQualidade[]> => {
     const { rows } = await pool.query(SQL.listar, [
       orgaoId, filtros.lote ?? null, filtros.estoqueLocal ?? null, filtros.tipo ?? null,
+      alcance.locais, alcance.almoxarifados,
     ]);
     return rows.map((linha) => ({
       ...linha,

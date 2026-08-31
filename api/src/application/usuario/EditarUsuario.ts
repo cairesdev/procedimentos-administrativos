@@ -1,7 +1,10 @@
 import { hash } from "bcryptjs";
 import { Conflito } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste, garantirSemVinculos } from "../shared/ExclusaoSegura";
-import type { EdicaoUsuario, UsuarioRepository } from "../ports/UsuarioRepository";
+import type {
+  EdicaoUsuario, NovaLotacao, UsuarioRepository,
+} from "../ports/UsuarioRepository";
+import { exigirDestinoUnico } from "./CriarUsuario";
 
 export type EditarUsuarioEntrada = Omit<EdicaoUsuario, "senhaHash"> & { senha?: string };
 
@@ -25,6 +28,27 @@ export class EditarUsuario {
       ...resto,
       senhaHash: senha ? await hash(senha, 10) : undefined,
     });
+  };
+
+  /**
+   * Troca a lotação inteira, em vez de acrescentar.
+   *
+   * A tela mostra o vínculo atual e grava o que ficou; somar criaria uma
+   * segunda lotação silenciosa, e o usuário passaria a alcançar as duas
+   * escolas — que é o oposto do que a correção pretendia.
+   */
+  substituirLotacoes = async (
+    orgaoId: string,
+    id: string,
+    lotacoes: Omit<NovaLotacao, "usuarioId">[],
+  ): Promise<void> => {
+    garantirExiste(await this.usuarios.buscarPorId(orgaoId, id), "Usuário");
+    for (const lotacao of lotacoes) exigirDestinoUnico(lotacao);
+
+    await this.usuarios.removerLotacoes(id);
+    for (const lotacao of lotacoes) {
+      await this.usuarios.criarLotacao({ ...lotacao, usuarioId: id });
+    }
   };
 
   // Quem já despachou ou emitiu parecer não pode sumir do histórico: só inativa.

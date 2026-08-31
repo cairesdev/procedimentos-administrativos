@@ -90,17 +90,26 @@ export type Option = { value: string; label: string };
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   name: string;
   label: string;
+  /** Vazio quando as opções vêm em `groups`. */
   options: Option[];
   emptyOption?: string;
   hint?: string;
   error?: string;
   wide?: boolean;
+  /**
+   * Opções em grupos, quando a lista plana esconde a pergunta.
+   *
+   * O select de papéis mostrava dez opções seguidas sob "nível de acesso", e
+   * escolher entre duas delas exigia saber de cor a que módulo cada uma servia.
+   */
+  groups?: { label: string; options: Option[] }[];
   ref?: Ref<HTMLSelectElement>;
 };
 
 export const SelectField = ({
   label,
   options,
+  groups,
   emptyOption,
   hint,
   error,
@@ -126,11 +135,21 @@ export const SelectField = ({
       }`}
     >
       {emptyOption && !select.multiple ? <option value="">{emptyOption}</option> : null}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
+      {groups
+        ? groups.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </optgroup>
+        ))
+        : options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
     </select>
   </FieldWrapper>
 );

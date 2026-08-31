@@ -34,6 +34,7 @@ export type LocalDeEstoque = {
   cnpj: string | null;
   endereco: string | null;
   responsavel: string | null;
+  ativo: boolean;
 };
 
 export type TipoDeEstoque = {
@@ -310,7 +311,36 @@ export type AjusteResumo = {
   data: string;
 };
 
+/**
+ * O alcance de quem é lotado num setor, em ids.
+ *
+ * Almoxarifado sem setor e local sem almoxarifado entram para todo mundo: o
+ * nulo aqui significa "ainda não classificado", e classificar aos poucos não
+ * pode tirar de ninguém o que já operava.
+ */
+export type AlcanceDoSetor = {
+  locais: string[];
+  almoxarifados: string[];
+};
+
+/**
+ * O alcance já resolvido, como toda leitura do módulo o recebe.
+ *
+ * É **obrigatório** em cada assinatura de propósito. Opcional, uma consulta
+ * nova esqueceria de pedi-lo e voltaria a enxergar a prefeitura inteira — que
+ * é exatamente o vazamento que este parâmetro veio fechar. Assim o compilador
+ * cobra, e ninguém precisa lembrar.
+ *
+ * `null` significa "sem trava", e não se confunde com `[]`, que não alcança
+ * nada.
+ */
+export type AlcanceDeConsulta = {
+  locais: string[] | null;
+  almoxarifados: string[] | null;
+};
+
 export interface AlmoxarifadoRepository {
+  alcanceDoSetor(orgaoId: string, setores: string[]): Promise<AlcanceDoSetor>;
   // ---- Cadastros -----------------------------------------------------------
   listarAlmoxarifados(orgaoId: string): Promise<Almoxarifado[]>;
   criarAlmoxarifado(orgaoId: string, nome: string): Promise<string>;
@@ -331,8 +361,23 @@ export interface AlmoxarifadoRepository {
   salvarConfiguracao(orgaoId: string, dados: ConfiguracaoDoAlmoxarifado): Promise<void>;
 
   /** Locais que consomem estoque, opcionalmente de um almoxarifado só. */
-  listarLocais(orgaoId: string, almoxarifadoId?: string): Promise<LocalDeEstoque[]>;
-  buscarLocal(orgaoId: string, localId: string): Promise<LocalDeEstoque | null>;
+  listarLocais(
+    orgaoId: string, alcance: AlcanceDeConsulta,
+    almoxarifadoId?: string, incluirInativos?: boolean,
+  ): Promise<LocalDeEstoque[]>;
+  buscarLocal(
+    orgaoId: string, localId: string, alcance: AlcanceDeConsulta,
+  ): Promise<LocalDeEstoque | null>;
+  /** Cadastro do local dentro do próprio almoxarifado, sem o patrimônio. */
+  criarLocal(orgaoId: string, dados: {
+    nome: string; codigo: string; almoxarifadoId: string | null; unidadeId?: string | null;
+  }): Promise<string>;
+  renomearLocal(
+    orgaoId: string, localId: string, dados: { nome: string; codigo: string },
+  ): Promise<void>;
+  /** Some das listas e continua nomeando o pedido de dois anos atrás. */
+  definirSituacaoDoLocal(orgaoId: string, localId: string, ativo: boolean): Promise<void>;
+  codigoDeLocalEmUso(orgaoId: string, codigo: string, exceto?: string): Promise<boolean>;
   /** Dados de entrega e prestação de contas; o resto do local é do patrimônio. */
   salvarDadosDoLocal(orgaoId: string, localId: string, dados: {
     almoxarifadoId: string | null;
@@ -368,8 +413,10 @@ export interface AlmoxarifadoRepository {
 
   listarSolicitacoes(orgaoId: string, filtros: Paginacao & {
     status?: string; local?: string; almoxarifado?: string;
-  }): Promise<Pagina<SolicitacaoResumo>>;
-  buscarSolicitacao(orgaoId: string, id: string): Promise<SolicitacaoEstoque | null>;
+  }, alcance: AlcanceDeConsulta): Promise<Pagina<SolicitacaoResumo>>;
+  buscarSolicitacao(
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<SolicitacaoEstoque | null>;
   criarSolicitacao(orgaoId: string, dados: NovaSolicitacaoEstoque): Promise<string>;
   substituirItens(
     orgaoId: string,
@@ -470,7 +517,7 @@ export interface AlmoxarifadoRepository {
   registrarConsumo(dados: NovoConsumo, tx: Tx): Promise<string>;
   listarConsumo(orgaoId: string, filtros: Paginacao & {
     local?: string; produto?: string; de?: string; ate?: string;
-  }): Promise<Pagina<ConsumoRegistrado>>;
+  }, alcance: AlcanceDeConsulta): Promise<Pagina<ConsumoRegistrado>>;
 
   criarDevolucao(dados: NovaDevolucao, tx: Tx): Promise<string>;
   bloquearDevolucao(orgaoId: string, id: string, tx: Tx): Promise<DevolucaoResumo | null>;
@@ -484,7 +531,7 @@ export interface AlmoxarifadoRepository {
   ): Promise<void>;
   listarDevolucoes(orgaoId: string, filtros: Paginacao & {
     status?: string; almoxarifado?: string; local?: string;
-  }): Promise<Pagina<DevolucaoResumo>>;
+  }, alcance: AlcanceDeConsulta): Promise<Pagina<DevolucaoResumo>>;
 
   /** Debita a origem e cria a remessa de transferência no destino. */
   transferirLote(
@@ -498,10 +545,12 @@ export interface AlmoxarifadoRepository {
   registrarAjuste(dados: NovoAjuste, tx: Tx): Promise<string>;
   listarAjustes(orgaoId: string, filtros: Paginacao & {
     almoxarifado?: string; local?: string;
-  }): Promise<Pagina<AjusteResumo>>;
+  }, alcance: AlcanceDeConsulta): Promise<Pagina<AjusteResumo>>;
 
   // ---- Estoque da unidade --------------------------------------------------
-  listarEstoqueDoLocal(orgaoId: string, localId: string): Promise<{
+  listarEstoqueDoLocal(
+    orgaoId: string, localId: string, alcance: AlcanceDeConsulta,
+  ): Promise<{
     produtoId: string;
     produtoNome: string;
     unidadeMedida: string;

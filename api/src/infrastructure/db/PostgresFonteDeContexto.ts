@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "../../application/almoxarifado/ResolverAlcance";
 import { pool } from "./pool";
 import { valorPorExtenso } from "../../domain/documento/PorExtenso";
 import { percentualDeAgriculturaFamiliar } from "../../application/almoxarifado/ApurarConsumo";
@@ -827,7 +828,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     relatorioId: string,
     orgao: Record<string, unknown>,
   ): Promise<ContextoDeDocumento | null> => {
-    const apuracao = await this.relatorios.apurar(orgaoId, relatorioId);
+    const apuracao = await this.relatorios.apurar(orgaoId, relatorioId, SEM_TRAVA);
     if (!apuracao) return null;
 
     const somar = (valores: number[]) =>

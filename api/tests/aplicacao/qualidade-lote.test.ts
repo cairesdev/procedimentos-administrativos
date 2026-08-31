@@ -141,7 +141,21 @@ describe("qualidade não mexe em saldo", () => {
     );
     const imports = fonte.slice(0, fonte.indexOf("export const"));
 
-    assert.ok(!/AlmoxarifadoRepository/.test(imports), "importa o repositório de estoque");
-    assert.ok(!/MovimentarEstoque/.test(imports), "importa o caso de uso de movimento");
+    // `import type` não conta: o tipo do alcance mora no port do almoxarifado,
+    // e importá-lo não dá ao caso de uso nenhum método que mexa em saldo — o
+    // `type` some na compilação. O que não pode é receber o repositório.
+    const importaValor = (nome: string) =>
+      new RegExp(`^import (?!type )[^\\n]*${nome}`, "m").test(imports)
+      || new RegExp(`^import \\{[^}]*\\b${nome}\\b`, "m").test(imports);
+
+    assert.ok(!importaValor("AlmoxarifadoRepository"), "importa o repositório de estoque");
+    assert.ok(!importaValor("MovimentarEstoque"), "importa o caso de uso de movimento");
+
+    // A prova que interessa: nada que saiba debitar saldo é injetado.
+    const construtor = fonte.slice(fonte.indexOf("constructor("), fonte.indexOf(") {"));
+    assert.ok(
+      !/AlmoxarifadoRepository/.test(construtor),
+      "o repositório de estoque entra pelo construtor",
+    );
   });
 });

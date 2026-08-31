@@ -7,7 +7,8 @@ import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import {
   adjustmentSchema, consumptionSchema, intakeSchema, receiptSchema, refuseSchema,
-  releaseSchema, returnSchema, stockLocationSchema, stockRequestSchema,
+  releaseSchema, returnSchema, stockLocationSchema, stockPlaceSchema,
+  stockRequestSchema, type StockPlaceInput,
   stockSettingsSchema, stockTypeSchema, transferSchema, warehouseSchema,
   consumptionReportSchema, type ConsumptionReportInput,
   qualitySchema, type QualityInput,
@@ -82,6 +83,49 @@ export const saveStockSettings = async (input: StockSettingsInput) =>
     });
     revalidatePath("/almoxarifado/configuracao");
   }, "Configuração salva");
+
+/**
+ * Cadastra a escola sem passar pelo patrimônio.
+ *
+ * Os dois módulos são vendidos separados, e criar local só existia lá: quem
+ * comprasse apenas o almoxarifado não conseguia cadastrar a primeira escola.
+ */
+export const createStockPlace = async (input: StockPlaceInput) =>
+  runAction(async () => {
+    await apiRequest(endpoints.stockLocations, {
+      method: "POST",
+      body: stockPlaceSchema.parse(input),
+    });
+    revalidatePath(LOCATIONS);
+  }, "Local cadastrado");
+
+export const renameStockPlace = async (id: string, input: StockPlaceInput) =>
+  runAction(async () => {
+    const { nome, codigo } = stockPlaceSchema.parse(input);
+    await apiRequest(`${endpoints.stockLocations}/${id}`, {
+      method: "PATCH",
+      body: { nome, codigo },
+    });
+    revalidatePath(LOCATIONS);
+  }, "Local atualizado");
+
+/**
+ * Inativa e reativa; nunca apaga.
+ *
+ * O local aparece em pedido, entrega e relatório de anos anteriores, e apagá-lo
+ * levaria a prestação de contas junto. A volta existe porque inativar por
+ * engano não pode virar viagem só de ida.
+ */
+export const setStockPlaceActive = async (
+  id: string, nome: string, codigo: string, ativo: boolean,
+) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.stockLocations}/${id}`, {
+      method: "PATCH",
+      body: { nome, codigo, ativo },
+    });
+    revalidatePath(LOCATIONS);
+  }, ativo ? "Local reativado" : "Local inativado");
 
 export const saveStockLocation = async (id: string, input: StockLocationInput) =>
   runAction(async () => {

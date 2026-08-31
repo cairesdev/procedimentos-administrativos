@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "./ResolverAlcance";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar, somar } from "../../domain/almoxarifado/Fefo";
 import type { AlmoxarifadoRepository } from "../ports/AlmoxarifadoRepository";
@@ -173,7 +174,7 @@ export class SolicitarEstoque {
     solicitacaoId: string;
   }): Promise<void> => {
     const solicitacao = await this.almoxarifado.buscarSolicitacao(
-      dados.orgaoId, dados.solicitacaoId,
+      dados.orgaoId, dados.solicitacaoId, SEM_TRAVA,
     );
     if (!solicitacao) throw new NaoEncontrado("Solicitação não encontrada");
 
@@ -200,7 +201,7 @@ export class SolicitarEstoque {
 
   /** Rascunho é o único estado editável: enviado já segurou saldo. */
   private exigirRascunho = async (orgaoId: string, solicitacaoId: string) => {
-    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId);
+    const solicitacao = await this.almoxarifado.buscarSolicitacao(orgaoId, solicitacaoId, SEM_TRAVA);
     if (!solicitacao) throw new NaoEncontrado("Solicitação não encontrada");
     if (solicitacao.status !== "RASCUNHO") {
       throw new ErroDeNegocio("Solicitação já foi enviada e não pode mais ser alterada");
@@ -230,7 +231,7 @@ export class SolicitarEstoque {
     // não deve ser travado — é o trabalho dele.
     if (unidades.length === 0) return;
 
-    const local = await this.almoxarifado.buscarLocal(orgaoId, localId);
+    const local = await this.almoxarifado.buscarLocal(orgaoId, localId, SEM_TRAVA);
     if (!local) throw new NaoEncontrado("Local não encontrado");
 
     // Local sem unidade (depósito avulso) não pertence a ninguém: quem tem

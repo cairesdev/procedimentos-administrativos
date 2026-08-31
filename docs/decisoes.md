@@ -939,3 +939,63 @@ pode ser livre.
 
 A trava do órgão fica no caso de uso, e o lote é alcançado por join até o
 almoxarifado — um id de outra prefeitura não vira registro.
+
+## Acesso por escola no almoxarifado — decidido
+
+Com o módulo no ar, apareceu o buraco: a trava por lotação existia só na
+**escrita** — `SolicitarEstoque`, `MovimentarEstoque` e `ReceberEstoque`
+comparavam `local.unidade_id` com as unidades da lotação. Toda **leitura**
+passava com `stock:read` puro. A escola 1 listava os pedidos, o estoque, o
+consumo, as devoluções e os relatórios da escola 2.
+
+A causa é a mesma dos três pontos levantados: **a escola não era um destino de
+lotação**. O almoxarifado inteiro fala em `local` — é ele que tem CNPJ,
+endereço e responsável —, mas a lotação só sabia apontar para unidade, setor ou
+departamento. A ligação era indireta, por um `local.unidade_id` que é nullable,
+e por isso frágil nos dois sentidos: local sem unidade não pertencia a ninguém,
+e a mesma unidade cobria escolas diferentes.
+
+### A escola vira lotação
+
+`lotacao` ganha `local_id` como quarto destino, mantendo o CHECK de exatamente
+um. Nada de campo novo em `usuario`: um segundo mecanismo de vínculo ao lado da
+lotação criaria dois lugares para procurar a mesma resposta, e a auditoria de
+processos já registra em nome de qual lotação o usuário agiu.
+
+### O alcance, e quem escapa dele
+
+- **Lotado numa escola** alcança aquela escola, e só ela — em pedidos, estoque,
+  consumo, devolução, qualidade, ajuste e relatórios.
+- **Lotado num setor** alcança os locais atendidos pelos almoxarifados **do seu
+  setor**. Para isso `almoxarifado` ganha `setor_id`: o central é do setor de
+  Compras, o da merenda é do de Alimentação Escolar. A nutricionista acompanha
+  a rede inteira porque o almoxarifado dela atende a rede inteira — não porque
+  a trava foi desligada para ela.
+- **Almoxarifado sem setor** é alcançado por qualquer lotação de setor. É o
+  estado de hoje, e a coluna nasce nullable de propósito: transformá-la em
+  obrigatória de uma vez tiraria o estoque das mãos de quem já o opera. O setor
+  se preenche na tela, almoxarifado por almoxarifado.
+- **Sem lotação nenhuma** — administrador, e quem o produto ainda não lotou —
+  continua alcançando tudo. Trocar isso por "não alcança nada" trancaria o
+  sistema em produção no dia da migration.
+
+**Só o almoxarifado.** Nos outros módulos o papel `UNIDADE` não tem permissão
+para entrar, então a trava seria uma segunda fechadura na mesma porta.
+
+### A trava mora no SQL
+
+O alcance entra como parâmetro em cada consulta, não como filtro no caso de uso.
+Caso de uso que filtra depois já leu o dado alheio, e basta uma rota nova
+esquecer a chamada para o vazamento voltar. Como array de `uuid` — `NULL`
+significando "alcança tudo" —, a mesma cláusula serve a todas as consultas e o
+teste consegue conferir uma por uma.
+
+### Locais atendidos, sem depender do patrimônio
+
+Criar e editar local vivia em `/patrimonio/locais`. Como patrimônio e
+almoxarifado são vendidos separados, a prefeitura que comprasse só o segundo não
+teria como cadastrar uma escola. O CRUD passa a existir também em
+`/almoxarifado/locais`, com `stock:manage`, gravando na **mesma** tabela
+`local` — que é o que ela sempre foi, um local físico compartilhado entre
+módulos. Tabela própria faria a mesma escola existir duas vezes, com dois CNPJs
+livres para divergir bem no dado que o PNAE cobra.

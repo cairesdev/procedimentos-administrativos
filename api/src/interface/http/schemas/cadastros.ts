@@ -44,6 +44,19 @@ const lotacaoSchema = z.object({
   unidadeId: z.string().uuid().optional(),
   setorId: z.string().uuid().optional(),
   departamentoId: z.string().uuid().optional(),
+  /** Escola, creche ou posto: é ela que trava o almoxarifado. */
+  localId: z.string().uuid().optional(),
+});
+
+/**
+ * A lotação passa a ser corrigível.
+ *
+ * Antes ela só entrava na criação: quem cadastrasse a diretora na escola
+ * errada não tinha como consertar pela tela — e o vínculo é justamente o que
+ * decide o que ela enxerga.
+ */
+export const lotacoesDoUsuarioSchema = z.object({
+  lotacoes: z.array(lotacaoSchema),
 });
 
 export const criarUsuarioSchema = z.object({

@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "./AlmoxarifadoRepository";
 export type RegistroDeQualidade = {
   id: string;
   loteId: string | null;
@@ -27,6 +28,7 @@ export interface QualidadeRepository {
   listar(
     orgaoId: string,
     filtros: { lote?: string; estoqueLocal?: string; tipo?: string },
+    alcance: AlcanceDeConsulta,
   ): Promise<RegistroDeQualidade[]>;
   /** O lote (ou o estoque da unidade) pertence a este órgão? */
   loteDoOrgao(orgaoId: string, loteId?: string, estoqueLocalId?: string): Promise<boolean>;

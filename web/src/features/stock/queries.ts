@@ -20,10 +20,24 @@ export const listProducts = (busca?: string) =>
 
 export const getStockSettings = () => apiRequest<StockSettings>(endpoints.stockSettings);
 
-export const listStockLocations = (almoxarifado?: string) =>
-  apiRequest<StockLocation[]>(
-    `${endpoints.stockLocations}${almoxarifado ? `?almoxarifado=${almoxarifado}` : ""}`,
+/**
+ * `inativos` só na tela de cadastro.
+ *
+ * Nos seletores, um local inativo seria uma escola que não recebe mais material
+ * oferecida como destino de pedido. Na tela que administra o cadastro, ele
+ * precisa aparecer — senão inativar por engano só teria volta pelo banco.
+ */
+export const listStockLocations = (
+  opcoes: { almoxarifado?: string; inativos?: boolean } = {},
+) => {
+  const busca = new URLSearchParams();
+  if (opcoes.almoxarifado) busca.set("almoxarifado", opcoes.almoxarifado);
+  if (opcoes.inativos) busca.set("inativos", "1");
+  const query = busca.toString();
+  return apiRequest<StockLocation[]>(
+    `${endpoints.stockLocations}${query ? `?${query}` : ""}`,
   );
+};
 
 export const getLocalStock = (localId: string) =>
   apiRequest<LocalStock[]>(endpoints.localStock(localId));

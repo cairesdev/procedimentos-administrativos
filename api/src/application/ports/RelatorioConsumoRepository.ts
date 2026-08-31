@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "./AlmoxarifadoRepository";
 /** Recorte pedido: o relatório guarda isto, e apura o resto na leitura. */
 export type RelatorioConsumo = {
   id: string;
@@ -55,8 +56,10 @@ export type NovoRelatorioConsumo = {
 
 export interface RelatorioConsumoRepository {
   criar(dados: NovoRelatorioConsumo): Promise<string>;
-  listar(orgaoId: string): Promise<RelatorioConsumo[]>;
+  listar(orgaoId: string, alcance: AlcanceDeConsulta): Promise<RelatorioConsumo[]>;
   /** Os números do recorte, calculados no momento da leitura. */
-  apurar(orgaoId: string, id: string): Promise<ApuracaoDoRelatorio | null>;
+  apurar(
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<ApuracaoDoRelatorio | null>;
   excluir(orgaoId: string, id: string): Promise<void>;
 }

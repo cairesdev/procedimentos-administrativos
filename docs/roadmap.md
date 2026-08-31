@@ -927,3 +927,43 @@ concluía que não tinha permissão, com o erro real só no log do servidor.
 - `fefo.test.ts` confere o parser pelo próprio driver — `types.getTypeParser(1082)`
   aplicado a uma data —, não por leitura do arquivo. Verificado removendo o
   registro de propósito.
+
+## Acesso por escola no almoxarifado — pronto
+
+Três pedidos com a mesma raiz: o cadastro de usuário confuso, a falta de bloqueio
+entre escolas e o cadastro de locais preso ao patrimônio. A causa comum era a
+escola não ser destino de lotação — o almoxarifado inteiro fala em `local`, mas
+a lotação só sabia apontar para unidade, setor ou departamento.
+
+**O vazamento que estava em produção.** A trava por lotação existia só na
+escrita. Toda leitura passava com `stock:read` puro: `GET /solicitacoes`,
+`/locais`, `/locais/:id/estoque`, `/consumo`, `/devolucoes`, `/qualidade`,
+`/ajustes` e `/relatorios`. A escola 1 listava tudo da escola 2.
+
+- **0031** — `lotacao.local_id` como quarto destino (CHECK de exatamente um
+  mantido) e `almoxarifado.setor_id`, ambos verificados em Postgres real:
+  69 invariantes, incluindo escola+setor na mesma lotação sendo recusada.
+- **`AlcanceDeLocais`** — regra pura: escola vence setor; sem lotação, sem
+  trava. Nullable de propósito nas duas colunas novas — exigi-las na migration
+  tiraria o estoque das mãos de quem já o opera, no minuto do deploy.
+- **Onze consultas** ganharam a cláusula, no SQL e não no caso de uso: as rotas
+  de consumo, devolução, ajuste e transferência falam com o repositório
+  **direto**, sem passar por caso de uso nenhum, e filtrar lá em cima deixaria
+  essas quatro de fora. O parâmetro é obrigatório no tipo — o compilador
+  encontrou as 16 chamadas, e nenhuma escapou por esquecimento.
+- **Locais atendidos** — criar, renomear e inativar em `/almoxarifado/locais`
+  com `stock:manage`, na mesma tabela `local`. Reativar existe: inativar sem
+  volta seria porta de mão única. Inativo aparece só na tela de cadastro,
+  nunca nos seletores.
+- **Cadastro de usuário** — papéis agrupados pelo módulo que servem (o select
+  eram dez opções planas sob "nível de acesso"), escola como destino, lotação
+  visível na lista e **editável**: antes ela só entrava na criação, e cadastrar
+  a diretora na escola errada exigia recadastrar a pessoa.
+
+Verificado quebrando cada guarda: tirar a cláusula de uma consulta, filtrar
+pela coluna errada e inverter a precedência escola/setor — os três acusam.
+Um deles foi pego por dois testes independentes.
+
+**Pendente de decisão sua:** os almoxarifados existentes estão sem setor, e
+enquanto estiverem, qualquer lotação de setor os alcança. O preenchimento é na
+tela de almoxarifados, um por um.

@@ -1,3 +1,4 @@
+import type { AlcanceDeConsulta } from "../ports/AlmoxarifadoRepository";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type {
@@ -86,5 +87,6 @@ export class RegistrarQualidade {
   listar = (
     orgaoId: string,
     filtros: { lote?: string; estoqueLocal?: string; tipo?: string },
-  ): Promise<RegistroDeQualidade[]> => this.qualidade.listar(orgaoId, filtros);
+    alcance: AlcanceDeConsulta,
+  ): Promise<RegistroDeQualidade[]> => this.qualidade.listar(orgaoId, filtros, alcance);
 }
