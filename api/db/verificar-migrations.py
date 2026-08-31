@@ -384,6 +384,38 @@ CASOS: list[tuple[str, str, bool]] = [
      "INSERT INTO documento_modelo (orgao_id, modulo, escopo, tipo, nome, titulo, corpo) VALUES "
      "(NULL,'ALMOXARIFADO','RELATORIO_CONSUMO','RELATORIO_TESTE','x','X','<p>x</p>')",
      True),
+
+    # ---- 0029: convite do fornecedor ----------------------------------------
+    ("convite com prazo no futuro e aceito",
+     "INSERT INTO fornecedor_convite (id, fornecedor_id, orgao_id, token_hash, expira_em) "
+     "SELECT 'c0000000-0000-0000-0000-000000000001', f.id,"
+     "'11111111-1111-1111-1111-111111111111', repeat('a',64), now() + interval '30 days' "
+     "FROM fornecedor f LIMIT 1",
+     True),
+    ("um convite aberto por fornecedor e prefeitura",
+     "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
+     "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('b',64), "
+     "now() + interval '30 days' FROM fornecedor f LIMIT 1",
+     False),
+    ("depois de revogar, cabe outro convite",
+     "UPDATE fornecedor_convite SET revogado_em = now() "
+     "WHERE id = 'c0000000-0000-0000-0000-000000000001'",
+     True),
+    ("segundo convite entra apos a revogacao",
+     "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
+     "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "
+     "now() + interval '30 days' FROM fornecedor f LIMIT 1",
+     True),
+    ("prazo no passado e recusado",
+     "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
+     "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('d',64), "
+     "now() - interval '1 day' FROM fornecedor f LIMIT 1",
+     False),
+    ("o mesmo hash nao entra duas vezes",
+     "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
+     "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "
+     "now() + interval '10 days' FROM fornecedor f LIMIT 1",
+     False),
 ]
 
 

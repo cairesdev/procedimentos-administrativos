@@ -29,6 +29,55 @@ fornecedoresRouter.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * Link para o fornecedor completar o próprio cadastro.
+ *
+ * O token volta **uma vez só**: o banco guarda o hash. Perdido o link, gera-se
+ * outro — e o anterior morre junto, para não haver dois vivos ao mesmo tempo.
+ */
+fornecedoresRouter.post(
+  "/:id/convite",
+  exigirPermissao("suppliers:write"),
+  async (req, res, next) => {
+    try {
+      res.status(201).json(await container.convidarFornecedor.convidar({
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        fornecedorId: req.params.id!,
+      }));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+fornecedoresRouter.get("/:id/convite", async (req, res, next) => {
+  try {
+    res.json(
+      await container.convidarFornecedor.situacao(req.sessao!.orgaoId, req.params.id!),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+fornecedoresRouter.delete(
+  "/:id/convite",
+  exigirPermissao("suppliers:write"),
+  async (req, res, next) => {
+    try {
+      await container.convidarFornecedor.revogar({
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        fornecedorId: req.params.id!,
+      });
+      res.json({ message: "Link revogado" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 fornecedoresRouter.patch("/:id", exigirPermissao("suppliers:write"), async (req, res, next) => {
   try {
     const dados = atualizarFornecedorSchema.parse(req.body);

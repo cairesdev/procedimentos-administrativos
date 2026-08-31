@@ -1,7 +1,7 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { allOf, withPage, POR_PAGINA_MAXIMO, type Page } from "@/shared/api/pagination";
-import type { Supplier } from "./types";
+import type { Supplier, SupplierInvite } from "./types";
 
 export const listSuppliers = (search?: string, pagina?: string) => {
   const query = new URLSearchParams();
@@ -19,3 +19,7 @@ export const listAllSuppliers = () =>
       `${endpoints.suppliers}?${withPage(new URLSearchParams(), pagina, POR_PAGINA_MAXIMO)}`,
     ),
   );
+
+/** Convite aberto desta prefeitura para o fornecedor, se houver. */
+export const getSupplierInvite = (id: string) =>
+  apiRequest<SupplierInvite | null>(`/fornecedores/${id}/convite`);

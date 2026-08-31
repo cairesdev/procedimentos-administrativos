@@ -2,6 +2,7 @@ import { Table } from "@/shared/ui/layout";
 import { toDocument } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
 import { SupplierForm } from "./SupplierForm";
+import { SupplierInviteButton } from "./SupplierInviteButton";
 import type { Supplier } from "../types";
 
 export const SupplierTable = ({
@@ -28,6 +29,15 @@ export const SupplierTable = ({
               editTitle="Editar fornecedor"
               editDescription="Cadastro global: a alteração vale para todas as prefeituras e fica no histórico."
               editForm={<SupplierForm supplier={supplier} />}
+              extraLabel="Link para o fornecedor"
+              extraTitle="Link para o fornecedor completar o cadastro"
+              extraDescription="Ele abre sem login e corrige os próprios dados."
+              extraForm={
+                <SupplierInviteButton
+                  supplierId={supplier.id}
+                  razaoSocial={supplier.razaoSocial}
+                />
+              }
             />
           </td>
         ) : null}

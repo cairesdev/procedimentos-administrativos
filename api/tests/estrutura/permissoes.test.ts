@@ -34,6 +34,7 @@ const FORA_DO_MODELO: Record<string, string> = {
   "auth.ts": "login: é onde a sessão nasce",
   "conferencia.ts": "conferência pública do documento, sem login",
   "protocoloPublico.ts": "abertura de protocolo pelo cidadão, sem login",
+  "fornecedorPublico.ts": "o fornecedor corrige o próprio cadastro; a credencial é o token do link",
   "fornecedores.ts": "cadastro global; guarda declarada no próprio arquivo",
 };
 

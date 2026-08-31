@@ -14,7 +14,8 @@ Alterar qualquer um exige nova aprovação do usuário.
 - **Módulos habilitados por prefeitura** (`orgao_modulo`), controlados pelo super admin. Usuário só
   acessa ferramentas de módulos ativos do seu órgão (middleware `resolveTenant("MODULO")`).
 - **Papéis**: catálogo fixo (ADMIN, GESTOR, SERVIDOR, PROTOCOLO, COMPRAS, CONTROLADORIA,
-  NUTRICIONISTA) + overrides pontuais em `usuario_permissao`.
+  NUTRICIONISTA, UNIDADE, PATRIMONIO, FROTAS) + overrides pontuais em `usuario_permissao`,
+  que passaram a valer. Ver "Níveis de acesso" adiante.
 - **Login sem CNPJ**: identificador (e-mail OU username) + senha; ambos únicos globalmente; o órgão
   vem do registro. Se surgir usuário em 2+ prefeituras, evoluir para conta global + `usuario_orgao`.
 - **Lotações múltiplas**: usuário tem N lotações, cada uma apontando para exatamente um destino
@@ -23,12 +24,13 @@ Alterar qualquer um exige nova aprovação do usuário.
   Setores funcionais (processam: Protocolo, Compras, Controladoria, Alimentação Escolar...).
   Departamento pertence a setor e é endereçável no fluxo (fila própria).
 - **Auditoria**: só eventos de negócio (despacho, parecer, cancelamento, aprovação, mudança de
-  setor) — não toda edição de cadastro. (Tabela existe; gravação ainda não plugada.)
+  setor) — não toda edição de cadastro. **Implementado**, com tela em `/processos/auditoria`.
 - **Numeração**: sequencial/ano com sequências separadas por tipo (`numeracao_sequencia`):
   protocolo 000123/2026, processo adm 048/2026, ordem 0001/2026.
 - **Documentos emitidos**: todo módulo gera comprovantes/declarações/relatórios via
   `documento_emitido`, com código pesquisável que vira QR interno. Timbre/logomarca por prefeitura
-  em `orgao_documento_config`. (Geração ainda não implementada.)
+  em `orgao_documento_config`. **Implementado** — motor, modelos por módulo, rascunho editável
+  e conferência pública.
 - **Local físico é cadastro compartilhado** entre patrimônio e almoxarifado; pode reaproveitar
   unidades (admin escolhe quais) ou ser avulso (escola, hospital).
 - **Sem sigilo de processos nesta fase.** Transparência como princípio.
@@ -293,8 +295,8 @@ em cada etapa via `documento_emitido`.
   manter duas versões do mesmo conteúdo.
 - Prefeitura sem timbre configurado **imprime assim mesmo**, com aviso de que falta configurar —
   travar a impressão por causa de identidade visual seria pior que o documento sem brasão.
-- Ainda **não é documento emitido**: não há registro em `documento_emitido`, código verificador nem
-  QR. Isso continua no roadmap.
+- A solicitação **passou a ser documento emitido** (escopo `SOLICITACAO`), com código verificador
+  e QR. A tela de impressão direta continua existindo, para quem só quer o papel.
 
 ## Lobby
 
@@ -414,8 +416,10 @@ despesa, fonte, parcelas, nota fiscal), itens (tabela), totais (`{{valorTotal}}`
 2. **Feito.** Migration `0015` com os sete tipos do catálogo, tela de edição pela prefeitura
    (marcadores ao lado, pré-visualização, "restaurar padrão") e `/admin/modelos` para o produto
    manter os padrões.
-3. **Pendente.** Demais módulos: como o motor é genérico, entra modelo global novo por
-   migration — sem código.
+3. **Feito.** Patrimônio, frotas e almoxarifado, por migration. O motor era genérico; o que
+   faltava era o **escopo** — de onde a peça fala.
+4. **Feito.** Rascunho editável antes de emitir, peça restrita a setor, e o relatório de
+   consumo como escopo próprio.
 
 ## Solicitação por unidade
 
@@ -840,3 +844,71 @@ do contrato. Valor ausente que parece preenchido é pior que a linha faltando.
 Número do item, fonte (SINAPI/ORSE) e código não têm coluna no contrato e vão
 para a descrição — jogá-los fora perderia a ligação com a planilha orçamentária
 aprovada.
+
+## O que ainda não virou código
+
+Revisado em agosto/2026, confrontando cada decisão com o repositório.
+
+### Decidido e ainda ausente
+
+| Decisão | Onde parou |
+| --- | --- |
+| **Campos extras do contrato** | `contrato_campo_extra` e `item_valor_extra` existem desde a 0002. Nenhuma linha do sistema **cria ou lê** as duas — só há um `DELETE` na limpeza do contrato. É a feature de "colunas extras da planilha" do levantamento, viva só como tabela. |
+| **Registro de qualidade do lote** | Adiado por decisão no levantamento do almoxarifado. O ajuste de estoque com motivo cobre o caso urgente. |
+| **Visibilidade estendida da etapa** | Gravada em `fluxo_etapa`, oferecida no painel de fluxos, nunca lida. |
+
+### A quarta configuração sem efeito
+
+`contrato_campo_extra` entra na mesma família de `dados_contratante`,
+`usuario_permissao` e a visibilidade estendida: coisa que o banco guarda e
+nenhum código consome. As três primeiras viraram bug quando alguém confiou
+nelas. Esta ainda não virou porque a tela nunca a ofereceu — o que significa que
+o levantamento prometeu um recurso que o usuário nunca viu.
+
+**Ou se implementa, ou se remove.** Tabela que ninguém lê não é dívida neutra:
+é uma promessa pendurada no schema.
+
+## Link externo do fornecedor — implementado
+
+`fornecedor_historico.alterado_por` aceitava `link_externo` desde a 0001, e o
+caminho que produziria esse valor nunca existiu: era decisão do levantamento
+viva só como comentário numa coluna. Quem digita razão social e endereço hoje é
+o setor de compras, copiando de um papel — e ninguém conhece o dado melhor que
+o dono dele.
+
+### O token é segredo, e o banco guarda o hash
+
+`fornecedor_convite.token_hash` guarda SHA-256; o token existe em texto **uma
+vez**, na resposta que gera o link. Perdido, gera-se outro — e o anterior morre
+junto, porque dois links vivos para o mesmo fornecedor tornariam a revogação
+inútil (índice único parcial garante isso no banco).
+
+SHA-256 sem sal basta aqui, ao contrário de senha: o token tem 256 bits
+sorteados e não é reutilizado. Sal serve contra segredo fraco escolhido por
+gente.
+
+### O CNPJ não entra
+
+É a identidade do registro. Deixá-lo editável transformaria o fornecedor em
+outro, levando junto o histórico e os contratos de **todas** as prefeituras que
+o usam — e o cadastro é global. Fica de fora do tipo do caso de uso e do schema
+da rota pública, com teste guardando as duas pontas.
+
+### Três recusas, uma mensagem
+
+Token inexistente, expirado e revogado devolvem exatamente o mesmo erro.
+Distinguir contaria a quem tem um link velho que ele existiu, e a quem tenta
+adivinhar que chegou perto.
+
+### Prazo de 30 dias, uso repetido
+
+Cobre o vaivém real — o e-mail chega, o responsável está de férias, o contador
+procura o cartão CNPJ. O convite **não morre no primeiro uso**: o fornecedor
+volta para corrigir o que digitou errado. Link sem prazo seria chave permanente
+entregue por e-mail.
+
+### A auditoria fica com quem convidou
+
+O fornecedor é global; a prefeitura que abriu a porta é quem responde pelo
+cadastro alterado, e é na trilha dela que a mudança aparece — sem `usuarioId`,
+porque quem alterou não tem conta no sistema.

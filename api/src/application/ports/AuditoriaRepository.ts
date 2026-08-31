@@ -53,7 +53,11 @@ export type TipoEvento =
   | "DEVOLUCAO_ESTOQUE_RECUSADA"
   | "TRANSFERENCIA_ESTOQUE_REGISTRADA"
   | "AJUSTE_ESTOQUE_REGISTRADO"
-  // Ações do fornecedor sobre a prefeitura, visíveis na auditoria dela.
+  // O fornecedor é cadastro global, mas quem convidou responde pelo que ele
+  // alterou: os três eventos aparecem na auditoria da prefeitura convidante.
+  | "FORNECEDOR_CONVIDADO"
+  | "FORNECEDOR_ATUALIZADO_POR_LINK"
+  | "FORNECEDOR_CONVITE_REVOGADO"
   | "ADMIN_ENTIDADE_CRIADO"
   | "ADMIN_ENTIDADE_PROMOVIDO"
   | "ADMIN_ENTIDADE_SENHA_REDEFINIDA"

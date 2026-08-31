@@ -48,6 +48,9 @@ export const AUDIT_EVENTS = [
   "DOCUMENTO_DESCARTADO",
   "DOCUMENTO_EMITIDO",
   "DOCUMENTO_CANCELADO",
+  "FORNECEDOR_CONVIDADO",
+  "FORNECEDOR_ATUALIZADO_POR_LINK",
+  "FORNECEDOR_CONVITE_REVOGADO",
   "ADMIN_ENTIDADE_CRIADO",
   "ADMIN_ENTIDADE_PROMOVIDO",
   "ADMIN_ENTIDADE_SENHA_REDEFINIDA",
@@ -99,6 +102,13 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
     ],
   },
   {
+    group: "Fornecedores",
+    events: [
+      "FORNECEDOR_CONVIDADO", "FORNECEDOR_ATUALIZADO_POR_LINK",
+      "FORNECEDOR_CONVITE_REVOGADO",
+    ],
+  },
+  {
     group: "Documentos",
     events: [
       "DOCUMENTO_PREPARADO", "DOCUMENTO_EDITADO", "DOCUMENTO_DESCARTADO",
@@ -121,7 +131,10 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   {
     group: "Administração",
     events: [
-      "ADMIN_ENTIDADE_CRIADO", "ADMIN_ENTIDADE_PROMOVIDO", "ADMIN_ENTIDADE_SENHA_REDEFINIDA",
+      "FORNECEDOR_CONVIDADO",
+  "FORNECEDOR_ATUALIZADO_POR_LINK",
+  "FORNECEDOR_CONVITE_REVOGADO",
+  "ADMIN_ENTIDADE_CRIADO", "ADMIN_ENTIDADE_PROMOVIDO", "ADMIN_ENTIDADE_SENHA_REDEFINIDA",
       "ADMIN_ENTIDADE_INATIVADO", "ADMIN_ENTIDADE_REATIVADO",
     ],
   },
@@ -177,6 +190,9 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   DOCUMENTO_DESCARTADO: "Rascunho de documento descartado",
   DOCUMENTO_EMITIDO: "Documento emitido",
   DOCUMENTO_CANCELADO: "Documento cancelado",
+  FORNECEDOR_CONVIDADO: "Link enviado ao fornecedor",
+  FORNECEDOR_ATUALIZADO_POR_LINK: "Fornecedor atualizou o próprio cadastro",
+  FORNECEDOR_CONVITE_REVOGADO: "Link do fornecedor revogado",
   ADMIN_ENTIDADE_CRIADO: "Administrador criado",
   ADMIN_ENTIDADE_PROMOVIDO: "Usuário promovido a administrador",
   ADMIN_ENTIDADE_SENHA_REDEFINIDA: "Senha de administrador redefinida",

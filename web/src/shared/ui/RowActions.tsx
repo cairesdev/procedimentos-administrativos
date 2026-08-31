@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Power, Trash2 } from "lucide-react";
+import { Link2, Pencil, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./button";
 import { Alert } from "./layout";
@@ -16,6 +16,15 @@ type RowActionsProps = {
   editTitle?: string;
   editDescription?: string;
   editForm?: ReactNode;
+  /**
+   * Ação própria da linha, além de editar e excluir — o link do fornecedor é a
+   * primeira. Abre no mesmo modal, com ícone próprio.
+   */
+  extraLabel?: string;
+  extraTitle?: string;
+  extraDescription?: string;
+  extraForm?: ReactNode;
+  extraIcon?: ReactNode;
   isActive?: boolean;
   onToggleActive?: () => Promise<ActionResult>;
   onDelete?: () => Promise<ActionResult>;
@@ -27,6 +36,11 @@ export const RowActions = ({
   editTitle = "Editar",
   editDescription,
   editForm,
+  extraLabel,
+  extraTitle,
+  extraDescription,
+  extraForm,
+  extraIcon,
   isActive,
   onToggleActive,
   onDelete,
@@ -34,6 +48,7 @@ export const RowActions = ({
 }: RowActionsProps) => {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [extra, setExtra] = useState(false);
   const [confirming, setConfirming] = useState<"delete" | "toggle" | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -68,6 +83,18 @@ export const RowActions = ({
           </button>
         ) : null}
 
+        {extraForm ? (
+          <button
+            type="button"
+            className={styles.action}
+            onClick={() => setExtra(true)}
+            aria-label={`${extraLabel ?? "Ação"} — ${label}`}
+            title={extraLabel ?? "Ação"}
+          >
+            {extraIcon ?? <Link2 size={15} aria-hidden="true" />}
+          </button>
+        ) : null}
+
         {onToggleActive ? (
           <button
             type="button"
@@ -92,6 +119,17 @@ export const RowActions = ({
           </button>
         ) : null}
       </div>
+
+      {extraForm ? (
+        <Modal
+          open={extra}
+          onClose={() => setExtra(false)}
+          title={extraTitle ?? extraLabel ?? "Ação"}
+          description={extraDescription}
+        >
+          {extraForm}
+        </Modal>
+      ) : null}
 
       {editForm ? (
         <Modal

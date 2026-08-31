@@ -30,7 +30,9 @@ export default auth((request) => {
 });
 
 export const config = {
-  // `conferencia` e `cidadao` fora do matcher: são as páginas que o cidadão
+  // `conferencia`, `cidadao` e `fornecedor` fora do matcher: são as páginas
+  // que gente sem conta abre — o QR do documento, o acompanhamento do
+  // protocolo e o link em que o fornecedor corrige o próprio cadastro.
   // abre — o QR do documento e o acompanhamento do protocolo. Ninguém ali tem
   // login. `/protocolo` é o sistema interno do balcão e exige sessão.
   //
@@ -39,6 +41,6 @@ export const config = {
   // administração ficava fora da checagem de sessão do proxy — só as guardas
   // de página seguravam. Página nova que esquecesse a guarda ficaria aberta.
   matcher: [
-    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|cidadao(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|api/publico(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login(?:/|$)|admin(?:/|$)|conferencia(?:/|$)|cidadao(?:/|$)|fornecedor(?:/|$)|modulo-indisponivel(?:/|$)|api/auth(?:/|$)|api/publico(?:/|$)|_next/static|_next/image|favicon.ico).*)",
   ],
 };

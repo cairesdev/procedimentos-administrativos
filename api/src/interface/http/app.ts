@@ -14,6 +14,7 @@ import { documentosRouter } from "./routes/documentos";
 import { conferenciaRouter } from "./routes/conferencia";
 import { protocoloRouter } from "./routes/protocolo";
 import { protocoloPublicoRouter } from "./routes/protocoloPublico";
+import { fornecedorPublicoRouter } from "./routes/fornecedorPublico";
 import { setoresRouter, unidadesRouter } from "./routes/organizacao";
 import { fornecedoresRouter } from "./routes/fornecedores";
 import { fluxosRouter } from "./routes/fluxos";
@@ -43,6 +44,8 @@ export const criarApp = () => {
 
   // Portal do cidadão: abertura de pedido sem login, com freios próprios.
   app.use("/publico", protocoloPublicoRouter);
+  // Página do fornecedor: sem login, credencial é o token do link.
+  app.use("/publico/fornecedor", fornecedorPublicoRouter);
 
   // Painel do produto: escopo de token próprio, fora do isolamento por órgão.
   app.use("/admin", adminRouter);
