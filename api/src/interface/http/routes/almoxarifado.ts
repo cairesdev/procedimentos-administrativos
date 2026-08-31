@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
+import { TIPOS_DE_QUALIDADE } from "../../../application/almoxarifado/RegistrarQualidade";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { MOTIVOS_DE_PERDA } from "../../../application/almoxarifado/ReceberEstoque";
 import {
@@ -593,6 +594,45 @@ almoxarifadoRouter.post(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// Qualidade do material armazenado
+//
+// Opcional, e sem guarda de `stock:manage`: a escola que recebeu a caixa
+// amassada é quem a vê. Quem observa é quem registra.
+
+const qualidadeSchema = z.object({
+  loteId: z.string().uuid().optional(),
+  estoqueLocalId: z.string().uuid().optional(),
+  tipo: z.enum(TIPOS_DE_QUALIDADE),
+  observacao: z.string().min(3, "Descreva o que foi observado").max(1000),
+  quantidade: z.number().positive().max(99_999_999).optional(),
+});
+
+almoxarifadoRouter.get("/qualidade", async (req, res, next) => {
+  try {
+    res.json(await container.registrarQualidade.listar(req.sessao!.orgaoId, {
+      lote: filtro(req, "lote"),
+      estoqueLocal: filtro(req, "estoqueLocal"),
+      tipo: filtro(req, "tipo"),
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+almoxarifadoRouter.post("/qualidade", async (req, res, next) => {
+  try {
+    const dados = qualidadeSchema.parse(req.body);
+    res.status(201).json(await container.registrarQualidade.registrar({
+      ...dados,
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Relatório de consumo (PNAE)

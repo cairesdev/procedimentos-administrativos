@@ -854,7 +854,6 @@ Revisado em agosto/2026, confrontando cada decisão com o repositório.
 | Decisão | Onde parou |
 | --- | --- |
 | **Campos extras do contrato** | `contrato_campo_extra` e `item_valor_extra` existem desde a 0002. Nenhuma linha do sistema **cria ou lê** as duas — só há um `DELETE` na limpeza do contrato. É a feature de "colunas extras da planilha" do levantamento, viva só como tabela. |
-| **Registro de qualidade do lote** | Adiado por decisão no levantamento do almoxarifado. O ajuste de estoque com motivo cobre o caso urgente. |
 | **Visibilidade estendida da etapa** | Gravada em `fluxo_etapa`, oferecida no painel de fluxos, nunca lida. |
 
 ### A quarta configuração sem efeito
@@ -912,3 +911,31 @@ entregue por e-mail.
 O fornecedor é global; a prefeitura que abriu a porta é quem responde pelo
 cadastro alterado, e é na trilha dela que a mudança aparece — sem `usuarioId`,
 porque quem alterou não tem conta no sistema.
+
+## Registro de qualidade do lote — implementado
+
+Existia no legado (`qualidade_produto_estocado`) e foi adiado no levantamento do
+almoxarifado, porque o ajuste de estoque com motivo cobria o caso urgente. O que
+faltava era o **acompanhamento**: a caixa que chegou amassada, o lote que vence
+semana que vem, a câmara fria que oscilou.
+
+**Opcional em toda parte, e sem mexer em saldo.** Quem tira material do estoque é
+o ajuste, que já existe e exige motivo. Misturar as duas coisas faria um relato
+de avaria sumir com o material sem ninguém pedir — e, pior, faria quem só quis
+anotar hesitar em anotar. É justamente por não movimentar nada que o registro
+pode ser livre.
+
+- Aponta para o lote do almoxarifado **ou** para o do armário da unidade, nunca
+  os dois: o material está num lugar só. Mesma regra do ajuste.
+- Cinco tipos — dano, validade, armazenamento, conformidade, outro. Vocabulário
+  curto de propósito: lista longa vira campo que ninguém preenche direito, e o
+  texto livre ao lado é quem conta a história.
+- **A observação é obrigatória**; a quantidade afetada, não. "Duas caixas
+  amassadas" tem quantidade; "a câmara fria oscilou" não tem, e é informação
+  igualmente legítima. Já um registro sem texto seria uma linha dizendo que algo
+  aconteceu sem dizer o quê.
+- Sem guarda de `stock:manage`: a escola que recebeu a caixa amassada é quem a
+  vê primeiro. Quem observa é quem registra.
+
+A trava do órgão fica no caso de uso, e o lote é alcançado por join até o
+almoxarifado — um id de outra prefeitura não vira registro.

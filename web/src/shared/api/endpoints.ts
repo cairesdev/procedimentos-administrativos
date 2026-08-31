@@ -45,6 +45,7 @@ export const endpoints = {
   consumption: "/almoxarifado/consumo",
   returns: "/almoxarifado/devolucoes",
   consumptionReports: "/almoxarifado/relatorios",
+  quality: "/almoxarifado/qualidade",
   answerReturn: (id: string) => `/almoxarifado/devolucoes/${id}/responder`,
   stockTransfers: "/almoxarifado/transferencias",
   adjustments: "/almoxarifado/ajustes",

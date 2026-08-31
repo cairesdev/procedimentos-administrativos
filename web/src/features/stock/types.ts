@@ -333,3 +333,31 @@ export type ConsumptionReportDetail = ConsumptionReport & {
   entradasTotal: number;
   entradasAgriculturaFamiliar: number;
 };
+
+/**
+ * Acompanhamento do material armazenado — dano, validade, armazenagem.
+ * Não movimenta saldo: quem tira material do estoque é o ajuste.
+ */
+export const QUALITY_TYPES = [
+  { value: "DANO", label: "Dano ou avaria", tone: "warning" },
+  { value: "VALIDADE", label: "Validade", tone: "warning" },
+  { value: "ARMAZENAMENTO", label: "Armazenamento", tone: "accent" },
+  { value: "CONFORMIDADE", label: "Conformidade", tone: "neutral" },
+  { value: "OUTRO", label: "Outro", tone: "neutral" },
+] as const;
+
+export type QualityRecord = {
+  id: string;
+  loteId: string | null;
+  estoqueLocalId: string | null;
+  produtoNome: string;
+  unidadeMedida: string;
+  /** Onde o material está: o almoxarifado ou a unidade que o recebeu. */
+  ondeEsta: string;
+  tipo: string;
+  observacao: string;
+  /** Nula quando a observação não tem quantidade — e isso é comum. */
+  quantidade: number | null;
+  usuarioNome: string;
+  data: string;
+};

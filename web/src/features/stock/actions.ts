@@ -10,6 +10,7 @@ import {
   releaseSchema, returnSchema, stockLocationSchema, stockRequestSchema,
   stockSettingsSchema, stockTypeSchema, transferSchema, warehouseSchema,
   consumptionReportSchema, type ConsumptionReportInput,
+  qualitySchema, type QualityInput,
   type AdjustmentInput, type ConsumptionInput, type IntakeInput, type ReceiptInput,
   type RefuseInput, type ReleaseInput, type ReturnInput, type StockLocationInput,
   type StockRequestInput, type StockSettingsInput, type StockTypeInput,
@@ -297,3 +298,19 @@ export const deleteConsumptionReport = async (id: string) =>
     await apiRequest(`${endpoints.consumptionReports}/${id}`, { method: "DELETE" });
     revalidatePath(REPORTS);
   }, "Relatório excluído");
+
+
+// ---------------------------------------------------------------------------
+// Qualidade do material armazenado
+
+export const registerQuality = async (input: QualityInput) =>
+  runAction(async () => {
+    const dados = qualitySchema.parse(input);
+    await apiRequest(endpoints.quality, {
+      method: "POST",
+      // Quantidade em branco vai como ausente: gravar zero diria que nada foi
+      // afetado, quando a verdade é que ninguém contou.
+      body: { ...dados, quantidade: dados.quantidade || undefined },
+    });
+    revalidatePath("/almoxarifado/qualidade");
+  }, "Registro salvo");

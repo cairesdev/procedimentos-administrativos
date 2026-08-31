@@ -411,6 +411,42 @@ CASOS: list[tuple[str, str, bool]] = [
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('d',64), "
      "now() - interval '1 day' FROM fornecedor f LIMIT 1",
      False),
+    # ---- 0030: qualidade do lote --------------------------------------------
+    ("registro apontando o lote do almoxarifado e aceito",
+     "INSERT INTO qualidade_lote (lote_id, tipo, observacao, usuario_id) VALUES "
+     "('77777777-7777-7777-7777-777777777777','DANO','Duas caixas amassadas',"
+     "'88888888-8888-8888-8888-888888888888')",
+     True),
+    ("os dois lados ao mesmo tempo e recusado",
+     "INSERT INTO qualidade_lote (lote_id, estoque_local_id, tipo, observacao, usuario_id) "
+     "VALUES ('77777777-7777-7777-7777-777777777777',"
+     "'cccccccc-cccc-cccc-cccc-cccccccccccc','DANO','x y z',"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("nenhum dos dois e recusado",
+     "INSERT INTO qualidade_lote (tipo, observacao, usuario_id) VALUES "
+     "('DANO','sem alvo nenhum','88888888-8888-8888-8888-888888888888')",
+     False),
+    ("observacao curta demais e recusada",
+     "INSERT INTO qualidade_lote (lote_id, tipo, observacao, usuario_id) VALUES "
+     "('77777777-7777-7777-7777-777777777777','DANO','  x  ',"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("quantidade e opcional",
+     "INSERT INTO qualidade_lote (estoque_local_id, tipo, observacao, usuario_id) VALUES "
+     "('cccccccc-cccc-cccc-cccc-cccccccccccc','ARMAZENAMENTO',"
+     "'Camara fria oscilou de madrugada','88888888-8888-8888-8888-888888888888')",
+     True),
+    ("quantidade zero e recusada",
+     "INSERT INTO qualidade_lote (lote_id, tipo, observacao, quantidade, usuario_id) VALUES "
+     "('77777777-7777-7777-7777-777777777777','DANO','texto valido', 0,"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("tipo fora do vocabulario e recusado",
+     "INSERT INTO qualidade_lote (lote_id, tipo, observacao, usuario_id) VALUES "
+     "('77777777-7777-7777-7777-777777777777','SUSPEITA','texto valido',"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "

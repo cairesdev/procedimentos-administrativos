@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { ADJUSTMENT_REASONS, CONSUMPTION_FORMS, LOSS_REASONS } from "./types";
+import {
+  ADJUSTMENT_REASONS, CONSUMPTION_FORMS, LOSS_REASONS, QUALITY_TYPES,
+} from "./types";
 
 /** Três casas, como a coluna `NUMERIC(14,3)` do banco. */
 const quantidade = z
@@ -176,3 +178,19 @@ export const consumptionReportSchema = z.object({
 });
 
 export type ConsumptionReportInput = z.infer<typeof consumptionReportSchema>;
+
+/**
+ * Registro de qualidade.
+ *
+ * A observação é obrigatória e a quantidade não: "duas caixas amassadas" tem
+ * quantidade, "a câmara fria oscilou" não tem — e as duas são informação.
+ */
+export const qualitySchema = z.object({
+  loteId: z.string().uuid().optional(),
+  estoqueLocalId: z.string().uuid().optional(),
+  tipo: z.enum(QUALITY_TYPES.map((item) => item.value) as [string, ...string[]]),
+  observacao: z.string().min(3, "Descreva o que foi observado").max(1000),
+  quantidade: z.number().positive("A quantidade precisa ser maior que zero").optional(),
+});
+
+export type QualityInput = z.infer<typeof qualitySchema>;

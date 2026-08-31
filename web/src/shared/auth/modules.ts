@@ -209,6 +209,11 @@ export const workspaces: Workspace[] = [
           },
           { href: "/almoxarifado/ajustes", label: "Ajustes", permission: "stock:read" },
           {
+            href: "/almoxarifado/qualidade",
+            label: "Qualidade do material",
+            permission: "stock:read",
+          },
+          {
             href: "/almoxarifado/relatorios",
             label: "Relatório de consumo",
             permission: "stock:read",
