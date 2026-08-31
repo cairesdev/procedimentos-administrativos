@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
@@ -168,8 +169,8 @@ patrimonioRouter.get("/bens", async (req, res, next) => {
       await container.patrimonio.listarBens(
         req.sessao!.orgaoId,
         {
-          localId: typeof req.query.local === "string" ? req.query.local : undefined,
-          status: typeof req.query.status === "string" ? req.query.status : undefined,
+          localId: filtroDaQuery(req, "local"),
+          status: filtroDaQuery(req, "status"),
         },
         paginacaoSchema.parse(req.query),
       ),
@@ -252,8 +253,8 @@ patrimonioRouter.get("/transferencias", async (req, res, next) => {
       await container.patrimonio.listarTransferencias(
         req.sessao!.orgaoId,
         {
-          status: typeof req.query.status === "string" ? req.query.status : undefined,
-          localId: typeof req.query.local === "string" ? req.query.local : undefined,
+          status: filtroDaQuery(req, "status"),
+          localId: filtroDaQuery(req, "local"),
         },
         paginacaoSchema.parse(req.query),
       ),

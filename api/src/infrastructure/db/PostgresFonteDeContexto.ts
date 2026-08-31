@@ -354,6 +354,37 @@ const LOTES_DA_ENTRADA = `
    WHERE lo.remessa_id = $1
    ORDER BY lo.data_validade NULLS LAST, p.nome`;
 
+/**
+ * Comprovante de devolução.
+ *
+ * A validade vem do lote da unidade, e não do produto: é aquela caixa que está
+ * voltando, e o almoxarifado precisa saber quando ela vence para decidir se
+ * ainda serve. O órgão é alcançado pelo local — devolução de outra prefeitura
+ * não vira documento aqui.
+ */
+const DEVOLUCAO_ESTOQUE = `
+  SELECT l.nome AS local, a.nome AS almoxarifado,
+         p.nome AS produto, p.unidade_medida AS "unidadeMedida",
+         d.quantidade,
+         -- A validade é do lote que está na unidade, e não da devolução: é
+         -- aquela caixa que está voltando.
+         el.data_validade AS validade,
+         coalesce(d.motivo, '—') AS motivo,
+         to_char(d.data, 'DD/MM/YYYY') AS data,
+         coalesce(us.nome, '—') AS "solicitadaPor",
+         d.status AS situacao,
+         coalesce(to_char(d.respondida_em, 'DD/MM/YYYY'), '—') AS "respondidaEm",
+         coalesce(ua.nome, '—') AS "aceitaPor",
+         coalesce(d.recusa_motivo, '—') AS "motivoRecusa"
+    FROM devolucao d
+    JOIN local l ON l.id = d.local_id
+    JOIN almoxarifado a ON a.id = d.almoxarifado_id
+    JOIN produto p ON p.id = d.produto_id
+    LEFT JOIN estoque_local el ON el.id = d.estoque_local_id
+    LEFT JOIN usuario us ON us.id = d.solicitada_por_usuario_id
+    LEFT JOIN usuario ua ON ua.id = d.aceito_por_usuario_id
+   WHERE l.orgao_id = $1 AND d.id = $2`;
+
 const MANUTENCAO = `
   SELECT mn.tipo, coalesce(mn.descricao, '—') AS descricao,
          coalesce(mn.oficina, '—') AS oficina,
@@ -448,6 +479,9 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     if (escopo === "MANUTENCAO") return this.daManutencao(orgaoId, referenciaId, orgao);
     if (escopo === "SOLICITACAO_ESTOQUE") return this.doPedido(orgaoId, referenciaId, orgao);
     if (escopo === "ENTRADA_ESTOQUE") return this.daEntrada(orgaoId, referenciaId, orgao);
+    if (escopo === "DEVOLUCAO_ESTOQUE") {
+      return this.daDevolucao(orgaoId, referenciaId, orgao);
+    }
     if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
     return null;
   };
@@ -816,6 +850,36 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
   };
 
   /**
+   * Comprovante de devolução.
+   *
+   * Escopo sem lista: a devolução é de um lote só, e uma tabela de uma linha
+   * seria enfeite onde cabe uma frase.
+   */
+  private daDevolucao = async (
+    orgaoId: string,
+    devolucaoId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const devolucao = (await pool.query(DEVOLUCAO_ESTOQUE, [orgaoId, devolucaoId])).rows[0];
+    if (!devolucao) return null;
+
+    return {
+      orgao,
+      devolucao: {
+        ...Object.fromEntries(
+          Object.entries(devolucao).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+        ),
+        quantidade: numero(devolucao.quantidade),
+        // A validade é opcional no lote, e "—" mentiria menos que uma data
+        // vazia no meio da frase.
+        validade: devolucao.validade
+          ? formatarDataSimples(devolucao.validade) : "sem validade",
+        situacao: SITUACAO_DA_DEVOLUCAO[String(devolucao.situacao)] ?? String(devolucao.situacao),
+      },
+    };
+  };
+
+  /**
    * Relatório de consumo da alimentação escolar.
    *
    * A apuração acontece aqui, na emissão — e o motor congela o resultado em
@@ -953,3 +1017,10 @@ const veiculoParaContexto = (linha: Record<string, unknown>) => ({
   unidade: String(linha.unidade ?? ""),
   quilometragemAtual: numero(linha.quilometragemAtual),
 });
+
+/** O status como ele se lê no papel, e não como o banco o guarda. */
+const SITUACAO_DA_DEVOLUCAO: Record<string, string> = {
+  PENDENTE: "aguardando aceite",
+  ACEITA: "aceita",
+  RECUSADA: "recusada",
+};

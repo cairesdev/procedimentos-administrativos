@@ -100,8 +100,20 @@ export const listConsumption = (
 ) => apiRequest<Page<Consumption>>(comFiltros(endpoints.consumption, filtros));
 
 export const listReturns = (
-  filtros: { status?: string; almoxarifado?: string; local?: string; pagina?: string } = {},
-) => apiRequest<Page<StockReturn>>(comFiltros(endpoints.returns, filtros));
+  filtros: {
+    status?: string; almoxarifado?: string; local?: string; pagina?: string;
+    /** Só o que já saiu da fila — a aba de histórico. */
+    respondidas?: boolean;
+  } = {},
+) => {
+  const { respondidas, ...resto } = filtros;
+  return apiRequest<Page<StockReturn>>(
+    comFiltros(endpoints.returns, { ...resto, ...(respondidas ? { respondidas: "1" } : {}) }),
+  );
+};
+
+export const getReturn = (id: string) =>
+  apiRequest<StockReturn>(`${endpoints.returns}/${id}`);
 
 export const listTransfers = (
   filtros: { almoxarifado?: string; pagina?: string } = {},

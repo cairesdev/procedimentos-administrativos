@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
@@ -76,8 +77,8 @@ solicitacoesRouter.get("/", async (req, res, next) => {
       await container.solicitacoes.listar(
         req.sessao!.orgaoId,
         {
-          situacao: typeof req.query.situacao === "string" ? req.query.situacao : undefined,
-          unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined,
+          situacao: filtroDaQuery(req, "situacao"),
+          unidadeId: filtroDaQuery(req, "unidade"),
         },
         paginacaoSchema.parse(req.query),
       ),

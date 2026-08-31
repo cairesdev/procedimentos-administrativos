@@ -967,3 +967,29 @@ Um deles foi pego por dois testes independentes.
 **Pendente de decisão sua:** os almoxarifados existentes estão sem setor, e
 enquanto estiverem, qualquer lotação de setor os alcança. O preenchimento é na
 tela de almoxarifados, um por um.
+
+## Devoluções concluídas
+
+**Um bug antes das features.** Clicar em "Filtrar" com o select em "Todos os
+locais" mandava `?local=`, e o `""` seguia até o SQL como `$n::uuid`: quatro
+telas do almoxarifado respondiam "Erro interno". Cada rota escrevia à mão
+`typeof req.query.x === "string"`, que devolve `""` para campo presente e vazio
+— e o mesmo descuido estava em patrimônio, processos, contratos e solicitações.
+`filtroDaQuery` passa a ser o único caminho, um teste proíbe o padrão inline, e
+`22P02` responde 400 em vez de 500.
+
+- **Comprovante de devolução** — escopo `DEVOLUCAO_ESTOQUE`, modelo global na
+  0032 e tela de detalhe em `/almoxarifado/devolucoes/[id]`. Era a única
+  movimentação do módulo sem peça: entrada, pedido e relatório já tinham. Uma
+  peça só serve aos três estados; um modelo por estado seriam três textos para
+  manter sincronizados.
+- **Fila separada** — duas abas, porque são dois trabalhos: o que espera
+  resposta é fila (com a contagem no rótulo), o resto é histórico. Misturados,
+  a fila sumia dentro da lista conforme as respondidas se acumulavam. As abas
+  saíram da fila do setor para um `TabNav` compartilhado, em vez de copiadas.
+
+**O verificador tinha um buraco.** Ele só preparava consultas dentro de
+`SQL = { … }`, e `PostgresFonteDeContexto` usa constantes soltas — o motor de
+documentos inteiro nunca passou por `PREPARE`. Um `d.data_validade` que não
+existe só apareceu ao emitir o comprovante contra um Postgres de verdade.
+Corrigido: 351 → **375 consultas conferidas**, 24 delas pela primeira vez.

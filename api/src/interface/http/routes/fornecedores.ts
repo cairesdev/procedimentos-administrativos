@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
@@ -22,7 +23,7 @@ fornecedoresRouter.post("/", exigirPermissao("suppliers:write"), async (req, res
 
 fornecedoresRouter.get("/", async (req, res, next) => {
   try {
-    const busca = typeof req.query.busca === "string" ? req.query.busca : undefined;
+    const busca = filtroDaQuery(req, "busca");
     res.json(await container.fornecedores.listar(paginacaoSchema.parse(req.query), busca));
   } catch (error) {
     next(error);

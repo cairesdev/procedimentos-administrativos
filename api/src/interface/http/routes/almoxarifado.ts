@@ -1,3 +1,5 @@
+import { NaoEncontrado } from "../../../domain/shared/ErroDeNegocio";
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
@@ -247,7 +249,7 @@ almoxarifadoRouter.delete("/tipos/:id", administraEstoque, async (req, res, next
 /** Catálogo global — sem órgão na consulta, de propósito. */
 almoxarifadoRouter.get("/produtos", async (req, res, next) => {
   try {
-    const busca = typeof req.query.busca === "string" ? req.query.busca : undefined;
+    const busca = filtroDaQuery(req, "busca");
     res.json(await container.gerenciarAlmoxarifado.listarProdutos(busca));
   } catch (error) {
     next(error);
@@ -278,8 +280,7 @@ almoxarifadoRouter.put("/configuracao", exigirPermissao("stock:manage"), async (
 
 almoxarifadoRouter.get("/locais", async (req, res, next) => {
   try {
-    const almoxarifado = typeof req.query.almoxarifado === "string"
-      ? req.query.almoxarifado : undefined;
+    const almoxarifado = filtroDaQuery(req, "almoxarifado");
     res.json(await container.gerenciarAlmoxarifado.listarLocais(
       req.sessao!.orgaoId, await alcanceDe(req), almoxarifado,
       req.query.inativos === "1",
@@ -367,14 +368,11 @@ almoxarifadoRouter.get("/locais/:id/estoque", async (req, res, next) => {
 
 almoxarifadoRouter.get("/remessas", async (req, res, next) => {
   try {
-    const texto = (chave: string) =>
-      typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
-
     res.json(await container.gerenciarAlmoxarifado.listarRemessas(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      almoxarifado: texto("almoxarifado"),
-      tipo: texto("tipo"),
-      busca: texto("busca"),
+      almoxarifado: filtroDaQuery(req, "almoxarifado"),
+      tipo: filtroDaQuery(req, "tipo"),
+      busca: filtroDaQuery(req, "busca"),
     }));
   } catch (error) {
     next(error);
@@ -422,7 +420,7 @@ almoxarifadoRouter.delete("/lotes/:id", administraEstoque, async (req, res, next
 
 almoxarifadoRouter.get("/disponiveis/:almoxarifadoId", async (req, res, next) => {
   try {
-    const tipo = typeof req.query.tipo === "string" ? req.query.tipo : undefined;
+    const tipo = filtroDaQuery(req, "tipo");
     res.json(await container.gerenciarAlmoxarifado.listarDisponiveis(
       req.sessao!.orgaoId, req.params.almoxarifadoId!, tipo,
     ));
@@ -435,14 +433,11 @@ almoxarifadoRouter.get("/disponiveis/:almoxarifadoId", async (req, res, next) =>
 // `/solicitacoes/:id` se viesse depois.
 almoxarifadoRouter.get("/solicitacoes", async (req, res, next) => {
   try {
-    const texto = (chave: string) =>
-      typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
-
     res.json(await container.gerenciarAlmoxarifado.listarSolicitacoes(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      status: texto("status"),
-      local: texto("local"),
-      almoxarifado: texto("almoxarifado"),
+      status: filtroDaQuery(req, "status"),
+      local: filtroDaQuery(req, "local"),
+      almoxarifado: filtroDaQuery(req, "almoxarifado"),
     }, await alcanceDe(req)));
   } catch (error) {
     next(error);
@@ -580,17 +575,14 @@ almoxarifadoRouter.post("/solicitacoes/:id/receber", async (req, res, next) => {
 // ---------------------------------------------------------------------------
 // Movimento: consumo, devolução, transferência e ajuste
 
-const filtro = (req: { query: Record<string, unknown> }, chave: string) =>
-  typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
-
 almoxarifadoRouter.get("/consumo", async (req, res, next) => {
   try {
     res.json(await container.almoxarifado.listarConsumo(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      local: filtro(req, "local"),
-      produto: filtro(req, "produto"),
-      de: filtro(req, "de"),
-      ate: filtro(req, "ate"),
+      local: filtroDaQuery(req, "local"),
+      produto: filtroDaQuery(req, "produto"),
+      de: filtroDaQuery(req, "de"),
+      ate: filtroDaQuery(req, "ate"),
     }, await alcanceDe(req)));
   } catch (error) {
     next(error);
@@ -615,10 +607,25 @@ almoxarifadoRouter.get("/devolucoes", async (req, res, next) => {
   try {
     res.json(await container.almoxarifado.listarDevolucoes(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      status: filtro(req, "status"),
-      almoxarifado: filtro(req, "almoxarifado"),
-      local: filtro(req, "local"),
+      status: filtroDaQuery(req, "status"),
+      almoxarifado: filtroDaQuery(req, "almoxarifado"),
+      local: filtroDaQuery(req, "local"),
+      respondidas: req.query.respondidas === "1",
     }, await alcanceDe(req)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// A tela de detalhe existe para o comprovante ter onde ser emitido — e para
+// a escola ter uma página que possa guardar, com o histórico da resposta.
+almoxarifadoRouter.get("/devolucoes/:id", async (req, res, next) => {
+  try {
+    const devolucao = await container.almoxarifado.buscarDevolucao(
+      req.sessao!.orgaoId, req.params.id!, await alcanceDe(req),
+    );
+    if (!devolucao) throw new NaoEncontrado("Devolução não encontrada");
+    res.json(devolucao);
   } catch (error) {
     next(error);
   }
@@ -674,9 +681,9 @@ const qualidadeSchema = z.object({
 almoxarifadoRouter.get("/qualidade", async (req, res, next) => {
   try {
     res.json(await container.registrarQualidade.listar(req.sessao!.orgaoId, {
-      lote: filtro(req, "lote"),
-      estoqueLocal: filtro(req, "estoqueLocal"),
-      tipo: filtro(req, "tipo"),
+      lote: filtroDaQuery(req, "lote"),
+      estoqueLocal: filtroDaQuery(req, "estoqueLocal"),
+      tipo: filtroDaQuery(req, "tipo"),
     }, await alcanceDe(req)));
   } catch (error) {
     next(error);
@@ -752,7 +759,7 @@ almoxarifadoRouter.get("/transferencias", async (req, res, next) => {
   try {
     res.json(await container.almoxarifado.listarTransferencias(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      almoxarifado: filtro(req, "almoxarifado"),
+      almoxarifado: filtroDaQuery(req, "almoxarifado"),
     }));
   } catch (error) {
     next(error);
@@ -780,8 +787,8 @@ almoxarifadoRouter.get("/ajustes", async (req, res, next) => {
   try {
     res.json(await container.almoxarifado.listarAjustes(req.sessao!.orgaoId, {
       ...paginacaoSchema.parse(req.query),
-      almoxarifado: filtro(req, "almoxarifado"),
-      local: filtro(req, "local"),
+      almoxarifado: filtroDaQuery(req, "almoxarifado"),
+      local: filtroDaQuery(req, "local"),
     }, await alcanceDe(req)));
   } catch (error) {
     next(error);

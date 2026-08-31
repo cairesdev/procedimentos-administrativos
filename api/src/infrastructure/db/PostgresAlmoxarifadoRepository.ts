@@ -621,6 +621,24 @@ const SQL = {
   // `lote.saldo` para não colidir com o `saldo` de `estoque_local`.
   creditarLoteDeOrigem: `UPDATE lote SET saldo = saldo + $2 WHERE id = $1`,
 
+  buscarDevolucao: `
+    SELECT d.id, l.nome AS "localNome", a.nome AS "almoxarifadoNome",
+           p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
+           d.quantidade, d.status, d.motivo, d.recusa_motivo AS "recusaMotivo",
+           coalesce(us.nome, '—') AS "solicitadaPor",
+           ua.nome AS "aceitaPor",
+           el.data_validade AS "dataValidade",
+           d.data, d.respondida_em AS "respondidaEm"
+      FROM devolucao d
+      JOIN local l ON l.id = d.local_id
+      JOIN almoxarifado a ON a.id = d.almoxarifado_id
+      JOIN produto p ON p.id = d.produto_id
+      LEFT JOIN estoque_local el ON el.id = d.estoque_local_id
+      LEFT JOIN usuario us ON us.id = d.solicitada_por_usuario_id
+      LEFT JOIN usuario ua ON ua.id = d.aceito_por_usuario_id
+     WHERE l.orgao_id = $1 AND d.id = $2
+       AND ($3::uuid[] IS NULL OR d.local_id = ANY($3))`,
+
   listarDevolucoes: `
     SELECT d.id, l.nome AS "localNome", a.nome AS "almoxarifadoNome",
            p.nome AS "produtoNome", p.unidade_medida AS "unidadeMedida",
@@ -642,6 +660,9 @@ const SQL = {
        AND ($5::uuid IS NULL OR d.almoxarifado_id = $5)
        AND ($6::uuid IS NULL OR d.local_id = $6)
        AND ($7::uuid[] IS NULL OR d.local_id = ANY($7))
+       -- A aba "respondidas" é o histórico: tudo que já saiu da fila, sem
+       -- precisar escolher entre aceita e recusada para ver alguma coisa.
+       AND (NOT $8 OR d.status <> 'PENDENTE')
      ORDER BY d.data DESC, d.id
      LIMIT $2 OFFSET $3`,
 
@@ -1324,15 +1345,25 @@ export class PostgresAlmoxarifadoRepository implements AlmoxarifadoRepository {
     }
   };
 
+  buscarDevolucao = async (
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<DevolucaoResumo | null> => {
+    const { rows } = await pool.query(SQL.buscarDevolucao, [orgaoId, id, alcance.locais]);
+    const linha = rows[0];
+    return linha ? { ...linha, quantidade: numero(linha.quantidade) } as DevolucaoResumo : null;
+  };
+
   listarDevolucoes = async (
     orgaoId: string,
-    filtros: Paginacao & { status?: string; almoxarifado?: string; local?: string },
+    filtros: Paginacao & {
+      status?: string; almoxarifado?: string; local?: string; respondidas?: boolean;
+    },
     alcance: AlcanceDeConsulta,
   ): Promise<Pagina<DevolucaoResumo>> => {
     const { rows } = await pool.query(SQL.listarDevolucoes, [
       orgaoId, filtros.porPagina, deslocamentoDe(filtros),
       filtros.status ?? null, filtros.almoxarifado ?? null, filtros.local ?? null,
-      alcance.locais,
+      alcance.locais, filtros.respondidas ?? false,
     ]);
     return montarPagina<DevolucaoResumo>(
       rows.map((linha) => ({ ...linha, quantidade: numero(linha.quantidade) })) as never,

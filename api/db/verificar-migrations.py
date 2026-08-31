@@ -542,6 +542,22 @@ def conferir_consultas(banco: Banco) -> int:
         locais = dict(re.findall(r"^const ([A-Z_0-9]+) = `([\s\S]*?)`;$", texto, re.M))
         consultas = re.findall(r"^  (\w+): `([\s\S]*?)`,\s*$", texto, re.M)
 
+        # Constante solta que é consulta inteira também entra.
+        #
+        # `PostgresFonteDeContexto` escreve assim — `const DEVOLUCAO = ` ... ` `
+        # em vez de `SQL = { ... }` —, e por isso o motor de documentos inteiro
+        # passava sem `PREPARE` nenhum: um `d.data_validade` que não existe só
+        # aparecia ao emitir o documento, em produção.
+        #
+        # Fragmento interpolado noutra consulta fica de fora: sozinho ele não é
+        # SQL válido, e é a consulta que o usa que vale conferir.
+        for nome, corpo in locais.items():
+            if not re.match(r"\s*(SELECT|WITH|INSERT|UPDATE|DELETE)\b", corpo, re.I):
+                continue
+            if f"${{{nome}}}" in texto:
+                continue
+            consultas.append((nome, corpo))
+
         for nome, sql in consultas:
             for chave, valor in {**locais, **COMPARTILHADOS}.items():
                 sql = sql.replace("${" + chave + "}", valor)

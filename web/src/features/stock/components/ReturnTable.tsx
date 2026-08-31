@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -21,9 +22,13 @@ const situacao = (status: string) =>
 export const ReturnTable = ({
   devolucoes,
   podeResponder,
+  vazio = "Nenhuma devolução com esses filtros.",
 }: {
   devolucoes: StockReturn[];
   podeResponder: boolean;
+  /** O que dizer quando não há nada — a fila vazia é boa notícia, e o
+   *  histórico vazio é outra coisa. */
+  vazio?: string;
 }) => {
   const router = useRouter();
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export const ReturnTable = ({
       <Table
         columns={podeResponder ? [...colunas, ""] : colunas}
         isEmpty={devolucoes.length === 0}
-        emptyMessage="Nenhuma devolução com esses filtros."
+        emptyMessage={vazio}
       >
         {devolucoes.map((devolucao) => {
           const estado = situacao(devolucao.status);
@@ -62,7 +67,10 @@ export const ReturnTable = ({
           return (
             <tr key={devolucao.id}>
               <td>
-                <strong>{devolucao.produtoNome}</strong>
+                {/* O nome leva ao detalhe, que é onde mora o comprovante. */}
+                <Link href={`/almoxarifado/devolucoes/${devolucao.id}`}>
+                  <strong>{devolucao.produtoNome}</strong>
+                </Link>
                 <br />
                 <small>
                   {devolucao.dataValidade

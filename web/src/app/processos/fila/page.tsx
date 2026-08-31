@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { listClosedProcesses, listProcesses } from "@/features/processes/queries";
 import { ProcessTable } from "@/features/processes/components/ProcessTable";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { listSectors } from "@/features/sectors/queries";
+import { TabNav } from "@/shared/ui/TabNav";
 import { requirePermission } from "@/shared/auth/guards";
 import { Alert, Card, PageHeader } from "@/shared/ui/layout";
 import { Pagination } from "@/shared/ui/Pagination";
@@ -53,28 +53,12 @@ export default async function ProcessQueuePage({ searchParams }: ProcessQueuePag
         }
       />
 
-      <nav style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
-        {[
+      <TabNav
+        tabs={[
           { rotulo: "Em andamento", href: "/processos/fila", ativa: !encerrados },
           { rotulo: "Encerrados", href: "/processos/fila?aba=encerrados", ativa: encerrados },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "6px",
-              fontSize: "13px",
-              textDecoration: "none",
-              background: item.ativa ? "var(--acao_suave)" : "transparent",
-              color: item.ativa ? "var(--acao)" : "var(--texto_suave)",
-              fontWeight: item.ativa ? 600 : 400,
-            }}
-          >
-            {item.rotulo}
-          </Link>
-        ))}
-      </nav>
+        ]}
+      />
 
       {!encerrados && (atrasados > 0 || vencendo > 0) ? (
         <div style={{ marginBottom: "14px" }}>

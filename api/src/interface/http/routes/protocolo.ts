@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
@@ -128,13 +129,10 @@ protocoloRouter.post(
 
 protocoloRouter.get("/atendimentos", async (req, res, next) => {
   try {
-    const texto = (chave: string) =>
-      typeof req.query[chave] === "string" ? (req.query[chave] as string) : undefined;
-
     res.json(
       await container.protocolo.listarAtendimentos(
         req.sessao!.orgaoId,
-        { status: texto("status"), assuntoId: texto("assunto"), busca: texto("busca") },
+        { status: filtroDaQuery(req, "status"), assuntoId: filtroDaQuery(req, "assunto"), busca: filtroDaQuery(req, "busca") },
         paginacaoSchema.parse(req.query),
       ),
     );

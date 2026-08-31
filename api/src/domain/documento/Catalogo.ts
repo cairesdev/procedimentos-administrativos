@@ -19,6 +19,7 @@ export const ESCOPOS = [
   "MANUTENCAO",
   "SOLICITACAO_ESTOQUE",
   "ENTRADA_ESTOQUE",
+  "DEVOLUCAO_ESTOQUE",
   "RELATORIO_CONSUMO",
 ] as const;
 
@@ -38,6 +39,7 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "FROTAS",
   SOLICITACAO_ESTOQUE: "ALMOXARIFADO",
   ENTRADA_ESTOQUE: "ALMOXARIFADO",
+  DEVOLUCAO_ESTOQUE: "ALMOXARIFADO",
   RELATORIO_CONSUMO: "ALMOXARIFADO",
 };
 
@@ -54,6 +56,7 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "Manutenção de veículo",
   SOLICITACAO_ESTOQUE: "Pedido de material, com itens e lotes entregues",
   ENTRADA_ESTOQUE: "Entrada no almoxarifado, com os lotes",
+  DEVOLUCAO_ESTOQUE: "Devolução de material da unidade ao almoxarifado",
   RELATORIO_CONSUMO: "Consumo por unidade e por produto, num período",
 };
 
@@ -74,6 +77,7 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   MANUTENCAO: "manutenção",
   SOLICITACAO_ESTOQUE: "pedido de material",
   ENTRADA_ESTOQUE: "entrada de estoque",
+  DEVOLUCAO_ESTOQUE: "devolução",
   RELATORIO_CONSUMO: "relatório de consumo",
 };
 
@@ -237,6 +241,27 @@ const ENTRADA_ESTOQUE = [
 const LOTES_DA_ENTRADA = ["produto", "unidadeMedida", "quantidade", "validade"];
 
 /**
+ * Comprovante de devolução.
+ *
+ * Era a única movimentação do almoxarifado sem peça: entrada, pedido e
+ * relatório já tinham. É o papel que a escola guarda como prova de que o
+ * material saiu do armário dela — e, quando recusado, o que explica por quê.
+ *
+ * Sem lista: a devolução é de **um lote**, e é ele que carrega a validade. Uma
+ * lista de um item só seria tabela onde cabe uma frase.
+ */
+const DEVOLUCAO_ESTOQUE = [
+  "devolucao.local", "devolucao.almoxarifado",
+  "devolucao.produto", "devolucao.unidadeMedida", "devolucao.quantidade",
+  "devolucao.validade", "devolucao.motivo",
+  "devolucao.data", "devolucao.solicitadaPor",
+  // A situação e a resposta entram sempre: o mesmo modelo serve à devolução
+  // aceita e à recusada, e o que muda entre elas é justamente isto.
+  "devolucao.situacao", "devolucao.respondidaEm", "devolucao.aceitaPor",
+  "devolucao.motivoRecusa",
+];
+
+/**
  * Relatório de consumo — a prestação de contas da alimentação escolar.
  *
  * Tudo em quantidade: o almoxarifado registra o que entra sem preço, e um
@@ -317,6 +342,10 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   ENTRADA_ESTOQUE: {
     valores: [...COMUNS, ...ENTRADA_ESTOQUE],
     listas: { lotes: LOTES_DA_ENTRADA },
+  },
+  DEVOLUCAO_ESTOQUE: {
+    valores: [...COMUNS, ...DEVOLUCAO_ESTOQUE],
+    listas: {},
   },
   RELATORIO_CONSUMO: {
     valores: [...COMUNS, ...RELATORIO],

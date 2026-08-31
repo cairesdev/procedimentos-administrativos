@@ -198,8 +198,18 @@ describe("escopos: código e banco", () => {
   it("o CHECK da migration tem exatamente os escopos do código", () => {
     // Mesma classe de bug da lista de módulos do painel: escopo que existe num
     // lado e não no outro só falha na hora de gravar o modelo.
-    const migration = ler("0028_relatorio_consumo.sql");
-    const check = /CHECK \(escopo IN \(([\s\S]*?)\)\)/.exec(migration)![1]!;
+    //
+    // A migration é procurada, e não nomeada: apontar para um arquivo fixo
+    // fazia o teste medir um CHECK que outra migration já tinha substituído —
+    // ele continuaria verde enquanto o banco recusava o escopo novo.
+    const migrations = readdirSync(MIGRATIONS).sort();
+    const comCheck = migrations.filter((arquivo) =>
+      /CHECK \(escopo IN \(/.test(ler(arquivo)));
+
+    assert.ok(comCheck.length > 0, "nenhuma migration define o CHECK de escopo");
+
+    const ultima = ler(comCheck[comCheck.length - 1]!);
+    const check = /CHECK \(escopo IN \(([\s\S]*?)\)\)/.exec(ultima)![1]!;
     const noBanco = [...check.matchAll(/'(\w+)'/g)].map((achado) => achado[1]!);
 
     assert.deepEqual([...noBanco].sort(), [...ESCOPOS].sort());

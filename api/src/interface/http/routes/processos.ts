@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -23,7 +24,7 @@ processosRouter.use(exigirPermissao("processes:read"));
 
 processosRouter.get("/", async (req, res, next) => {
   try {
-    const setorId = typeof req.query.setor === "string" ? req.query.setor : undefined;
+    const setorId = filtroDaQuery(req, "setor");
     res.json(
       await container.tramitacao.listarFila(
         req.sessao!.orgaoId, paginacaoSchema.parse(req.query), setorId,
@@ -42,7 +43,7 @@ processosRouter.get("/", async (req, res, next) => {
  */
 processosRouter.get("/encerrados", async (req, res, next) => {
   try {
-    const setorId = typeof req.query.setor === "string" ? req.query.setor : undefined;
+    const setorId = filtroDaQuery(req, "setor");
     res.json(
       await container.tramitacao.listarEncerrados(
         req.sessao!.orgaoId, paginacaoSchema.parse(req.query), setorId,

@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
@@ -49,7 +50,7 @@ documentosRouter.use(exigirPermissao("documents:read"));
  */
 documentosRouter.get("/modelos", async (req, res, next) => {
   try {
-    const modulo = typeof req.query.modulo === "string" ? req.query.modulo : undefined;
+    const modulo = filtroDaQuery(req, "modulo");
     const administrando = req.query.todos === "1" && req.permissoes?.has("documents:template");
 
     const setores = administrando
@@ -188,7 +189,7 @@ documentosRouter.get("/rascunhos", async (req, res, next) => {
 
 documentosRouter.get("/", async (req, res, next) => {
   try {
-    const referencia = typeof req.query.referencia === "string" ? req.query.referencia : undefined;
+    const referencia = filtroDaQuery(req, "referencia");
     if (referencia) {
       res.json(await container.documentos.listarPorReferencia(req.sessao!.orgaoId, referencia));
       return;

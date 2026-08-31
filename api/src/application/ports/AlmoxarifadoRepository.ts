@@ -529,8 +529,13 @@ export interface AlmoxarifadoRepository {
     motivoRecusa: string | null,
     tx: Tx,
   ): Promise<void>;
+  buscarDevolucao(
+    orgaoId: string, id: string, alcance: AlcanceDeConsulta,
+  ): Promise<DevolucaoResumo | null>;
   listarDevolucoes(orgaoId: string, filtros: Paginacao & {
     status?: string; almoxarifado?: string; local?: string;
+    /** Só o que já saiu da fila — a aba de histórico. */
+    respondidas?: boolean;
   }, alcance: AlcanceDeConsulta): Promise<Pagina<DevolucaoResumo>>;
 
   /** Debita a origem e cria a remessa de transferência no destino. */

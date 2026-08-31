@@ -1,3 +1,4 @@
+import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
@@ -29,7 +30,7 @@ contratosRouter.get("/", async (req, res, next) => {
       await container.contratos.listar(
         req.sessao!.orgaoId,
         paginacaoSchema.parse(req.query),
-        { unidadeId: typeof req.query.unidade === "string" ? req.query.unidade : undefined },
+        { unidadeId: filtroDaQuery(req, "unidade") },
       ),
     );
   } catch (error) {
@@ -45,7 +46,7 @@ contratosRouter.get("/", async (req, res, next) => {
  */
 contratosRouter.get("/para-solicitacao", async (req, res, next) => {
   try {
-    const unidadeId = typeof req.query.unidade === "string" ? req.query.unidade : undefined;
+    const unidadeId = filtroDaQuery(req, "unidade");
     res.json(await container.contratos.listarParaSolicitacao(req.sessao!.orgaoId, unidadeId));
   } catch (error) {
     next(error);
