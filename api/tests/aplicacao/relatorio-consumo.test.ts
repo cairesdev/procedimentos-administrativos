@@ -1,3 +1,4 @@
+import { SEM_TRAVA } from "../../src/application/almoxarifado/ResolverAlcance";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
@@ -86,7 +87,7 @@ describe("relatório de consumo: o recorte", () => {
 
   it("relatorio inexistente nao apura", async () => {
     const { caso } = montar();
-    await recusa(() => caso.apurar("org-1", "rel-99"), /não encontrado/);
+    await recusa(() => caso.apurar("org-1", "rel-99", SEM_TRAVA), /não encontrado/);
   });
 });
 
