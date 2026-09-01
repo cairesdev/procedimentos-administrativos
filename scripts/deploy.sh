@@ -102,7 +102,48 @@ if [ "$ROTACAO_DIAS" -ge 0 ] 2>/dev/null; then
 fi
 
 # ---- Código novo -----------------------------------------------------------
+#
+# A VPS **consome** o repositório: ela não tem trabalho próprio, e o que estiver
+# aqui e não no GitHub é acidente — um arquivo editado à mão para "testar uma
+# coisa", um commit feito no servidor errado. `--ff-only` recusa quando os dois
+# lados divergem, e faz bem: um merge automático aqui juntaria produção com
+# história que ninguém revisou.
+#
+# Só que "fatal: Not possible to fast-forward" não diz o que fazer, e a saída
+# tentadora — `git push --force` daqui — **apagaria do GitHub** o trabalho que
+# está lá e não está nesta máquina. Então o script explica antes de abortar.
 passo "Atualizando o repositório"
+git fetch origin --quiet
+
+SO_LA=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+SO_AQUI=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
+
+if [ "$SO_AQUI" != "0" ]; then
+  vermelho "ERRO: esta cópia tem $SO_AQUI commit(s) que não estão no GitHub."
+  echo
+  echo "O GitHub tem $SO_LA commit(s) que faltam aqui. Os dois lados divergiram,"
+  echo "e por isso o 'git pull' não passa."
+  echo
+  echo "O que há só nesta máquina:"
+  git log origin/main..HEAD --oneline | sed 's/^/  /'
+  echo
+  vermelho "NÃO resolva com 'git push --force' daqui."
+  echo "Isso apagaria do GitHub os $SO_LA commit(s) que esta máquina não tem."
+  echo
+  echo "Se o que está acima não interessa — o caso normal, porque a VPS só"
+  echo "consome o repositório —, descarte e alinhe com o GitHub:"
+  echo
+  echo "  git reset --hard origin/main"
+  echo "  ./scripts/deploy.sh $VERSAO"
+  echo
+  echo "'reset --hard' descarta alterações em arquivos versionados. O .env.prod,"
+  echo "a pasta data/ e a backups/ estão fora do git e não são tocados."
+  echo
+  echo "Se algum daqueles commits importa, leve-o para a sua máquina antes:"
+  echo "  git format-patch origin/main   # gera os .patch para aplicar lá"
+  exit 1
+fi
+
 git pull --ff-only
 
 passo "Apontando IMAGE_TAG para $VERSAO"
