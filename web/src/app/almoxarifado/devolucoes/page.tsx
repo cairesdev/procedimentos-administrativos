@@ -5,7 +5,8 @@ import {
 } from "@/features/stock/queries";
 import { ReturnForm } from "@/features/stock/components/ReturnForm";
 import { ReturnTable } from "@/features/stock/components/ReturnTable";
-import { RETURN_STATUSES } from "@/features/stock/types";
+import { RETURN_STATUSES, type StockReturn } from "@/features/stock/types";
+import { emptyPage } from "@/shared/api/pagination";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
@@ -36,7 +37,16 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
    */
   const naFila = aba !== "respondidas";
 
-  const locais = await listStockLocations();
+  /**
+   * A tela não pode cair porque um cadastro veio vazio.
+   *
+   * Cada consulta se defende sozinha: sem locais, sem estoque, sem devoluções,
+   * a página ainda desenha — com a lista vazia e o botão de devolver ausente,
+   * que é a verdade do momento. Antes, uma dessas respostas fora do formato
+   * derrubava tudo três camadas adiante, dentro do render de um componente de
+   * cliente, e o log do servidor ficava limpo.
+   */
+  const locais = await listStockLocations().catch(() => []);
   const escolhido = local ?? locais[0]?.id;
 
   const [devolucoes, estoque, pendentes] = await Promise.all([
@@ -45,10 +55,10 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
       naFila
         ? { status: "PENDENTE", local, pagina }
         : { status, local, pagina, respondidas: true },
-    ),
-    escolhido ? getLocalStock(escolhido) : Promise.resolve([]),
+    ).catch(() => emptyPage<StockReturn>()),
+    escolhido ? getLocalStock(escolhido).catch(() => []) : Promise.resolve([]),
     // Só pelo total: a aba conta a fila inteira, não a página atual.
-    listReturns({ status: "PENDENTE" }),
+    listReturns({ status: "PENDENTE" }).catch(() => emptyPage<StockReturn>()),
   ]);
 
   const podeResponder = viewer.can("stock:manage");
@@ -77,7 +87,7 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
             rotulo: "Aguardando resposta",
             href: "/almoxarifado/devolucoes",
             ativa: naFila,
-            contagem: pendentes?.total,
+            contagem: pendentes.total,
           },
           {
             rotulo: "Respondidas",
@@ -87,7 +97,7 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
         ]}
       />
 
-      {naFila && pendentes?.total > 0 && podeResponder ? (
+      {naFila && pendentes.total > 0 && podeResponder ? (
         <Alert tone="info">
           Até a resposta, o material não está em nenhum dos dois saldos: já saiu
           do armário da unidade e ainda não entrou no do almoxarifado.
@@ -142,7 +152,7 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
         padded={false}
       >
         <ReturnTable
-          devolucoes={devolucoes?.itens}
+          devolucoes={devolucoes.itens}
           podeResponder={podeResponder}
           vazio={
             naFila

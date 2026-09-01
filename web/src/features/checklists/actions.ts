@@ -82,6 +82,21 @@ export const updateTemplate = async (id: string, input: TemplateInput) =>
     revalidatePath(`${BASE}/modelos`);
   }, "Modelo atualizado");
 
+/**
+ * Copia um modelo — na prática, o caminho de edição do modelo do sistema.
+ *
+ * A cópia nasce com todos os itens e apoios do original e pertence à
+ * prefeitura, que a partir dali edita como qualquer modelo seu.
+ */
+export const duplicateTemplate = async (id: string) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.checklistTemplates}/${id}/duplicar`, {
+      method: "POST",
+      body: {},
+    });
+    revalidatePath(`${BASE}/modelos`);
+  }, "Cópia criada — edite-a à vontade");
+
 export const deleteTemplate = async (id: string) =>
   runAction(async () => {
     await apiRequest(`${endpoints.checklistTemplates}/${id}`, { method: "DELETE" });

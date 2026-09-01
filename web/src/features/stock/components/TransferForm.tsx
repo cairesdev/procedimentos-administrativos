@@ -148,7 +148,7 @@ export const TransferForm = ({ almoxarifados }: { almoxarifados: Warehouse[] }) 
         required
         value={quantidade || ""}
         onChange={(evento) => setQuantidade(Number(evento.target.value) || 0)}
-        error={excede ? `Este lote tem ${formatar(lote!.saldo)}` : undefined}
+        error={excede && lote ? `Este lote tem ${formatar(lote.saldo)}` : undefined}
       />
 
       <TextareaField

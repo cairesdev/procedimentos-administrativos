@@ -15,9 +15,10 @@ import { RETURN_STATUSES, type StockReturn } from "../types";
 const formatar = (valor: number) =>
   new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(valor);
 
-const situacao = (status: string) =>
+// `status` vem da API: se vier vazio, o rótulo é "—" e a linha continua de pé.
+const situacao = (status?: string | null) =>
   RETURN_STATUSES.find((item) => item.value === status)
-  ?? { label: status.toLowerCase(), tone: "neutral" as const };
+  ?? { label: status ? status.toLowerCase() : "—", tone: "neutral" as const };
 
 export const ReturnTable = ({
   devolucoes,
@@ -34,6 +35,17 @@ export const ReturnTable = ({
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [recusando, setRecusando] = useState<StockReturn | null>(null);
   const [motivo, setMotivo] = useState("");
+
+  /**
+   * As linhas que dá para desenhar.
+   *
+   * `devolucoes` é dado externo com um tipo por cima — o compilador não confere
+   * nada em tempo de execução. Sem este filtro, um furo na lista fazia
+   * `devolucao.status` explodir no meio do render, e o React descartava a
+   * árvore inteira: tela branca, nada no log do servidor.
+   */
+  const linhas = (Array.isArray(devolucoes) ? devolucoes : [])
+    .filter((devolucao) => Boolean(devolucao?.id));
 
   const responder = async (id: string, aceitar: boolean, motivoRecusa?: string) => {
     setOcupado(id);
@@ -58,10 +70,10 @@ export const ReturnTable = ({
     <>
       <Table
         columns={podeResponder ? [...colunas, ""] : colunas}
-        isEmpty={devolucoes.length === 0}
+        isEmpty={linhas.length === 0}
         emptyMessage={vazio}
       >
-        {devolucoes.map((devolucao) => {
+        {linhas.map((devolucao) => {
           const estado = situacao(devolucao.status);
 
           return (
@@ -155,8 +167,8 @@ export const ReturnTable = ({
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button
               type="button"
-              onClick={() => void responder(recusando!.id, false, motivo)}
-              disabled={ocupado !== null || motivo.trim().length < 3}
+              onClick={() => { if (recusando) void responder(recusando.id, false, motivo); }}
+              disabled={!recusando || ocupado !== null || motivo.trim().length < 3}
             >
               Confirmar recusa
             </Button>

@@ -7,6 +7,7 @@ import { enviarArquivo } from "../enviarArquivo";
 import { paginacaoSchema } from "../schemas/paginacao";
 import {
   conferirSchema, conviteSchema, criarChecklistSchema, cumprirSchema, dispensarSchema,
+  duplicarModeloSchema,
   editarChecklistSchema, itensDoChecklistSchema, modeloSchema,
 } from "../schemas/checklist";
 
@@ -101,6 +102,19 @@ checklistsRouter.put("/modelos/:id", administra, async (req, res, next) => {
       })),
     });
     res.json({ message: "Modelo atualizado" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Editar o modelo do sistema é copiá-lo para si primeiro — a linha global é de
+// todas as prefeituras, e não há dono para alterá-la.
+checklistsRouter.post("/modelos/:id/duplicar", administra, async (req, res, next) => {
+  try {
+    const { nome } = duplicarModeloSchema.parse(req.body ?? {});
+    res.status(201).json(await container.gerenciarChecklist.duplicarModelo(
+      req.sessao!.orgaoId, req.params.id!, nome,
+    ));
   } catch (error) {
     next(error);
   }

@@ -32,6 +32,8 @@ export default async function ChecklistTemplatesPage() {
       <Alert tone="info">
         Aplicar um modelo <strong>copia</strong> os itens para o checklist. Editar o modelo depois
         não mexe no que já foi aplicado — a lista de ontem continua dizendo o que se exigiu ontem.
+        Os marcados como <strong>padrão do sistema</strong> vêm prontos e são iguais para todas as
+        entidades: use-os como estão ou duplique para adaptar à sua.
       </Alert>
 
       <Card title={`${modelos.length} modelos`} padded={false}>
@@ -44,6 +46,12 @@ export default async function ChecklistTemplatesPage() {
             <tr key={modelo.id}>
               <td>
                 <strong>{modelo.nome}</strong>
+                {modelo.global ? (
+                  <>
+                    {" "}
+                    <Badge tone="accent">padrão do sistema</Badge>
+                  </>
+                ) : null}
                 {modelo.descricao ? (
                   <>
                     <br />

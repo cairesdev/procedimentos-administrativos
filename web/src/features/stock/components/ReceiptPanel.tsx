@@ -199,7 +199,7 @@ export const ReceiptPanel = ({ plano }: { plano: ReceiptPlan }) => {
           ) : semMotivo.length > 0 ? (
             <Alert tone="error">
               {semMotivo.length === 1
-                ? `Falta informar o motivo da diferença em "${semMotivo[0]!.produtoNome}".`
+                ? `Falta informar o motivo da diferença em "${semMotivo[0]?.produtoNome}".`
                 : `Falta informar o motivo da diferença em ${semMotivo.length} itens.`}
             </Alert>
           ) : totais.perdido > 0 ? (

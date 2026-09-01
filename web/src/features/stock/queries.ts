@@ -1,6 +1,7 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { comFiltros } from "@/shared/api/filtros";
+import { lista, pagina } from "@/shared/api/colecao";
 import { withPage, type Page } from "@/shared/api/pagination";
 import type {
   Adjustment, Availability, Consumption, Intake, IntakeDetail, LocalStock, Product,
@@ -35,13 +36,25 @@ export const listStockLocations = (
   if (opcoes.almoxarifado) busca.set("almoxarifado", opcoes.almoxarifado);
   if (opcoes.inativos) busca.set("inativos", "1");
   const query = busca.toString();
-  return apiRequest<StockLocation[]>(
+  return apiRequest<unknown>(
     `${endpoints.stockLocations}${query ? `?${query}` : ""}`,
-  );
+  ).then(lista<StockLocation>);
 };
 
+/**
+ * O saldo de uma unidade, produto a produto, com os lotes de cada um.
+ *
+ * Os lotes passam pelo mesmo filtro que a lista de fora: o formulário de
+ * devolução monta as opções lendo `lote.id` dentro de um `.map`, e um furo
+ * aqui vira tela branca lá — sem nada no log do servidor, porque o erro é do
+ * navegador.
+ */
 export const getLocalStock = (localId: string) =>
-  apiRequest<LocalStock[]>(endpoints.localStock(localId));
+  apiRequest<unknown>(endpoints.localStock(localId))
+    .then((corpo) => lista<LocalStock>(corpo).map((produto) => ({
+      ...produto,
+      lotes: lista<LocalStock["lotes"][number]>(produto.lotes),
+    })));
 
 export const listIntakes = (
   filtros: { almoxarifado?: string; tipo?: string; busca?: string; pagina?: string } = {},
@@ -100,9 +113,9 @@ export const listReturns = (
   } = {},
 ) => {
   const { respondidas, ...resto } = filtros;
-  return apiRequest<Page<StockReturn>>(
+  return apiRequest<unknown>(
     comFiltros(endpoints.returns, { ...resto, ...(respondidas ? { respondidas: "1" } : {}) }),
-  );
+  ).then(pagina<StockReturn>);
 };
 
 export const getReturn = (id: string) =>

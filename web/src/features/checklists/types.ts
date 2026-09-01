@@ -116,6 +116,8 @@ export type ChecklistTemplate = {
   descricao: string | null;
   ativo: boolean;
   totalItens: number;
+  /** Veio com o sistema — o roteiro do PNTP. Usa-se; para mudar, duplica. */
+  global: boolean;
 };
 
 export type ChecklistTemplateDetail = ChecklistTemplate & {

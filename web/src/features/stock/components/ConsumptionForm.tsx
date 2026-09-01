@@ -104,7 +104,7 @@ export const ConsumptionForm = ({
         required
         value={quantidade || ""}
         onChange={(evento) => setQuantidade(Number(evento.target.value) || 0)}
-        error={excede ? `A unidade tem ${formatar(produto!.saldo)}` : undefined}
+        error={excede && produto ? `A unidade tem ${formatar(produto.saldo)}` : undefined}
       />
 
       <SelectField

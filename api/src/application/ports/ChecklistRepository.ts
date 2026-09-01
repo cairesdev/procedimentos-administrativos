@@ -32,6 +32,16 @@ export type ModeloDeChecklist = {
   descricao: string | null;
   ativo: boolean;
   totalItens: number;
+  /**
+   * Modelo que veio com o sistema, não da prefeitura.
+   *
+   * Mora numa linha com `orgao_id` nulo e é lido por todas — é assim que o
+   * roteiro do PNTP chega pronto a quem instala. Toda prefeitura **usa**; para
+   * mudar, duplica para si. Sem esta bandeira a tela ofereceria "editar" num
+   * registro que o `UPDATE ... WHERE orgao_id = $1` nunca alcançaria, e o
+   * salvar não faria nada sem dizer por quê.
+   */
+  global: boolean;
 };
 
 /** Um apoio, como a tela o envia: só o destino. */

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getReturn } from "@/features/stock/queries";
 import { RETURN_STATUSES } from "@/features/stock/types";
 import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
+import type { DocumentTemplate, IssuedDocument } from "@/features/documents/types";
+import { lista } from "@/shared/api/colecao";
 import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
@@ -29,13 +31,17 @@ export default async function ReturnPage({ params }: ReturnPageProps) {
     throw erro;
   });
 
+  // 200 com corpo vazio é 404 disfarçado: sem isto, a primeira leitura de
+  // `devolucao.produtoNome` derruba a página com um erro que não explica nada.
+  if (!devolucao?.id) notFound();
+
   const [modelos, emitidos] = await Promise.all([
-    listTemplates("ALMOXARIFADO").catch(() => []),
-    listDocumentsFor(id).catch(() => []),
+    listTemplates("ALMOXARIFADO").then(lista<DocumentTemplate>).catch(() => []),
+    listDocumentsFor(id).then(lista<IssuedDocument>).catch(() => []),
   ]);
 
   const estado = RETURN_STATUSES.find((item) => item.value === devolucao.status)
-    ?? { label: devolucao.status.toLowerCase(), tone: "neutral" as const };
+    ?? { label: devolucao.status?.toLowerCase() ?? "—", tone: "neutral" as const };
 
   return (
     <>

@@ -1171,3 +1171,32 @@ organograma alheio.
 **654 testes**, 104 invariantes, 422 consultas com `PREPARE`. Quatro guardas
 quebradas: modelo deixando de ser global, código repetido, contagem perdendo o
 peso e conferência voltando a contar como pendência — as quatro acusam.
+
+## Três correções sobre o checklist e a devolução
+
+**O modelo global estava invisível.** Semeado na 0037 com `orgao_id IS NULL`,
+não aparecia em lugar nenhum porque a listagem filtrava por órgão. Agora
+aparece marcado como "padrão do sistema", pode ser aplicado e duplicado, e a
+edição direta é recusada com 422 explicando o caminho. Aplicá-lo passou a levar
+seção, código, classificação e apoios — antes só os títulos iam.
+
+**A devolução quebrava sem deixar rastro.** Reproduzido em jsdom: um furo na
+lista de lotes fazia `lote.id` estourar durante o render, com exatamente a
+mensagem que apareceu no navegador. Corrigido na origem (as consultas
+normalizam) e no destino (`opcoesDeLote`, testável sem navegador, descarta o
+que não serve). Oito cenários degradados que antes derrubavam a tela agora
+desenham.
+
+**O seletor de referência sumia calado.** Ele selecionava certo — o teste
+confirma —, mas com resposta fora do array o `<select>` simplesmente não
+aparecia, sem uma linha de explicação. Agora "não achei" e "não consegui
+consultar" são mensagens diferentes.
+
+**Verificação:** 655 testes na API, 9 no web (nova suíte, já no CI), 104
+invariantes e 423 consultas com `PREPARE`. A trava de asserção non-null foi
+quebrada de propósito e acusou. Contra Postgres e API no ar: o global aparece,
+recusa edição, duplica com os 53 itens, e o checklist aplicado nasce com 53/53
+seções, códigos e classificações.
+
+**Pendência que fica:** a listagem de checklists mostra o alvo pelo id, não pelo
+número do processo — falta o join na API.

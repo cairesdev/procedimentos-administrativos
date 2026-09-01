@@ -36,9 +36,12 @@ jobs:
 
       # A suíte roda sem banco e sem rede: domínio, casos de uso com
       # repositórios falsos, e checagens que leem o próprio código (SQL, ordem
-      # das rotas, contrato entre a API e o web).
+      # das rotas, contrato entre a API e o web, asserção non-null no cliente).
+      #
+      # No web são as regras puras que a tela usa e não dá para ver: o que fazer
+      # quando a resposta da API não tem o formato prometido. É onde o erro
+      # nasce mudo — acontece no navegador e não deixa rastro no servidor.
       - name: Testes
-        if: matrix.projeto == 'api'
         run: npm test
 
       - name: Lint

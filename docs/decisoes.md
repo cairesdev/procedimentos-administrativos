@@ -1310,3 +1310,46 @@ e cabe no modelo sem mudança alguma.
 **Não** é um checklist perpétuo com itens recorrentes: ali o histórico de um
 mês específico ficaria espalhado entre ciclos, e a pergunta "o que faltava em
 agosto?" não teria onde ser respondida.
+
+### O modelo global se usa, e para editar se duplica
+
+A linha com `orgao_id IS NULL` é lida por todas as prefeituras e escrita por
+nenhuma: toda consulta de leitura passou a aceitar `orgao_id = $1 OR orgao_id
+IS NULL`, e toda escrita continua exigindo `orgao_id = $1`. Quem quiser mudar o
+roteiro do PNTP **duplica** — a cópia nasce com os 53 itens e os apoios, e
+pertence à entidade.
+
+Sem isso o modelo semeado estava no banco e em lugar nenhum: `/checklists/
+modelos` filtrava por `orgao_id = $1` e devolvia lista vazia. Mais um caso de
+**configuração sem efeito** — dado que o banco guarda e nenhum código lê —, e
+o quinto do projeto.
+
+A recusa é explícita, e não silenciosa: sem a guarda no caso de uso, editar o
+global seria um `UPDATE 0`, a tela salvaria, a API responderia 200 e nada teria
+mudado.
+
+### Aplicar o modelo leva o item inteiro
+
+A cópia deixava para trás seção, código, classificação, o arquivo de referência
+e os apoios — justo o que o roteiro do PNTP carrega. O checklist nascia com os
+53 títulos e nenhuma dimensão: a tela agrupava tudo em "sem seção" e a contagem
+por classificação vinha zerada. Só o prazo se converte, de dias para data.
+
+### Resposta da API é dado externo, não tipo
+
+`apiRequest<Page<StockReturn>>` promete um formato que o compilador não confere
+em tempo de execução. Enquanto o formato bate ninguém percebe; no dia em que
+não bate, o erro não aparece na consulta e sim **no render**, dentro de um
+`.map`, no navegador — e o log do servidor fica limpo.
+
+Foi assim que a tela de devoluções quebrou: `Cannot read properties of null
+(reading 'id')` lendo `lote.id` de um furo na lista. Toda lista que vem da API
+e alimenta uma tela agora passa por `lista()` ou `pagina()` (`shared/api/
+colecao.ts`): array sempre denso, envelope sempre com os quatro campos. O pior
+resultado aceitável passou a ser uma lista vazia — falsa, mas legível — em vez
+de uma página em branco.
+
+Junto veio a trava: **asserção non-null (`x!.y`) é proibida em componente de
+cliente**, verificada por teste estrutural. Ela não gera checagem nenhuma,
+apenas cala o compilador — e num componente de cliente o estouro não deixa
+rastro em lugar nenhum.

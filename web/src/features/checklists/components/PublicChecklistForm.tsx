@@ -125,7 +125,7 @@ export const PublicChecklistForm = ({
 
             {item.situacao === "AGUARDANDO_CONFERENCIA" ? (
               <Alert tone="info">
-                Enviado em {toDate(item.ultimaEntrega!.cumpridoEm)}. Aguardando conferência.
+                Enviado em {item.ultimaEntrega ? toDate(item.ultimaEntrega.cumpridoEm) : "—"}. Aguardando conferência.
               </Alert>
             ) : null}
 

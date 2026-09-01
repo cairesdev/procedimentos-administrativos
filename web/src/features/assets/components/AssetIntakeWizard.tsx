@@ -210,7 +210,7 @@ export const AssetIntakeWizard = ({
 
                     {location && Number(batch?.quantidade) > 0 ? (
                       <p className={styles.preview}>
-                        Gera {batch!.quantidade} tombamento(s) sequenciais com
+                        Gera {batch?.quantidade} tombamento(s) sequenciais com
                         prefixo <strong>{location.codigo}-</strong>
                       </p>
                     ) : null}

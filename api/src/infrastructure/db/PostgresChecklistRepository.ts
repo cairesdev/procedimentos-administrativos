@@ -49,20 +49,32 @@ const COLUNAS_CICLO = `
 
 const SQL = {
   // ---- Modelos -------------------------------------------------------------
+  /**
+   * Os modelos que esta prefeitura enxerga.
+   *
+   * `orgao_id IS NULL` é o modelo que veio com o sistema — o roteiro do PNTP
+   * é o mesmo para todo município, e copiá-lo para cada órgão na instalação
+   * significaria 53 itens que envelhecem em separado a cada correção.
+   *
+   * A exceção é **deliberada e só de leitura**: escrita continua exigindo
+   * `orgao_id = $1`, logo o global é intocável por qualquer prefeitura.
+   */
   listarModelos: `
     SELECT m.id, m.nome, m.descricao, m.ativo,
+           (m.orgao_id IS NULL) AS global,
            (SELECT count(*) FROM checklist_modelo_item mi WHERE mi.modelo_id = m.id)
              AS "totalItens"
       FROM checklist_modelo m
-     WHERE m.orgao_id = $1
-     ORDER BY m.ativo DESC, m.nome`,
+     WHERE m.orgao_id = $1 OR m.orgao_id IS NULL
+     ORDER BY m.ativo DESC, global, m.nome`,
 
   buscarModelo: `
     SELECT m.id, m.nome, m.descricao, m.ativo,
+           (m.orgao_id IS NULL) AS global,
            (SELECT count(*) FROM checklist_modelo_item mi WHERE mi.modelo_id = m.id)
              AS "totalItens"
       FROM checklist_modelo m
-     WHERE m.orgao_id = $1 AND m.id = $2`,
+     WHERE (m.orgao_id = $1 OR m.orgao_id IS NULL) AND m.id = $2`,
 
   itensDoModelo: `
     SELECT id, ordem, titulo, descricao, exige_anexo AS "exigeAnexo",

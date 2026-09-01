@@ -97,19 +97,25 @@ export const RequestBuilder = ({
     setEscolhas({});
   };
 
+  /**
+   * `flatMap` e não `map().filter()`.
+   *
+   * O filtro tira o item sem produto em tempo de execução, mas o compilador
+   * continua vendo `produto: Produto | undefined` — e daí saíam três `!` que
+   * calavam justamente o caso que o filtro tratava. Com `flatMap`, quem não
+   * achou produto não entra na lista, e o tipo de saída já é o certo.
+   */
   const escolhidos = useMemo(
     () =>
-      Object.entries(escolhas)
-        .filter(([, quantidade]) => quantidade > 0)
-        .map(([produtoId, quantidade]) => ({
-          produto: produtos.find((item) => item.produtoId === produtoId),
-          quantidade,
-        }))
-        .filter((item) => item.produto),
+      Object.entries(escolhas).flatMap(([produtoId, quantidade]) => {
+        if (quantidade <= 0) return [];
+        const produto = produtos.find((item) => item.produtoId === produtoId);
+        return produto ? [{ produto, quantidade }] : [];
+      }),
     [escolhas, produtos],
   );
 
-  const excedidos = escolhidos.filter((item) => item.quantidade > item.produto!.disponivel);
+  const excedidos = escolhidos.filter((item) => item.quantidade > item.produto.disponivel);
 
   const salvar = async () => {
     if (!localId) {
@@ -127,7 +133,7 @@ export const RequestBuilder = ({
       localSolicitanteId: localId,
       tipoEstoqueId: tipoId || undefined,
       itens: escolhidos.map((item) => ({
-        produtoId: item.produto!.produtoId,
+        produtoId: item.produto.produtoId,
         quantidadeSolicitada: item.quantidade,
       })),
     });
@@ -254,7 +260,7 @@ export const RequestBuilder = ({
           {excedidos.length > 0 ? (
             <Alert tone="error">
               {excedidos.length === 1
-                ? `Você pediu mais do que há disponível de "${excedidos[0]!.produto!.nome}".`
+                ? `Você pediu mais do que há disponível de "${excedidos[0]?.produto.nome}".`
                 : `${excedidos.length} itens estão acima do disponível.`}{" "}
               O envio será recusado.
             </Alert>

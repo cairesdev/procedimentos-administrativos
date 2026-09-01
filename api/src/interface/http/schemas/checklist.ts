@@ -47,6 +47,10 @@ export const modeloSchema = z.object({
   itens: z.array(itemDeModeloSchema).min(1, "O modelo precisa de ao menos um item"),
 });
 
+export const duplicarModeloSchema = z.object({
+  nome: z.string().min(1).max(150).optional(),
+});
+
 export const criarChecklistSchema = z.object({
   titulo: z.string().min(1).max(200).optional(),
   descricao: z.string().max(2000).nullable().optional(),

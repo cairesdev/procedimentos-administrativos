@@ -40,6 +40,57 @@ export class GerenciarChecklist {
     return modelo;
   };
 
+  /**
+   * O modelo do sistema é lido por todos e escrito por ninguém.
+   *
+   * A trava já existe no SQL — todo `UPDATE`/`DELETE` casa por `orgao_id = $1`,
+   * e a linha global tem `orgao_id` nulo. Só que sem esta guarda o efeito seria
+   * um `UPDATE 0`: a tela salvaria, a API responderia 200 e nada teria mudado.
+   * Recusar em voz alta é a diferença entre uma regra e um silêncio.
+   */
+  private exigirModeloProprio = async (orgaoId: string, id: string) => {
+    const modelo = await this.buscarModelo(orgaoId, id);
+    if (modelo.global) {
+      throw new ErroDeNegocio(
+        "Este é um modelo padrão do sistema e não pode ser alterado. "
+        + "Duplique-o para a sua entidade e edite a cópia.",
+        422,
+      );
+    }
+    return modelo;
+  };
+
+  /**
+   * Copia um modelo para a prefeitura, itens e apoios inclusive.
+   *
+   * É o caminho de edição do modelo global: em vez de uma exceção de escrita
+   * para a linha compartilhada, uma cópia que pertence a quem vai mexer nela.
+   */
+  duplicarModelo = async (
+    orgaoId: string, id: string, nome?: string,
+  ): Promise<{ id: string }> => {
+    const origem = await this.buscarModelo(orgaoId, id);
+
+    return this.transacao(async (tx) => {
+      const novo = await this.checklists.criarModelo(orgaoId, {
+        nome: (nome?.trim() || `${origem.nome} (cópia)`).slice(0, 150),
+        descricao: origem.descricao,
+      });
+      await this.checklists.substituirItensDoModelo(
+        orgaoId,
+        novo,
+        origem.itens.map(({ id: _id, apoios, ...item }) => ({
+          ...item,
+          apoios: (apoios ?? []).map(({ setorId, departamentoId }) => ({
+            setorId, departamentoId,
+          })),
+        })),
+        tx,
+      );
+      return { id: novo };
+    });
+  };
+
   criarModelo = async (entrada: {
     orgaoId: string;
     nome: string;
@@ -67,7 +118,7 @@ export class GerenciarChecklist {
     ativo: boolean;
     itens: NovoItemDeModelo[];
   }): Promise<void> => {
-    await this.buscarModelo(entrada.orgaoId, entrada.id);
+    await this.exigirModeloProprio(entrada.orgaoId, entrada.id);
     entrada.itens.forEach(exigirItemCoerente);
 
     await this.transacao(async (tx) => {
@@ -88,7 +139,7 @@ export class GerenciarChecklist {
    * preserva a origem.
    */
   removerModelo = async (orgaoId: string, id: string): Promise<void> => {
-    await this.buscarModelo(orgaoId, id);
+    await this.exigirModeloProprio(orgaoId, id);
     if (await this.checklists.modeloEstaEmUso(orgaoId, id)) {
       throw new ErroDeNegocio(
         "Este modelo já foi aplicado a algum checklist e não pode ser excluído. "
@@ -160,18 +211,25 @@ export class GerenciarChecklist {
     const titulo = entrada.titulo?.trim() || doModelo?.nome;
     if (!titulo) throw new ErroDeNegocio("O checklist precisa de um título");
 
+    /**
+     * O modelo vai inteiro para o checklist.
+     *
+     * A cópia deixava para trás seção, código, classificação, o arquivo de
+     * referência e os apoios — justo o que o roteiro do PNTP carrega. O
+     * checklist nascia com os 53 títulos e nenhuma dimensão: a tela agrupava
+     * tudo em "sem seção" e a contagem por classificação vinha zerada. Só o
+     * prazo se converte, de dias para data; o resto é o mesmo item.
+     */
     const itens = doModelo
-      ? doModelo.itens.map((item) => ({
-        ordem: item.ordem,
-        titulo: item.titulo,
-        descricao: item.descricao,
-        exigeAnexo: item.exigeAnexo,
-        prazoLimite: emDias(item.prazoDias),
-        recorrente: item.recorrente,
-        periodicidadeDias: item.periodicidadeDias,
-        setorId: item.setorId,
-        departamentoId: item.departamentoId,
-        paraFornecedor: item.paraFornecedor,
+      ? doModelo.itens.map(({ id: _id, prazoDias, apoios, ...item }) => ({
+        ...item,
+        prazoLimite: emDias(prazoDias),
+        // `?? []`: o repositório sempre traz a lista, mas item de modelo sem
+        // apoio é caso normal — e um `.map` sobre indefinido derruba a criação
+        // inteira do checklist por causa de um campo opcional.
+        apoios: (apoios ?? []).map(({ setorId, departamentoId }) => ({
+          setorId, departamentoId,
+        })),
       }))
       : (entrada.itens ?? []);
 

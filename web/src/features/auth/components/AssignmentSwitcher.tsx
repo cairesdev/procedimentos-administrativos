@@ -23,7 +23,7 @@ export const AssignmentSwitcher = ({
     return (
       <span className={styles.switcher}>
         <span className={styles.label}>Atuando como</span>
-        <span className={styles.fixed}>{assignments[0]!.destino}</span>
+        <span className={styles.fixed}>{assignments[0]?.destino}</span>
       </span>
     );
   }
@@ -37,7 +37,7 @@ export const AssignmentSwitcher = ({
         id="assignmentId"
         name="assignmentId"
         className={styles.control}
-        defaultValue={activeId ?? assignments[0]!.id}
+        defaultValue={activeId ?? assignments[0]?.id}
         onChange={() => formRef.current?.requestSubmit()}
       >
         {assignments.map((assignment) => (

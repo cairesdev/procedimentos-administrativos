@@ -67,7 +67,7 @@ export const IssueDocumentButton = ({
       <Modal open={aberto} onClose={() => setAberto(false)} title={titulo} description={descricao}>
         <div style={{ display: "grid", gap: "14px" }}>
           {disponiveis.length === 1 ? (
-            <Alert tone="info">{disponiveis[0]!.nome}</Alert>
+            <Alert tone="info">{disponiveis[0]?.nome}</Alert>
           ) : (
             <SelectField
               label="Documento"

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": [
+      "node"
+    ]
+  },
+  "//": "Os testes rodam em node --test, sem bundler: import com extensao .ts e relativo, porque o alias @/ so existe dentro do Next.",
+  "include": [
+    "tests",
+    "src"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
