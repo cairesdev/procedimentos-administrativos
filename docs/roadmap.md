@@ -1134,3 +1134,40 @@ usa CSS Modules — sem `:hover`, sem media query, e a mesma caixa de item escri
 três vezes com três medidas. Passou a `Checklist.module.css`, com as opções em
 `flex-wrap` (num modal estreito as três caixas não cabiam lado a lado) e a
 página pública com respiro próprio no celular.
+
+## Checklist — o PNTP da planilha do cliente
+
+O arquivo real ("Relatório de Prevenção Mensal — PNTP e TCE") mostrou que o
+ciclo estava certo e faltava o que organiza sessenta linhas.
+
+- **0036** — `secao` (a DIMENSÃO), `codigo` (o número oficial: 2.2, 8.5),
+  `classificacao` (Obrigatória/Essencial/Recomendada), anexo de referência
+  (o "BAIXAR") e a tabela de **apoios** — o "COM JURÍDICO" da planilha, que
+  vê o item na fila sem responder por ele.
+- **0037** — os **53 critérios** semeados como modelo global
+  (`orgao_id IS NULL`): 16 dimensões, 33 obrigatórias, 5 essenciais, 15
+  recomendadas. Conferido contra o banco: os números batem com a planilha.
+- **Contagem por peso** — a tela diz "3 obrigatórias e 1 essencial", não
+  "4 pendências". É o que decide onde a prefeitura corre, porque é a
+  obrigatória que o TCE cobra. A concordância mora no domínio, não no JSX.
+- **Vínculo por busca** — o formulário pedia **UUID colado à mão**. Agora
+  procura pelo número do processo, do contrato, da licitação ou pelo CNPJ, com
+  espera de 300 ms entre teclas. E o caminho principal inverteu: **"Novo
+  checklist" dentro do processo e do contrato**, já vinculado.
+
+**Duas medidas que não cabiam:** o título do item era `VARCHAR(200)`, pensado
+para "Certidão negativa de débitos" — o maior critério do PNTP tem 247
+caracteres, e cortá-lo perderia justamente o que se deve conferir. E o `Card`
+não tinha ação no cabeçalho; ganhou, com a borda migrando do título para o
+cabeçalho, senão ela cortava a linha ao meio.
+
+**Limitação conhecida, e deliberada:** o modelo global **não traz o
+responsável**. A planilha diz "CONTABILIDADE COM JURÍDICO", e esses nomes são
+de uma prefeitura — o modelo é de todas. O setor sugerido pelo Tribunal fica no
+texto da descrição, e quem aplica atribui o responsável na cópia. São 53
+atribuições manuais na primeira vez; a alternativa seria adivinhar o
+organograma alheio.
+
+**654 testes**, 104 invariantes, 422 consultas com `PREPARE`. Quatro guardas
+quebradas: modelo deixando de ser global, código repetido, contagem perdendo o
+peso e conferência voltando a contar como pendência — as quatro acusam.

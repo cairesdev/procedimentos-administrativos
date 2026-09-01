@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { listChecklistsOf } from "../queries";
+import { listChecklistsOf, listChecklistTemplates } from "../queries";
+import { listSectors } from "@/features/sectors/queries";
+import { ModalTrigger } from "@/shared/ui/Modal";
+import { ChecklistForm } from "./ChecklistForm";
 import { Alert, Badge, Card, Table } from "@/shared/ui/layout";
 import { toDate } from "@/shared/ui/labels";
 import styles from "./Checklist.module.css";
@@ -14,15 +17,58 @@ import styles from "./Checklist.module.css";
 export const ChecklistCard = async ({
   alvoTipo,
   alvoId,
+  podeCriar,
 }: {
   alvoTipo: string;
   alvoId: string;
+  /** Quem administra vê o botão — e é por ele que o checklist deve nascer. */
+  podeCriar?: boolean;
 }) => {
   const checklists = await listChecklistsOf(alvoTipo, alvoId).catch(() => null);
-  if (checklists === null || checklists.length === 0) return null;
+
+  // `null` é 403: a prefeitura não contratou o módulo, e o card some.
+  if (checklists === null) return null;
+
+  const [modelos, setores] = podeCriar
+    ? await Promise.all([
+      listChecklistTemplates().catch(() => []),
+      listSectors().catch(() => []),
+    ])
+    : [[], []];
+
+  /**
+   * O caminho principal: o checklist nasce **de dentro** do registro, já
+   * vinculado. Antes, criá-lo exigia sair daqui, escolher o tipo e colar um
+   * UUID — e ninguém faria isso.
+   */
+  const botao = podeCriar ? (
+    <ModalTrigger
+      label="Novo checklist"
+      title="Novo checklist"
+      description="Já vinculado a este registro."
+    >
+      <ChecklistForm
+        modelos={modelos.filter((modelo) => modelo.ativo)}
+        setores={setores}
+        alvo={{ tipo: alvoTipo, id: alvoId }}
+      />
+    </ModalTrigger>
+  ) : null;
+
+  if (checklists.length === 0) {
+    // Sem checklist e sem permissão de criar, não há card nenhum a mostrar.
+    if (!podeCriar) return null;
+    return (
+      <Card title="Checklists" action={botao}>
+        <Alert tone="info">
+          Nenhum checklist neste registro. Um modelo aplicado aqui já nasce vinculado.
+        </Alert>
+      </Card>
+    );
+  }
 
   return (
-    <Card title={`Checklists (${checklists.length})`} padded={false}>
+    <Card title={`Checklists (${checklists.length})`} padded={false} action={botao}>
       <Table
         columns={["Checklist", "Itens", "Em aberto", "Criado em"]}
         isEmpty={false}

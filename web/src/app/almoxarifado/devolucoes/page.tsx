@@ -1,4 +1,8 @@
-import { getLocalStock, listReturns, listStockLocations } from "@/features/stock/queries";
+import {
+  getLocalStock,
+  listReturns,
+  listStockLocations,
+} from "@/features/stock/queries";
 import { ReturnForm } from "@/features/stock/components/ReturnForm";
 import { ReturnTable } from "@/features/stock/components/ReturnTable";
 import { RETURN_STATUSES } from "@/features/stock/types";
@@ -10,7 +14,12 @@ import { Pagination } from "@/shared/ui/Pagination";
 import { TabNav } from "@/shared/ui/TabNav";
 
 type ReturnsPageProps = {
-  searchParams: Promise<{ status?: string; local?: string; pagina?: string; aba?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    local?: string;
+    pagina?: string;
+    aba?: string;
+  }>;
 };
 
 export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
@@ -32,9 +41,11 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
 
   const [devolucoes, estoque, pendentes] = await Promise.all([
     // Na fila o status é a própria aba; no histórico o filtro volta a valer.
-    listReturns(naFila
-      ? { status: "PENDENTE", local, pagina }
-      : { status, local, pagina, respondidas: true }),
+    listReturns(
+      naFila
+        ? { status: "PENDENTE", local, pagina }
+        : { status, local, pagina, respondidas: true },
+    ),
     escolhido ? getLocalStock(escolhido) : Promise.resolve([]),
     // Só pelo total: a aba conta a fila inteira, não a página atual.
     listReturns({ status: "PENDENTE" }),
@@ -66,7 +77,7 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
             rotulo: "Aguardando resposta",
             href: "/almoxarifado/devolucoes",
             ativa: naFila,
-            contagem: pendentes.total,
+            contagem: pendentes?.total,
           },
           {
             rotulo: "Respondidas",
@@ -76,10 +87,10 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
         ]}
       />
 
-      {naFila && pendentes.total > 0 && podeResponder ? (
+      {naFila && pendentes?.total > 0 && podeResponder ? (
         <Alert tone="info">
-          Até a resposta, o material não está em nenhum dos dois saldos: já saiu do armário da
-          unidade e ainda não entrou no do almoxarifado.
+          Até a resposta, o material não está em nenhum dos dois saldos: já saiu
+          do armário da unidade e ainda não entrou no do almoxarifado.
         </Alert>
       ) : null}
 
@@ -90,9 +101,15 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
           {naFila ? null : (
             <>
               <input type="hidden" name="aba" value="respondidas" />
-              <select name="status" defaultValue={status ?? ""} aria-label="Situação">
+              <select
+                name="status"
+                defaultValue={status ?? ""}
+                aria-label="Situação"
+              >
                 <option value="">Aceitas e recusadas</option>
-                {RETURN_STATUSES.filter((item) => item.value !== "PENDENTE").map((item) => (
+                {RETURN_STATUSES.filter(
+                  (item) => item.value !== "PENDENTE",
+                ).map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
                   </option>
@@ -103,7 +120,7 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
 
           <select name="local" defaultValue={local ?? ""} aria-label="Local">
             <option value="">Todos os locais</option>
-            {locais.map((item) => (
+            {locais?.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.nome}
               </option>
@@ -117,17 +134,21 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
       </form>
 
       <Card
-        title={naFila
-          ? `${devolucoes.total} aguardando resposta`
-          : `${devolucoes.total} respondidas`}
+        title={
+          naFila
+            ? `${devolucoes.total} aguardando resposta`
+            : `${devolucoes.total} respondidas`
+        }
         padded={false}
       >
         <ReturnTable
-          devolucoes={devolucoes.itens}
+          devolucoes={devolucoes?.itens}
           podeResponder={podeResponder}
-          vazio={naFila
-            ? "Nenhuma devolução esperando resposta."
-            : "Nenhuma devolução respondida com esses filtros."}
+          vazio={
+            naFila
+              ? "Nenhuma devolução esperando resposta."
+              : "Nenhuma devolução respondida com esses filtros."
+          }
         />
         <Pagination
           info={devolucoes}

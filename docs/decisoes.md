@@ -1239,3 +1239,74 @@ registra "por link externo".
 - **Três motivos, uma resposta.** Token inexistente, expirado e revogado dão o
   mesmo 404: distinguir contaria a quem tem um link velho que ele existiu, e a
   quem tenta adivinhar que chegou perto.
+
+## Checklist — o que a planilha do cliente mudou
+
+Chegou o arquivo real: **"Relatório de Prevenção Mensal — PNTP e TCE"**, de
+Olinda Nova do Maranhão. Não é um checklist de processo — é a conferência do
+portal da transparência contra ~60 critérios oficiais do Programa Nacional de
+Transparência Pública, refeita todo mês.
+
+O ciclo que eu havia modelado bate quase inteiro: critério → item, pendência →
+descrição, setor → responsável, "Upload/Data Doc" → cumprimento com anexo,
+"Envio Controlador: ok" + "Data Envio" → conferência. O que faltava era o que
+organiza sessenta linhas.
+
+### Cinco lacunas, e as decisões
+
+1. **Dimensão** (Receita, Licitações, Saúde…) vira um **campo de seção** no
+   item, e a tela agrupa por ele. Não é tabela nova: serve a qualquer lista, e
+   o custo conhecido — "Receita" e "receitas" virando dois grupos — é menor que
+   o de um cadastro a mais para manter. Se a digitação divergir na prática, aí
+   sim vale o cadastro.
+
+2. **Código do critério** (`2.2`, `8.5`, `18.1`) ganha campo próprio. É a
+   numeração oficial do PNTP: é por ela que a controladoria conversa com o TCE,
+   e ela não é a ordem do item — a lista pula de 8.7 para 9.1, e o 11.1 vem
+   depois do 11.9.
+
+3. **Classificação** — Obrigatória, Essencial, Recomendada — é **peso**, não
+   enfeite. A tela conta separado: "faltam 3 obrigatórias e 1 essencial", e não
+   "faltam 4". É o que decide onde a prefeitura corre primeiro, porque é a
+   obrigatória que o TCE cobra.
+
+4. **Responsável composto** ("CONTABILIDADE COM JURÍDICO") vira **um principal
+   mais apoios**. A cobrança precisa de dono: "dois responsáveis" vira "nenhum
+   responsável" na primeira vez que ninguém entrega. Os setores de apoio veem o
+   item na fila deles sem responder por ele.
+
+5. **Modelo de documento** ("BAIXAR") vira **anexo de referência** no item: o
+   arquivo que quem cumpre baixa, preenche e devolve. Fica no modelo de
+   checklist e é copiado com ele. Não é o motor de documentos — a planilha de
+   fiscais de contrato não é peça que o sistema saiba gerar.
+
+### O vínculo com o registro
+
+O formulário pedia **o UUID colado à mão**. Ninguém faz isso.
+
+Passa a haver busca por número — processo pelo protocolo, contrato pelo número
+ou fornecedor —, e o caminho principal inverte: um botão **"Novo checklist"
+dentro do próprio processo ou contrato**, que já nasce vinculado. A lista
+avulsa continua existindo, para a tarefa extra que não pertence a registro
+nenhum.
+
+### O PNTP como modelo global
+
+Os 60 critérios entram **semeados por migration**, como os modelos de
+documento: `orgao_id IS NULL`, visíveis a todas as prefeituras. O critério do
+PNTP vem do TCE e é o mesmo para todo mundo — pedir que cada município cole 60
+linhas seria repetir sessenta vezes o mesmo trabalho, com sessenta chances de
+divergir.
+
+Cada prefeitura ajusta o que quiser **na cópia aplicada**, que é o
+comportamento que já existe: aplicar copia os itens.
+
+### Mensal é uma lista por mês
+
+Cada mês vira um checklist novo, aplicando o modelo — com suas datas, seus
+anexos e seu histórico intacto. É o que a planilha faz hoje, uma cópia por mês,
+e cabe no modelo sem mudança alguma.
+
+**Não** é um checklist perpétuo com itens recorrentes: ali o histórico de um
+mês específico ficaria espalhado entre ciclos, e a pergunta "o que faltava em
+agosto?" não teria onde ser respondida.

@@ -9,7 +9,18 @@ import { ALVOS } from "../../../application/checklist/GerenciarChecklist";
  * envelheceria junto com ele.
  */
 const itemBase = {
-  titulo: z.string().min(1).max(200),
+  // 500 porque o critério do PNTP é uma pergunta inteira, não um rótulo.
+  titulo: z.string().min(1).max(500),
+  // A dimensão da planilha: agrupador da tela, texto livre.
+  secao: z.string().max(100).nullable().optional(),
+  // O código oficial do critério — `2.2`, `8.5`. Não é a ordem.
+  codigo: z.string().max(20).nullable().optional(),
+  classificacao: z.enum(["OBRIGATORIA", "ESSENCIAL", "RECOMENDADA"]).nullable().optional(),
+  // Setores que apoiam sem responder pelo item.
+  apoios: z.array(z.object({
+    setorId: z.string().uuid().nullable().optional(),
+    departamentoId: z.string().uuid().nullable().optional(),
+  })).max(10).optional(),
   descricao: z.string().max(2000).nullable().optional(),
   exigeAnexo: z.boolean().default(false),
   recorrente: z.boolean().default(false),

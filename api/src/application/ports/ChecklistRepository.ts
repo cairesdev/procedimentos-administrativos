@@ -13,6 +13,17 @@ export type ItemDeModelo = {
   setorId: string | null;
   departamentoId: string | null;
   paraFornecedor: boolean;
+  /** Agrupador da tela — "Receita", "Licitações". Vem da coluna DIMENSÃO. */
+  secao: string | null;
+  /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */
+  codigo: string | null;
+  /** Peso: é a obrigatória que o TCE cobra. Nulo em checklist comum. */
+  classificacao: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  /** O arquivo que quem cumpre baixa, preenche e devolve. */
+  modeloArquivo: string | null;
+  modeloNomeOriginal: string | null;
+  /** Setores que apoiam sem responder pelo item. */
+  apoios: { setorId: string | null; departamentoId: string | null; nome: string }[];
 };
 
 export type ModeloDeChecklist = {
@@ -23,7 +34,20 @@ export type ModeloDeChecklist = {
   totalItens: number;
 };
 
-export type NovoItemDeModelo = Omit<ItemDeModelo, "id">;
+/** Um apoio, como a tela o envia: só o destino. */
+export type ApoioParaGravar = {
+  setorId?: string | null;
+  departamentoId?: string | null;
+};
+
+/**
+ * O `nome` do apoio é de leitura — vem do join com setor ou departamento.
+ * Exigi-lo na escrita faria a tela mandar de volta um dado que ela recebeu
+ * pronto, e que o banco já sabe.
+ */
+export type NovoItemDeModelo = Omit<ItemDeModelo, "id" | "apoios"> & {
+  apoios?: ApoioParaGravar[];
+};
 
 /** O último ciclo de um item — é dele que a situação é derivada. */
 export type UltimoCiclo = {
@@ -54,6 +78,17 @@ export type ItemDeChecklist = {
   departamentoId: string | null;
   departamentoNome: string | null;
   paraFornecedor: boolean;
+  /** Agrupador da tela — "Receita", "Licitações". Vem da coluna DIMENSÃO. */
+  secao: string | null;
+  /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */
+  codigo: string | null;
+  /** Peso: é a obrigatória que o TCE cobra. Nulo em checklist comum. */
+  classificacao: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  /** O arquivo que quem cumpre baixa, preenche e devolve. */
+  modeloArquivo: string | null;
+  modeloNomeOriginal: string | null;
+  /** Setores que apoiam sem responder pelo item. */
+  apoios: { setorId: string | null; departamentoId: string | null; nome: string }[];
   dispensadoEm: string | null;
   dispensaMotivo: string | null;
   dispensadoPorNome: string | null;
@@ -108,6 +143,12 @@ export type NovoItemDeChecklist = {
   setorId?: string | null;
   departamentoId?: string | null;
   paraFornecedor: boolean;
+  secao?: string | null;
+  codigo?: string | null;
+  classificacao?: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  modeloArquivo?: string | null;
+  modeloNomeOriginal?: string | null;
+  apoios?: ApoioParaGravar[];
 };
 
 /** Só o que a regra de cumprimento precisa saber sobre o item. */
@@ -146,6 +187,10 @@ export interface ChecklistRepository {
   listar(orgaoId: string, filtros: Paginacao & {
     alvoTipo?: string; alvoId?: string; emAberto?: boolean;
   }): Promise<Pagina<ChecklistResumo>>;
+  /** Registros que casam com o texto digitado — número, nome, documento. */
+  buscarAlvos(orgaoId: string, tipo: string, busca: string): Promise<
+    { tipo: string; id: string; numero: string; rotulo: string }[]
+  >;
   /** Os do alvo, sem paginação: o card do processo mostra todos. */
   listarDoAlvo(orgaoId: string, alvoTipo: string, alvoId: string): Promise<ChecklistResumo[]>;
   buscar(orgaoId: string, id: string): Promise<ChecklistCompleto | null>;
@@ -187,6 +232,10 @@ export interface ChecklistRepository {
     nomeOriginal: string;
     tamanhoBytes: number;
   }): Promise<string>;
+  /** O arquivo de referência do item — o "BAIXAR" da planilha. */
+  modeloDoItem(orgaoId: string, itemId: string): Promise<
+    { arquivo: string; nomeOriginal: string } | null
+  >;
   buscarAnexo(orgaoId: string, anexoId: string): Promise<
     { arquivo: string; nomeOriginal: string } | null
   >;

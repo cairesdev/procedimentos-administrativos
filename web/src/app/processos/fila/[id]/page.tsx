@@ -191,7 +191,9 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
             </Card>
           ) : null}
 
-          <ChecklistCard alvoTipo="PROCESSO" alvoId={process.id} />
+          <ChecklistCard alvoTipo="PROCESSO" alvoId={process.id}
+          podeCriar={viewer.can("checklists:manage")}
+        />
 
           {podeVerOrdens ? (
             <Card title="Ordens de fornecimento">

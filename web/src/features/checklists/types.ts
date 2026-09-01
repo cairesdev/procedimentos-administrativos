@@ -49,6 +49,15 @@ export type ChecklistItem = {
   departamentoId: string | null;
   departamentoNome: string | null;
   paraFornecedor: boolean;
+  /** Agrupador da tela — a DIMENSÃO da planilha do PNTP. */
+  secao: string | null;
+  /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */
+  codigo: string | null;
+  classificacao: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  /** O arquivo que quem cumpre baixa, preenche e devolve. */
+  modeloArquivo: string | null;
+  modeloNomeOriginal: string | null;
+  apoios: { setorId: string | null; departamentoId: string | null; nome: string }[];
   dispensadoEm: string | null;
   dispensaMotivo: string | null;
   dispensadoPorNome: string | null;
@@ -90,6 +99,15 @@ export type ChecklistTemplateItem = {
   setorId: string | null;
   departamentoId: string | null;
   paraFornecedor: boolean;
+  /** Agrupador da tela — a DIMENSÃO da planilha do PNTP. */
+  secao: string | null;
+  /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */
+  codigo: string | null;
+  classificacao: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  /** O arquivo que quem cumpre baixa, preenche e devolve. */
+  modeloArquivo: string | null;
+  modeloNomeOriginal: string | null;
+  apoios: { setorId: string | null; departamentoId: string | null; nome: string }[];
 };
 
 export type ChecklistTemplate = {
@@ -102,4 +120,24 @@ export type ChecklistTemplate = {
 
 export type ChecklistTemplateDetail = ChecklistTemplate & {
   itens: ChecklistTemplateItem[];
+};
+
+/**
+ * O peso do critério, na linguagem do PNTP.
+ *
+ * É a obrigatória que o TCE cobra — por isso ela vem primeiro e com o tom mais
+ * forte que o `Badge` oferece.
+ */
+export const CLASSIFICACOES = [
+  { value: "OBRIGATORIA", label: "obrigatória", tone: "warning" as const },
+  { value: "ESSENCIAL", label: "essencial", tone: "accent" as const },
+  { value: "RECOMENDADA", label: "recomendada", tone: "neutral" as const },
+];
+
+/** Um registro que o checklist pode acompanhar, como a busca o devolve. */
+export type ChecklistTargetOption = {
+  tipo: string;
+  id: string;
+  numero: string;
+  rotulo: string;
 };

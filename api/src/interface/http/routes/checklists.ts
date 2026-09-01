@@ -58,6 +58,14 @@ checklistsRouter.post("/modelos", administra, async (req, res, next) => {
         periodicidadeDias: item.periodicidadeDias ?? null,
         setorId: item.setorId ?? null,
         departamentoId: item.departamentoId ?? null,
+        secao: item.secao ?? null,
+        codigo: item.codigo ?? null,
+        classificacao: item.classificacao ?? null,
+        // O arquivo de referência sobe por rota própria, depois de o item
+        // existir — como o anexo do cumprimento.
+        modeloArquivo: null,
+        modeloNomeOriginal: null,
+        apoios: item.apoios ?? [],
       })),
     }));
   } catch (error) {
@@ -82,6 +90,14 @@ checklistsRouter.put("/modelos/:id", administra, async (req, res, next) => {
         periodicidadeDias: item.periodicidadeDias ?? null,
         setorId: item.setorId ?? null,
         departamentoId: item.departamentoId ?? null,
+        secao: item.secao ?? null,
+        codigo: item.codigo ?? null,
+        classificacao: item.classificacao ?? null,
+        // O arquivo de referência sobe por rota própria, depois de o item
+        // existir — como o anexo do cumprimento.
+        modeloArquivo: null,
+        modeloNomeOriginal: null,
+        apoios: item.apoios ?? [],
       })),
     });
     res.json({ message: "Modelo atualizado" });
@@ -115,6 +131,20 @@ checklistsRouter.get("/", async (req, res, next) => {
   }
 });
 
+// Busca o registro a que o checklist vai se prender: o servidor digita o
+// número, e não cola um UUID.
+checklistsRouter.get("/alvos", async (req, res, next) => {
+  try {
+    res.json(await container.gerenciarChecklist.buscarAlvos(
+      req.sessao!.orgaoId,
+      filtroDaQuery(req, "tipo") ?? "",
+      filtroDaQuery(req, "busca") ?? "",
+    ));
+  } catch (error) {
+    next(error);
+  }
+});
+
 checklistsRouter.post("/", administra, async (req, res, next) => {
   try {
     const dados = criarChecklistSchema.parse(req.body);
@@ -130,6 +160,10 @@ checklistsRouter.post("/", administra, async (req, res, next) => {
         periodicidadeDias: item.periodicidadeDias ?? null,
         setorId: item.setorId ?? null,
         departamentoId: item.departamentoId ?? null,
+        secao: item.secao ?? null,
+        codigo: item.codigo ?? null,
+        classificacao: item.classificacao ?? null,
+        apoios: item.apoios ?? [],
       })),
     }));
   } catch (error) {
@@ -172,6 +206,10 @@ checklistsRouter.put("/:id/itens", administra, async (req, res, next) => {
         periodicidadeDias: item.periodicidadeDias ?? null,
         setorId: item.setorId ?? null,
         departamentoId: item.departamentoId ?? null,
+        secao: item.secao ?? null,
+        codigo: item.codigo ?? null,
+        classificacao: item.classificacao ?? null,
+        apoios: item.apoios ?? [],
       })),
     });
     res.json({ message: "Itens atualizados" });
@@ -344,6 +382,18 @@ checklistsRouter.post(
     }
   },
 );
+
+// O modelo de referência do item — o "BAIXAR" da planilha do PNTP.
+checklistsRouter.get("/:id/itens/:itemId/modelo", async (req, res, next) => {
+  try {
+    const { nomeOriginal, arquivo } = await container.anexosDoChecklist.baixarModelo(
+      req.sessao!.orgaoId, req.params.itemId!,
+    );
+    enviarArquivo(res, arquivo, { nomeParaDownload: nomeOriginal });
+  } catch (error) {
+    next(error);
+  }
+});
 
 checklistsRouter.get("/:id/anexos/:anexoId/download", async (req, res, next) => {
   try {

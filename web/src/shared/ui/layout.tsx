@@ -22,14 +22,27 @@ export const PageHeader = ({
 export const Card = ({
   title,
   padded = true,
+  action,
   children,
 }: {
   title?: string;
   padded?: boolean;
+  /**
+   * Botão no canto do título — "Novo checklist" dentro do processo.
+   *
+   * O `PageHeader` já tinha isto; o card não, e a ação acabava solta acima ou
+   * abaixo dele, longe do que ela cria.
+   */
+  action?: ReactNode;
   children: ReactNode;
 }) => (
   <section className={styles.card}>
-    {title ? <h2 className={styles.card_title}>{title}</h2> : null}
+    {title || action ? (
+      <div className={styles.card_header}>
+        {title ? <h2 className={styles.card_title}>{title}</h2> : <span />}
+        {action}
+      </div>
+    ) : null}
     {padded ? <div className={styles.card_body}>{children}</div> : children}
   </section>
 );

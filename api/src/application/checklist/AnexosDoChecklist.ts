@@ -44,6 +44,22 @@ export class AnexosDoChecklist {
     }
   };
 
+  /**
+   * O arquivo de referência do item: quem cumpre baixa, preenche e devolve.
+   *
+   * Só leitura, e por isso basta `checklists:read` — é material de trabalho,
+   * não entrega de ninguém.
+   */
+  baixarModelo = async (orgaoId: string, itemId: string) => {
+    const modelo = await this.checklists.modeloDoItem(orgaoId, itemId);
+    if (!modelo) throw new NaoEncontrado("Este item não tem modelo para baixar");
+
+    return {
+      nomeOriginal: modelo.nomeOriginal,
+      arquivo: await this.storage.abrir(modelo.arquivo),
+    };
+  };
+
   baixar = async (orgaoId: string, anexoId: string) => {
     const anexo = await this.checklists.buscarAnexo(orgaoId, anexoId);
     if (!anexo) throw new NaoEncontrado("Anexo não encontrado");

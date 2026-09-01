@@ -69,10 +69,23 @@ const SQL = {
            prazo_dias AS "prazoDias", recorrente,
            periodicidade_dias AS "periodicidadeDias",
            setor_id AS "setorId", departamento_id AS "departamentoId",
-           para_fornecedor AS "paraFornecedor"
+           para_fornecedor AS "paraFornecedor",
+           secao, codigo, classificacao,
+           modelo_arquivo AS "modeloArquivo",
+           modelo_nome_original AS "modeloNomeOriginal"
       FROM checklist_modelo_item
      WHERE modelo_id = $1
      ORDER BY ordem`,
+
+  apoiosDoModelo: `
+    SELECT a.modelo_item_id AS "itemId", a.setor_id AS "setorId",
+           a.departamento_id AS "departamentoId",
+           coalesce(s.nome, d.nome) AS nome
+      FROM checklist_modelo_item_apoio a
+      JOIN checklist_modelo_item mi ON mi.id = a.modelo_item_id
+      LEFT JOIN setor s ON s.id = a.setor_id
+      LEFT JOIN departamento d ON d.id = a.departamento_id
+     WHERE mi.modelo_id = $1`,
 
   criarModelo: `
     INSERT INTO checklist_modelo (orgao_id, nome, descricao)
@@ -93,12 +106,56 @@ const SQL = {
   inserirItemDeModelo: `
     INSERT INTO checklist_modelo_item
       (modelo_id, ordem, titulo, descricao, exige_anexo, prazo_dias,
-       recorrente, periodicidade_dias, setor_id, departamento_id, para_fornecedor)
-    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-      FROM checklist_modelo m WHERE m.orgao_id = $1 AND m.id = $2`,
+       recorrente, periodicidade_dias, setor_id, departamento_id, para_fornecedor,
+       secao, codigo, classificacao, modelo_arquivo, modelo_nome_original)
+    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+      FROM checklist_modelo m WHERE m.orgao_id = $1 AND m.id = $2
+    RETURNING id`,
+
+  inserirApoioDeModelo: `
+    INSERT INTO checklist_modelo_item_apoio (modelo_item_id, setor_id, departamento_id)
+    VALUES ($1, $2, $3)`,
 
   modeloEstaEmUso: `
     SELECT 1 FROM checklist WHERE orgao_id = $1 AND modelo_id = $2 LIMIT 1`,
+
+  /**
+   * Busca o registro a que o checklist vai se prender.
+   *
+   * O formulário pedia o **UUID colado à mão** — ninguém faz isso. Aqui o
+   * servidor digita o número do processo ou do contrato, como ele o conhece.
+   *
+   * Uma consulta por tipo, unidas: cada tabela tem seu número e seu rótulo, e
+   * uma view genérica sobre todas custaria mais que as quatro linhas de UNION.
+   */
+  buscarAlvos: `
+    SELECT 'PROCESSO' AS tipo, p.id, p.numero_processo_adm AS numero,
+           coalesce(r.nome, 'Processo administrativo') AS rotulo
+      FROM processo p
+      LEFT JOIN requerente r ON r.id = p.requerente_id
+     WHERE p.orgao_id = $1 AND $2 = 'PROCESSO'
+       AND (p.numero_processo_adm ILIKE $3 OR p.numero_protocolo ILIKE $3)
+    UNION ALL
+    SELECT 'CONTRATO', c.id, c.numero, f.razao_social
+      FROM contrato c
+      JOIN fornecedor f ON f.id = c.fornecedor_id
+     WHERE c.orgao_id = $1 AND $2 = 'CONTRATO'
+       AND (c.numero ILIKE $3 OR f.razao_social ILIKE $3)
+    UNION ALL
+    SELECT 'LICITACAO', l.id, l.numero, l.objeto
+      FROM licitacao l
+     WHERE l.orgao_id = $1 AND $2 = 'LICITACAO'
+       AND (l.numero ILIKE $3 OR l.objeto ILIKE $3)
+    UNION ALL
+    SELECT 'FORNECEDOR', f.id, f.documento, f.razao_social
+      FROM fornecedor f
+     WHERE $2 = 'FORNECEDOR'
+       AND (f.documento ILIKE $3 OR f.razao_social ILIKE $3)
+       -- Fornecedor é cadastro global: só os que esta prefeitura contratou.
+       AND EXISTS (SELECT 1 FROM contrato c
+                    WHERE c.fornecedor_id = f.id AND c.orgao_id = $1)
+    ORDER BY numero
+    LIMIT 20`,
 
   // ---- Checklists ----------------------------------------------------------
   listar: `
@@ -163,6 +220,9 @@ const SQL = {
            i.setor_id AS "setorId", s.nome AS "setorNome",
            i.departamento_id AS "departamentoId", d.nome AS "departamentoNome",
            i.para_fornecedor AS "paraFornecedor",
+           i.secao, i.codigo, i.classificacao,
+           i.modelo_arquivo AS "modeloArquivo",
+           i.modelo_nome_original AS "modeloNomeOriginal",
            i.dispensado_em AS "dispensadoEm", i.dispensa_motivo AS "dispensaMotivo",
            ud.nome AS "dispensadoPorNome"
       FROM checklist_item i
@@ -180,6 +240,16 @@ const SQL = {
       LEFT JOIN usuario usv ON usv.id = cu.conferido_por
      WHERE i.checklist_id = $1
      ORDER BY cu.item_id, cu.ciclo DESC`,
+
+  apoiosDoChecklist: `
+    SELECT a.item_id AS "itemId", a.setor_id AS "setorId",
+           a.departamento_id AS "departamentoId",
+           coalesce(s.nome, d.nome) AS nome
+      FROM checklist_item_apoio a
+      JOIN checklist_item i ON i.id = a.item_id
+      LEFT JOIN setor s ON s.id = a.setor_id
+      LEFT JOIN departamento d ON d.id = a.departamento_id
+     WHERE i.checklist_id = $1`,
 
   anexosDoChecklist: `
     SELECT a.id, a.cumprimento_id AS "cumprimentoId",
@@ -211,9 +281,15 @@ const SQL = {
   inserirItem: `
     INSERT INTO checklist_item
       (checklist_id, ordem, titulo, descricao, exige_anexo, prazo_limite,
-       recorrente, periodicidade_dias, setor_id, departamento_id, para_fornecedor)
-    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-      FROM checklist ck WHERE ck.orgao_id = $1 AND ck.id = $2`,
+       recorrente, periodicidade_dias, setor_id, departamento_id, para_fornecedor,
+       secao, codigo, classificacao, modelo_arquivo, modelo_nome_original)
+    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+      FROM checklist ck WHERE ck.orgao_id = $1 AND ck.id = $2
+    RETURNING id`,
+
+  inserirApoio: `
+    INSERT INTO checklist_item_apoio (item_id, setor_id, departamento_id)
+    VALUES ($1, $2, $3)`,
 
   // ---- Cumprimento ---------------------------------------------------------
   buscarItemParaCumprir: `
@@ -257,6 +333,12 @@ const SQL = {
     INSERT INTO checklist_anexo (cumprimento_id, arquivo, nome_original, tamanho_bytes)
     VALUES ($1, $2, $3, $4) RETURNING id`,
 
+  modeloDoItem: `
+    SELECT i.modelo_arquivo AS arquivo, i.modelo_nome_original AS "nomeOriginal"
+      FROM checklist_item i
+      JOIN checklist ck ON ck.id = i.checklist_id
+     WHERE ck.orgao_id = $1 AND i.id = $2 AND i.modelo_arquivo IS NOT NULL`,
+
   buscarAnexo: `
     SELECT a.arquivo, a.nome_original AS "nomeOriginal"
       FROM checklist_anexo a
@@ -281,11 +363,18 @@ export class PostgresChecklistRepository implements ChecklistRepository {
     const modelo = rows[0];
     if (!modelo) return null;
 
-    const itens = await pool.query(SQL.itensDoModelo, [id]);
+    const [itens, apoios] = await Promise.all([
+      pool.query(SQL.itensDoModelo, [id]),
+      pool.query(SQL.apoiosDoModelo, [id]),
+    ]);
+
     return {
       ...modelo,
       totalItens: numero(modelo.totalItens),
-      itens: itens.rows as ItemDeModelo[],
+      itens: itens.rows.map((item) => ({
+        ...item,
+        apoios: agruparApoios(apoios.rows, item.id),
+      })) as ItemDeModelo[],
     };
   };
 
@@ -315,12 +404,24 @@ export class PostgresChecklistRepository implements ChecklistRepository {
   ): Promise<void> => {
     await tx.query(SQL.limparItensDoModelo, [orgaoId, modeloId]);
     for (const item of itens) {
-      await tx.query(SQL.inserirItemDeModelo, [
+      const { rows } = await tx.query(SQL.inserirItemDeModelo, [
         orgaoId, modeloId, item.ordem, item.titulo, item.descricao ?? null,
         item.exigeAnexo, item.prazoDias ?? null, item.recorrente,
         item.periodicidadeDias ?? null, item.setorId ?? null,
         item.departamentoId ?? null, item.paraFornecedor,
+        item.secao ?? null, item.codigo ?? null, item.classificacao ?? null,
+        item.modeloArquivo ?? null, item.modeloNomeOriginal ?? null,
       ]);
+      // Sem linha inserida, o modelo é de outra prefeitura: o `SELECT ... FROM
+      // checklist_modelo WHERE orgao_id` filtrou, e não há a que pendurar apoio.
+      const criado = rows[0]?.id as string | undefined;
+      if (!criado) continue;
+
+      for (const apoio of item.apoios ?? []) {
+        await tx.query(SQL.inserirApoioDeModelo, [
+          criado, apoio.setorId ?? null, apoio.departamentoId ?? null,
+        ]);
+      }
     }
   };
 
@@ -330,6 +431,11 @@ export class PostgresChecklistRepository implements ChecklistRepository {
   };
 
   // ---- Checklists ----------------------------------------------------------
+
+  buscarAlvos = async (orgaoId: string, tipo: string, busca: string) => {
+    const { rows } = await pool.query(SQL.buscarAlvos, [orgaoId, tipo, `%${busca}%`]);
+    return rows as { tipo: string; id: string; numero: string; rotulo: string }[];
+  };
 
   listar = async (orgaoId: string, filtros: Paginacao & {
     alvoTipo?: string; alvoId?: string; emAberto?: boolean;
@@ -364,10 +470,11 @@ export class PostgresChecklistRepository implements ChecklistRepository {
     const checklist = rows[0];
     if (!checklist) return null;
 
-    const [itens, ciclos, anexos] = await Promise.all([
+    const [itens, ciclos, anexos, apoios] = await Promise.all([
       pool.query(SQL.itensDoChecklist, [id]),
       pool.query(SQL.ciclosDoChecklist, [id]),
       pool.query(SQL.anexosDoChecklist, [id]),
+      pool.query(SQL.apoiosDoChecklist, [id]),
     ]);
 
     // Os anexos pendem do ciclo; agrupá-los aqui evita uma consulta por ciclo.
@@ -411,6 +518,7 @@ export class PostgresChecklistRepository implements ChecklistRepository {
         const doItem = ciclosPorItem.get(item.id) ?? [];
         return {
           ...item,
+          apoios: agruparApoios(apoios.rows, item.id),
           ultimoCiclo: doItem[0] ?? null,
           historico: doItem.slice(1),
         } as ItemDeChecklist;
@@ -429,12 +537,7 @@ export class PostgresChecklistRepository implements ChecklistRepository {
     const id = rows[0].id as string;
 
     for (const item of itens) {
-      await tx.query(SQL.inserirItem, [
-        dados.orgaoId, id, item.ordem, item.titulo, item.descricao ?? null,
-        item.exigeAnexo, item.prazoLimite ?? null, item.recorrente,
-        item.periodicidadeDias ?? null, item.setorId ?? null,
-        item.departamentoId ?? null, item.paraFornecedor,
-      ]);
+      await this.inserirItem(dados.orgaoId, id, item, tx);
     }
     return id;
   };
@@ -458,11 +561,34 @@ export class PostgresChecklistRepository implements ChecklistRepository {
   ): Promise<void> => {
     await tx.query(SQL.limparItens, [orgaoId, checklistId]);
     for (const item of itens) {
-      await tx.query(SQL.inserirItem, [
-        orgaoId, checklistId, item.ordem, item.titulo, item.descricao ?? null,
-        item.exigeAnexo, item.prazoLimite ?? null, item.recorrente,
-        item.periodicidadeDias ?? null, item.setorId ?? null,
-        item.departamentoId ?? null, item.paraFornecedor,
+      await this.inserirItem(orgaoId, checklistId, item, tx);
+    }
+  };
+
+  /**
+   * Um item e seus apoios, na mesma transação.
+   *
+   * Extraído porque criar e substituir faziam a mesma coisa, e a segunda cópia
+   * é onde o campo novo é esquecido.
+   */
+  private inserirItem = async (
+    orgaoId: string, checklistId: string, item: NovoItemDeChecklist, tx: Tx,
+  ): Promise<void> => {
+    const { rows } = await tx.query(SQL.inserirItem, [
+      orgaoId, checklistId, item.ordem, item.titulo, item.descricao ?? null,
+      item.exigeAnexo, item.prazoLimite ?? null, item.recorrente,
+      item.periodicidadeDias ?? null, item.setorId ?? null,
+      item.departamentoId ?? null, item.paraFornecedor,
+      item.secao ?? null, item.codigo ?? null, item.classificacao ?? null,
+      item.modeloArquivo ?? null, item.modeloNomeOriginal ?? null,
+    ]);
+
+    const criado = rows[0]?.id as string | undefined;
+    if (!criado) return;
+
+    for (const apoio of item.apoios ?? []) {
+      await tx.query(SQL.inserirApoio, [
+        criado, apoio.setorId ?? null, apoio.departamentoId ?? null,
       ]);
     }
   };
@@ -517,8 +643,22 @@ export class PostgresChecklistRepository implements ChecklistRepository {
     return rows[0].id as string;
   };
 
+  modeloDoItem = async (orgaoId: string, itemId: string) => {
+    const { rows } = await pool.query(SQL.modeloDoItem, [orgaoId, itemId]);
+    return (rows[0] as { arquivo: string; nomeOriginal: string }) ?? null;
+  };
+
   buscarAnexo = async (orgaoId: string, anexoId: string) => {
     const { rows } = await pool.query(SQL.buscarAnexo, [orgaoId, anexoId]);
     return (rows[0] as { arquivo: string; nomeOriginal: string }) ?? null;
   };
 }
+
+
+/** Os apoios de um item, do resultado plano da consulta. */
+const agruparApoios = (
+  linhas: { itemId: string; setorId: string | null; departamentoId: string | null; nome: string }[],
+  itemId: string,
+) => linhas
+  .filter((linha) => linha.itemId === itemId)
+  .map(({ setorId, departamentoId, nome }) => ({ setorId, departamentoId, nome }));

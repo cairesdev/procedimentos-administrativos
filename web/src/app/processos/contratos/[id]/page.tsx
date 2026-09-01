@@ -194,7 +194,9 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
           </Table>
         </Card>
 
-        <ChecklistCard alvoTipo="CONTRATO" alvoId={contrato.id} />
+        <ChecklistCard alvoTipo="CONTRATO" alvoId={contrato.id}
+          podeCriar={viewer.can("checklists:manage")}
+        />
 
         {contrato.unidades.length === 0 ? (
           <Alert tone="error">

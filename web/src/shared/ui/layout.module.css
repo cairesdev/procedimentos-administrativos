@@ -30,11 +30,26 @@
   min-width: 0;
 }
 
+/**
+ * O topo do card: título à esquerda, ação à direita.
+ *
+ * A borda inferior saiu do título e veio para cá — no título, ela cortava o
+ * cabeçalho ao meio quando havia um botão ao lado.
+ */
+.card_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--borda);
+  /* O botão não estica a linha: o card fica com a mesma altura de sempre. */
+  min-height: 46px;
+}
+
 .card_title {
   font-size: 15px;
   font-weight: 600;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--borda);
 }
 
 .card_body {

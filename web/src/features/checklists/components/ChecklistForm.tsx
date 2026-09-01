@@ -10,7 +10,8 @@ import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import { createChecklist } from "../actions";
 import { checklistSchema, type ChecklistInput } from "../schemas";
-import { ALVOS, type ChecklistTemplate } from "../types";
+import { TargetPicker } from "./TargetPicker";
+import type { ChecklistTemplate } from "../types";
 
 const ITEM_VAZIO = {
   titulo: "",
@@ -95,21 +96,14 @@ export const ChecklistForm = ({
       />
 
       {alvo ? null : (
-        <FieldGrid>
-          <SelectField
-            label="Referente a"
-            emptyOption="— lista avulsa —"
-            hint="Um processo, contrato, fornecedor… ou nada."
-            options={ALVOS.map((tipo) => ({ value: tipo, label: tipo.toLowerCase() }))}
-            {...form.register("alvoTipo")}
-          />
-          <InputField
-            label="Id do registro"
-            placeholder="Cole o identificador"
-            hint="Só quando houver um registro."
-            {...form.register("alvoId")}
-          />
-        </FieldGrid>
+        <TargetPicker
+          tipo={form.watch("alvoTipo") ?? ""}
+          onTipo={(tipo) => form.setValue(
+            "alvoTipo", (tipo || undefined) as ChecklistInput["alvoTipo"],
+          )}
+          alvoId={form.watch("alvoId") ?? ""}
+          onAlvo={(id) => form.setValue("alvoId", id)}
+        />
       )}
 
       <SelectField

@@ -632,6 +632,43 @@ CASOS: list[tuple[str, str, bool]] = [
      "DELETE FROM checklist_convite WHERE checklist_id = "
      "'c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2'",
      True),
+    # ---- 0036: o que a planilha do PNTP exigiu ----------------------------
+    ("classificacao do vocabulario e aceita",
+     "UPDATE checklist_item SET classificacao = 'OBRIGATORIA' "
+     "WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     True),
+    ("classificacao inventada e recusada",
+     "UPDATE checklist_item SET classificacao = 'IMPORTANTE' "
+     "WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     False),
+    ("item sem classificacao continua valido",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 200,'Item comum')",
+     True),
+    ("arquivo de modelo sem nome e recusado",
+     "UPDATE checklist_item SET modelo_arquivo = 'a/b.xlsx' "
+     "WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     False),
+    ("arquivo e nome juntos sao aceitos",
+     "UPDATE checklist_item SET modelo_arquivo = 'a/b.xlsx', "
+     "modelo_nome_original = 'fiscais.xlsx' "
+     "WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     True),
+    ("apoio com setor de verdade e aceito",
+     "INSERT INTO checklist_item_apoio (item_id, setor_id) VALUES "
+     "('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3','dddddddd-dddd-dddd-dddd-dddddddddddd')",
+     True),
+    ("o mesmo setor nao apoia duas vezes",
+     "INSERT INTO checklist_item_apoio (item_id, setor_id) VALUES "
+     "('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3','dddddddd-dddd-dddd-dddd-dddddddddddd')",
+     False),
+    ("apoio sem destino nenhum e recusado",
+     "INSERT INTO checklist_item_apoio (item_id) VALUES "
+     "('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3')",
+     False),
+    ("apoio apagado junto com o item",
+     "DELETE FROM checklist_item WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     True),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "

@@ -104,6 +104,18 @@ export class GerenciarChecklist {
   listar: ChecklistRepository["listar"] = (orgaoId, filtros) =>
     this.checklists.listar(orgaoId, filtros);
 
+  /**
+   * Busca o registro pelo que o servidor conhece: o número.
+   *
+   * Texto curto demais devolve vazio em vez de a prefeitura inteira — uma
+   * letra casaria com tudo, e a lista de 20 primeiros não ajudaria ninguém.
+   */
+  buscarAlvos = async (orgaoId: string, tipo: string, busca: string) => {
+    if (!ehAlvo(tipo)) throw new ErroDeNegocio(`Tipo de alvo desconhecido: ${tipo}`);
+    if (busca.trim().length < 2) return [];
+    return this.checklists.buscarAlvos(orgaoId, tipo, busca.trim());
+  };
+
   listarDoAlvo: ChecklistRepository["listarDoAlvo"] = (orgaoId, alvoTipo, alvoId) =>
     this.checklists.listarDoAlvo(orgaoId, alvoTipo, alvoId);
 

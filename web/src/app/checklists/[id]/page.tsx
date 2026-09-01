@@ -3,8 +3,10 @@ import { findChecklist, findChecklistInvite } from "@/features/checklists/querie
 import { InviteButton } from "@/features/checklists/components/InviteButton";
 import styles from "@/features/checklists/components/Checklist.module.css";
 import { ItemActions } from "@/features/checklists/components/ItemActions";
-import { completoHoje, situacaoDoItem, atrasado } from "@/features/checklists/situacao";
-import { SITUACOES } from "@/features/checklists/types";
+import {
+  atrasado, completoHoje, pendenciasPorPeso, porSecao, resumoDePendencias, situacaoDoItem,
+} from "@/features/checklists/situacao";
+import { CLASSIFICACOES, SITUACOES } from "@/features/checklists/types";
 import { listDocumentsFor, listTemplates } from "@/features/documents/queries";
 import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumentPanel";
 import { ApiError } from "@/shared/api/http-client";
@@ -38,11 +40,16 @@ export default async function ChecklistPage({ params }: PageProps) {
   const temItemDeFornecedor = checklist.itens.some((item) => item.paraFornecedor);
 
   const completo = completoHoje(checklist.itens);
-  const emAberto = checklist.itens.filter((item) => {
-    const situacao = situacaoDoItem(item);
-    return situacao === "PENDENTE" || situacao === "VENCIDO";
-  });
   const vencidos = checklist.itens.filter((item) => situacaoDoItem(item) === "VENCIDO");
+
+  /**
+   * O que falta, por peso.
+   *
+   * "Faltam 3 obrigatórias e 1 essencial" diz onde correr; "faltam 4" só diz
+   * que há trabalho — e é a obrigatória que o TCE cobra.
+   */
+  const pendencias = pendenciasPorPeso(checklist.itens);
+  const grupos = porSecao(checklist.itens);
 
   return (
     <>
@@ -93,18 +100,29 @@ export default async function ChecklistPage({ params }: PageProps) {
               },
               { label: "Criado por", value: checklist.criadoPorNome ?? "—" },
               { label: "Criado em", value: toDate(checklist.criadoEm) },
-              { label: "Em aberto", value: `${emAberto.length} de ${checklist.itens.length}` },
+              {
+                label: "Em aberto",
+                value: pendencias.total === 0
+                  ? "nada pendente"
+                  : `${resumoDePendencias(pendencias)} · ${checklist.itens.length} itens`,
+                wide: true,
+              },
             ]}
           />
         </Card>
 
-        <Card title={`Itens (${checklist.itens.length})`} padded={false}>
-          <Table
-            columns={["Exigência", "Quem cumpre", "Prazo", "Situação", "Última entrega", ""]}
-            isEmpty={checklist.itens.length === 0}
-            emptyMessage="Este checklist não tem item nenhum."
+        {grupos.map(([secao, itens]) => (
+          <Card
+            key={secao || "sem-secao"}
+            title={secao || `Itens (${itens.length})`}
+            padded={false}
           >
-            {checklist.itens.map((item) => {
+            <Table
+              columns={["Exigência", "Quem cumpre", "Prazo", "Situação", "Última entrega", ""]}
+              isEmpty={itens.length === 0}
+              emptyMessage="Nenhum item nesta seção."
+            >
+            {itens.map((item) => {
               const situacao = situacaoDoItem(item);
               const estado = rotulo(situacao);
               const ciclo = item.ultimoCiclo;
@@ -112,7 +130,26 @@ export default async function ChecklistPage({ params }: PageProps) {
               return (
                 <tr key={item.id}>
                   <td>
+                    {item.codigo ? (
+                      <>
+                        <code className={styles.codigo}>{item.codigo}</code>{" "}
+                      </>
+                    ) : null}
                     <strong>{item.titulo}</strong>
+                    {item.classificacao ? (
+                      <>
+                        {" "}
+                        <Badge
+                          tone={CLASSIFICACOES.find(
+                            (c) => c.value === item.classificacao,
+                          )?.tone ?? "neutral"}
+                        >
+                          {CLASSIFICACOES.find(
+                            (c) => c.value === item.classificacao,
+                          )?.label ?? item.classificacao}
+                        </Badge>
+                      </>
+                    ) : null}
                     {item.descricao ? (
                       <>
                         <br />
@@ -139,6 +176,27 @@ export default async function ChecklistPage({ params }: PageProps) {
                     {item.paraFornecedor
                       ? "fornecedor"
                       : item.setorNome ?? item.departamentoNome ?? "—"}
+                    {item.apoios.length > 0 ? (
+                      <>
+                        <br />
+                        {/* Os apoios veem o item na fila deles sem responder
+                            por ele — o "COM JURÍDICO" da planilha. */}
+                        <small className={styles.suave}>
+                          com {item.apoios.map((apoio) => apoio.nome).join(", ")}
+                        </small>
+                      </>
+                    ) : null}
+                    {item.modeloNomeOriginal ? (
+                      <>
+                        <br />
+                        <a
+                          href={`/api/proxy/checklists/${checklist.id}/itens/${item.id}/modelo`}
+                          className={styles.anexo}
+                        >
+                          baixar modelo
+                        </a>
+                      </>
+                    ) : null}
                   </td>
 
                   <td>
@@ -212,8 +270,9 @@ export default async function ChecklistPage({ params }: PageProps) {
                 </tr>
               );
             })}
-          </Table>
-        </Card>
+            </Table>
+          </Card>
+        ))}
 
         <Card title="Documentos" padded={false}>
           <div className={styles.painel}>

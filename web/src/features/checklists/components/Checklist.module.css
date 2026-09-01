@@ -189,3 +189,14 @@
 .vazio {
   color: var(--texto_apagado);
 }
+
+/** O código oficial do critério, ao lado do título. */
+.codigo {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--superficie_alt);
+  border: 1px solid var(--borda);
+  font-size: 11px;
+  font-family: var(--fonte_mono, ui-monospace, monospace);
+  color: var(--texto_suave);
+}

@@ -114,3 +114,80 @@ export const vigenciaAte = (
   data.setUTCDate(data.getUTCDate() + periodicidadeDias);
   return data.toISOString().slice(0, 10);
 };
+
+/**
+ * O peso de um critério, na linguagem do PNTP.
+ *
+ * A planilha do Tribunal classifica cada critério em três níveis, e a
+ * diferença não é acadêmica: é a obrigatória que o TCE cobra, e é por ela que
+ * a prefeitura começa.
+ */
+export const CLASSIFICACOES = ["OBRIGATORIA", "ESSENCIAL", "RECOMENDADA"] as const;
+
+export type Classificacao = (typeof CLASSIFICACOES)[number];
+
+/** Item comum não tem classificação — e nulo aqui quer dizer isso mesmo. */
+export type ItemClassificado = ItemParaSituacao & {
+  classificacao: Classificacao | null;
+};
+
+export type PendenciasPorPeso = {
+  OBRIGATORIA: number;
+  ESSENCIAL: number;
+  RECOMENDADA: number;
+  /** As sem classificação — o checklist comum, que não é do PNTP. */
+  SEM_PESO: number;
+  total: number;
+};
+
+/**
+ * Quanto falta, por peso.
+ *
+ * "Faltam 3 obrigatórias e 1 essencial" é uma frase diferente de "faltam 4":
+ * a primeira diz onde correr, a segunda só diz que há trabalho. A tela precisa
+ * da primeira.
+ *
+ * Conta o que está **em aberto** — pendente ou vencido. Item aguardando
+ * conferência já saiu das mãos de quem cumpre, e cobrá-lo de novo seria cobrar
+ * duas vezes a mesma entrega.
+ */
+export const pendenciasPorPeso = (
+  itens: ItemClassificado[],
+  hoje: string,
+): PendenciasPorPeso => {
+  const contagem: PendenciasPorPeso = {
+    OBRIGATORIA: 0, ESSENCIAL: 0, RECOMENDADA: 0, SEM_PESO: 0, total: 0,
+  };
+
+  for (const item of itens) {
+    if (!estaEmAberto(situacaoDoItem(item, hoje))) continue;
+    contagem[item.classificacao ?? "SEM_PESO"] += 1;
+    contagem.total += 1;
+  }
+  return contagem;
+};
+
+/**
+ * A frase que a tela mostra.
+ *
+ * Existe aqui, e não no componente, porque a concordância é regra e não
+ * enfeite: "1 obrigatória" e "3 obrigatórias" mudam a palavra, e escrever isso
+ * em JSX espalha o mesmo `if` por três telas.
+ */
+export const resumoDePendencias = (contagem: PendenciasPorPeso): string => {
+  if (contagem.total === 0) return "sem pendências";
+
+  const partes: string[] = [];
+  const dizer = (quantas: number, singular: string, plural: string) => {
+    if (quantas > 0) partes.push(`${quantas} ${quantas === 1 ? singular : plural}`);
+  };
+
+  dizer(contagem.OBRIGATORIA, "obrigatória", "obrigatórias");
+  dizer(contagem.ESSENCIAL, "essencial", "essenciais");
+  dizer(contagem.RECOMENDADA, "recomendada", "recomendadas");
+  dizer(contagem.SEM_PESO, "item", "itens");
+
+  // "3 obrigatórias, 1 essencial e 2 recomendadas" — a vírgula até o penúltimo.
+  if (partes.length === 1) return partes[0]!;
+  return `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
+};

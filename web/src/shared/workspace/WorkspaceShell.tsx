@@ -28,7 +28,8 @@ export const WorkspaceShell = async ({
     getActiveAssignmentId(),
   ]);
 
-  if (!hasModule(viewer.modules, workspace.module)) redirect("/modulo-indisponivel");
+  if (!hasModule(viewer.modules, workspace.module))
+    redirect("/modulo-indisponivel");
 
   const sections = workspace.sections
     .map((section) => ({
@@ -68,7 +69,10 @@ export const WorkspaceShell = async ({
         </div>
 
         <div className={styles.topbar_right}>
-          <AssignmentSwitcher assignments={profile.lotacoes} activeId={activeAssignmentId} />
+          <AssignmentSwitcher
+            assignments={profile.lotacoes}
+            activeId={activeAssignmentId}
+          />
           <span className={styles.user}>
             <span className={styles.user_name}>{viewer.name}</span>
             <br />
