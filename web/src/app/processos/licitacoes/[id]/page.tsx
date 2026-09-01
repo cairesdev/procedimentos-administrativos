@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { findBid } from "@/features/bids/queries";
+import { bidModalityLabel } from "@/features/bids/types";
 import { Apresentacao } from "@/features/contracts/components/Apresentacao";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
-import { humanize, toCurrency, toDate } from "@/shared/ui/labels";
+import { toCurrency, toDate } from "@/shared/ui/labels";
 import {
   Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, numericCell,
 } from "@/shared/ui/layout";
@@ -46,7 +47,7 @@ export default async function BidDetailPage({ params }: BidPageProps) {
 
       <PageHeader
         title={`Licitação ${licitacao.numero}`}
-        subtitle={humanize(licitacao.modalidade)}
+        subtitle={bidModalityLabel(licitacao.modalidade)}
       />
 
       <Stack>

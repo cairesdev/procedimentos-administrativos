@@ -1,6 +1,7 @@
 import { SEM_TRAVA } from "../../application/almoxarifado/ResolverAlcance";
 import { pool } from "./pool";
 import { valorPorExtenso } from "../../domain/documento/PorExtenso";
+import { nomeDaModalidade } from "../../domain/licitacao/Modalidades";
 import { percentualDeAgriculturaFamiliar } from "../../application/almoxarifado/ApurarConsumo";
 import { PostgresRelatorioConsumoRepository } from "./PostgresRelatorioConsumoRepository";
 import type { FonteDeContexto } from "../../application/documento/EmitirDocumento";
@@ -464,21 +465,10 @@ const itemParaContexto = (linha: Record<string, unknown>) => ({
   valorTotal: dinheiro(linha.valorTotal),
 });
 
-/** Modalidade como se lê num documento, não como está no CHECK. */
-const MODALIDADE: Record<string, string> = {
-  PREGAO_ELETRONICO: "Pregão Eletrônico",
-  PREGAO_PRESENCIAL: "Pregão Presencial",
-  CONCORRENCIA: "Concorrência",
-  DISPENSA: "Dispensa de Licitação",
-  INEXIGIBILIDADE: "Inexigibilidade",
-  CHAMADA_PUBLICA: "Chamada Pública",
-  LEILAO: "Leilão",
-  DIALOGO_COMPETITIVO: "Diálogo Competitivo",
-};
 
 const contratoParaContexto = (linha: Record<string, unknown>) => ({
   contrato: {
-    modalidade: MODALIDADE[String(linha.modalidade ?? "")] ?? "—",
+    modalidade: nomeDaModalidade(String(linha.modalidade ?? "")),
     numero: String(linha.numero ?? ""),
     objeto: String(linha.objeto ?? ""),
     dataInicio: String(linha.dataInicio ?? ""),

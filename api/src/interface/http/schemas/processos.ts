@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IDS_DE_MODALIDADE } from "../../../domain/licitacao/Modalidades";
 
 export const loginSchema = z.object({
   identificador: z.string().min(3), // e-mail ou nome de usuário
@@ -9,10 +10,7 @@ export const criarLicitacaoSchema = z.object({
   numero: z.string().min(1).max(40),
   resumo: z.string().max(300).optional(),
   objeto: z.string().min(1),
-  modalidade: z.enum([
-    "PREGAO_ELETRONICO", "PREGAO_PRESENCIAL", "CONCORRENCIA", "DISPENSA",
-    "INEXIGIBILIDADE", "CHAMADA_PUBLICA", "LEILAO", "DIALOGO_COMPETITIVO",
-  ]),
+  modalidade: z.enum(IDS_DE_MODALIDADE),
   dataAssinatura: z.string().date(),
   valorTotal: z.number().positive(),
   unidadesDestinadas: z.array(z.string().uuid()).min(1),
@@ -21,6 +19,9 @@ export const criarLicitacaoSchema = z.object({
 const itemContratoSchema = z.object({
   produto: z.string().min(1).max(150),
   descricao: z.string().optional(),
+  // Agrupador dentro do contrato — "Saúde", "Educação". Opcional: a maior parte
+  // dos contratos tem uma frente só.
+  categoria: z.string().max(60).nullable().optional(),
   unidadeMedida: z.string().min(1).max(20),
   marca: z.string().max(100).optional(),
   quantidadeTotal: z.number().positive(),
@@ -62,10 +63,7 @@ export const editarLicitacaoSchema = z.object({
   numero: z.string().min(1).max(40).optional(),
   resumo: z.string().max(300).nullable().optional(),
   objeto: z.string().min(1).optional(),
-  modalidade: z.enum([
-    "PREGAO_ELETRONICO", "PREGAO_PRESENCIAL", "CONCORRENCIA", "DISPENSA",
-    "INEXIGIBILIDADE", "CHAMADA_PUBLICA", "LEILAO", "DIALOGO_COMPETITIVO",
-  ]).optional(),
+  modalidade: z.enum(IDS_DE_MODALIDADE).optional(),
   dataAssinatura: z.string().date().optional(),
   valorTotal: z.number().positive().optional(),
   unidadesDestinadas: z.array(z.string().uuid()).min(1).optional(),
@@ -90,6 +88,7 @@ export const editarContratoSchema = z.object({
 export const editarItemContratoSchema = z.object({
   produto: z.string().min(1).max(150),
   descricao: z.string().nullable().optional(),
+  categoria: z.string().max(60).nullable().optional(),
   unidadeMedida: z.string().min(1).max(20),
   marca: z.string().max(100).nullable().optional(),
   quantidadeTotal: z.number().positive(),

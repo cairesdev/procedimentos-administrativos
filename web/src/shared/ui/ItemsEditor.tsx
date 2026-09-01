@@ -21,6 +21,9 @@ import styles from "./ItemsEditor.module.css";
 export const emptyItem = {
   produto: "",
   descricao: "",
+  // Agrupador do item dentro do contrato. Vazio na ata de registro de preços,
+  // que não tem categorias — o schema de lá descarta o campo.
+  categoria: "",
   unidadeMedida: "",
   marca: "",
   quantidade: 0,
@@ -43,6 +46,13 @@ type ItemsEditorProps<T extends FieldValues> = {
   expectedTotal?: number;
   /** Contrato define o modo de medição por item; ata não usa. */
   withMeasurementMode?: boolean;
+  /**
+   * Coluna de categoria — o agrupador do item dentro do contrato.
+   *
+   * Só o contrato tem: a ata de registro de preços é uma lista única de preços
+   * e não se divide por frente de atendimento.
+   */
+  withCategory?: boolean;
   error?: string;
 };
 
@@ -60,6 +70,7 @@ export const ItemsEditor = <T extends FieldValues>({
   name,
   expectedTotal,
   withMeasurementMode = false,
+  withCategory = false,
   error,
 }: ItemsEditorProps<T>) => {
   const items = useFieldArray({ control, name });
@@ -281,6 +292,7 @@ export const ItemsEditor = <T extends FieldValues>({
             <tr>
               <th>Produto</th>
               <th>Descrição</th>
+              {withCategory ? <th>Categoria</th> : null}
               <th>Unidade</th>
               <th>Marca</th>
               {withMeasurementMode ? <th>Medição</th> : null}
@@ -306,6 +318,17 @@ export const ItemsEditor = <T extends FieldValues>({
                     {...register(`${name}.${index}.descricao` as Path<T>)}
                   />
                 </td>
+                {withCategory ? (
+                  <td>
+                    <input
+                      className={styles.cell_input}
+                      placeholder="Saúde"
+                      style={{ minWidth: "104px" }}
+                      list="categorias-do-contrato"
+                      {...register(`${name}.${index}.categoria` as Path<T>)}
+                    />
+                  </td>
+                ) : null}
                 <td>
                   <input
                     className={styles.cell_input}

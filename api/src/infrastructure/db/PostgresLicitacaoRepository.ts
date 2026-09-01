@@ -12,9 +12,6 @@ import type {
 } from "../../application/ports/LicitacaoRepository";
 
 const SQL = {
-  existeNumero: `
-    SELECT 1 FROM licitacao
-     WHERE orgao_id = $1 AND numero = $2 AND ($3::uuid IS NULL OR id <> $3)`,
   atualizar: `
     UPDATE licitacao
        SET numero = COALESCE($3, numero),
@@ -69,10 +66,6 @@ const SQL = {
 };
 
 export class PostgresLicitacaoRepository implements LicitacaoRepository {
-  existeNumero = async (orgaoId: string, numero: string, ignorarId?: string): Promise<boolean> => {
-    const { rowCount } = await pool.query(SQL.existeNumero, [orgaoId, numero, ignorarId ?? null]);
-    return (rowCount ?? 0) > 0;
-  };
 
   atualizar = async (orgaoId: string, id: string, dados: EdicaoLicitacao): Promise<void> => {
     await pool.query(SQL.atualizar, [

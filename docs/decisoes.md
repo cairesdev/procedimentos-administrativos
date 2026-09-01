@@ -1431,3 +1431,65 @@ validar DANFE e certidões é da prefeitura.
 Todas exigem anexo, e nenhuma traz prazo em dias: o relógio da liquidação começa
 em eventos diferentes conforme o contrato — entrega, medição, aceite —, e prazo
 errado no modelo vira data errada em toda cópia aplicada.
+
+### Número de licitação, contrato e ata pode repetir
+
+O `UNIQUE (orgao_id, numero)` presumia que o número identifica o registro dentro
+da prefeitura. Não identifica: a numeração reinicia a cada exercício — o mesmo
+"025/2026" volta em 2027 — e a de uma ata carrega o número do órgão que a gerou,
+de modo que numa adesão duas numerações se cruzam. Recusar o cadastro obrigava o
+servidor a inventar um sufixo que não existe no papel, e aí o sistema deixava de
+bater com o processo físico.
+
+Quem identifica continua sendo o `id`. Os três `existeNumero` — port, consulta e
+método — saíram junto: método que ninguém chama é a "configuração sem efeito" da
+camada de código. Os índices ficaram, sem o UNIQUE: buscar contrato pelo número
+é o caminho mais percorrido da tela de solicitação.
+
+### As modalidades num catálogo só, com a sigla do Tribunal
+
+Dezenove modalidades — as dezoito do layout do TCE mais a chamada pública, que
+não consta da lista dele mas é a do PNAE e tem licitação gravada. Vivem em
+`domain/licitacao/Modalidades.ts`, com sigla e nome; o banco guarda o
+identificador legível (`PREGAO_ELETRONICO`, e não `PE`), porque num `SELECT` ele
+diz o que é sem consulta a tabela nenhuma. A sigla é da camada de exportação.
+
+Os oito valores antigos **não mudaram de nome**: há licitação gravada com cada
+um, e renomear seria reescrever histórico. `CONCORRENCIA` passou a se chamar
+"Concorrência pública" na tela, mas o identificador é o mesmo.
+
+O web tem a própria cópia — não alcança o código da API —, e um teste
+estrutural compara as duas listas e o CHECK do banco. Sem ele, um espelho dura
+até a primeira pressa: alguém acrescenta uma modalidade na tela, passa no
+typecheck, e o `INSERT` falha em produção com "violates check constraint".
+
+### Categoria de item: texto livre, não tabela
+
+Um contrato atende mais de uma frente ao mesmo tempo — o mesmo fornecedor
+entrega para a saúde e para a educação. A categoria é rótulo de organização, não
+entidade: não tem ciclo de vida, ninguém a consulta sozinha e ela vale só dentro
+do contrato onde foi escrita. Uma tabela cobraria uma tela de cadastro e um
+passo a mais antes de montar o primeiro contrato, para devolver o que um
+`VARCHAR` já dá. As categorias já usadas viram sugestão enquanto se digita, que
+é o que evita "Saude" e "Saúde" no mesmo contrato sem burocracia.
+
+Opcional de propósito: a maior parte dos contratos tem uma frente só, e exigir
+categoria neles seria pedir que alguém escreva "Geral" mil vezes. Vazio vira
+nulo na aplicação, e o CHECK recusa string em branco — `''` e `NULL` são o mesmo
+"sem categoria" para quem lê, mas agrupariam em dois blocos.
+
+Na tela, as categorias viram faixas **dentro da mesma tabela**, e não tabelas
+separadas: as colunas seguem alinhadas de ponta a ponta, e quem compara saldo
+entre duas frentes não mede duas grades com o olho. O bloco sem categoria vai
+por último, e some quando é o único.
+
+### A solicitação procura o contrato, não escolhe de uma lista
+
+Listar todos os contratos da unidade funcionava com dez e virava rolagem com
+cem. O servidor sabe o número, o fornecedor ou o objeto do contrato que procura
+— não a posição dele numa lista. A busca casa com os três, mais o número da
+licitação ou ata de origem, e devolve no máximo trinta.
+
+Escolhido, o contrato **sai da lista** e vira cabeçalho fixo acima dos itens.
+Manter a lista aberta ao lado convidava a pedir do contrato errado, que era um
+erro só descoberto no envio.

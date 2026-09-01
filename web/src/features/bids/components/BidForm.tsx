@@ -5,13 +5,12 @@ import { InputField, SelectField, TextareaField } from "@/shared/ui/form-field";
 import { FieldGrid } from "@/shared/ui/layout";
 import { CurrencyField } from "@/shared/ui/CurrencyField";
 import { TagSelect } from "@/shared/ui/TagSelect";
-import { humanize } from "@/shared/ui/labels";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import type { Unit } from "@/features/units/types";
 import { createBid, updateBid } from "../actions";
 import { bidSchema, type BidInput } from "../schemas";
-import { BID_MODALITIES, type Bid } from "../types";
+import { BID_MODALITIES, bidModalityLabel, type Bid } from "../types";
 
 export const BidForm = ({
   units,
@@ -61,9 +60,9 @@ export const BidForm = ({
         <SelectField
           label="Modalidade"
           required
-          options={BID_MODALITIES.map((modality) => ({
-            value: modality,
-            label: humanize(modality),
+          options={BID_MODALITIES.map((modalidade) => ({
+            value: modalidade.id,
+            label: bidModalityLabel(modalidade.id),
           }))}
           error={errors.modalidade?.message}
           {...form.register("modalidade")}

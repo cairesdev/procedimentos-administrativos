@@ -1,4 +1,4 @@
-import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import { ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import type { AtaRepository, NovaAta } from "../ports/AtaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 
@@ -16,10 +16,8 @@ export class CriarAta {
       throw new ErroDeNegocio("Ata precisa de ao menos um item");
     }
 
-    const duplicada = await this.atas.existeNumero(dados.orgaoId, dados.numero);
-    if (duplicada) {
-      throw new Conflito(`Já existe ata com o número ${dados.numero}`, { numero: dados.numero });
-    }
+    // O número **pode repetir**: a numeração reinicia a cada exercício, e o
+    // número de uma ata carrega o do órgão de origem. Quem identifica é o id.
 
     const id = await this.transacao((tx) => this.atas.criar(dados, tx));
     return { id };

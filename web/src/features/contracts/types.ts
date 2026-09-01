@@ -16,6 +16,8 @@ export type ContractItem = {
   id: string;
   produto: string;
   descricao: string | null;
+  /** Agrupador dentro do contrato — "Saúde", "Educação". Opcional. */
+  categoria: string | null;
   unidadeMedida: string;
   marca: string | null;
   quantidadeTotal: number;

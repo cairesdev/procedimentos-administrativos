@@ -9,9 +9,6 @@ import type {
 } from "../../application/ports/AtaRepository";
 
 const SQL = {
-  existeNumero: `
-    SELECT 1 FROM ata_registro_precos
-     WHERE orgao_id = $1 AND numero = $2 AND ($3::uuid IS NULL OR id <> $3)`,
   buscar: `
     SELECT id, numero, objeto, licitacao_id AS "licitacaoId",
            data_assinatura AS "dataAssinatura", data_vigencia AS "dataVigencia",
@@ -77,10 +74,6 @@ const SQL = {
 };
 
 export class PostgresAtaRepository implements AtaRepository {
-  existeNumero = async (orgaoId: string, numero: string, ignorarId?: string): Promise<boolean> => {
-    const { rowCount } = await pool.query(SQL.existeNumero, [orgaoId, numero, ignorarId ?? null]);
-    return (rowCount ?? 0) > 0;
-  };
 
   buscar = async (orgaoId: string, id: string): Promise<AtaResumo | null> => {
     const { rows } = await pool.query(SQL.buscar, [orgaoId, id]);

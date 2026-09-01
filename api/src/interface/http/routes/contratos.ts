@@ -49,7 +49,10 @@ contratosRouter.get("/", async (req, res, next) => {
 contratosRouter.get("/para-solicitacao", async (req, res, next) => {
   try {
     const unidadeId = filtroDaQuery(req, "unidade");
-    res.json(await container.contratos.listarParaSolicitacao(req.sessao!.orgaoId, unidadeId));
+    const busca = filtroDaQuery(req, "busca");
+    res.json(await container.contratos.listarParaSolicitacao(
+      req.sessao!.orgaoId, unidadeId, busca,
+    ));
   } catch (error) {
     next(error);
   }

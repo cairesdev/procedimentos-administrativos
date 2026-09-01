@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Badge, Table, numericCell } from "@/shared/ui/layout";
-import { humanize, toCurrency, toDate } from "@/shared/ui/labels";
+import { toCurrency, toDate } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
 import type { Unit } from "@/features/units/types";
 import { deleteBid } from "../actions";
 import { BidForm } from "./BidForm";
 import type { Bid } from "../types";
+import { bidModalityLabel } from "../types";
 
 export const BidTable = ({
   bids,
@@ -34,7 +35,7 @@ export const BidTable = ({
         </td>
         <td title={bid.objeto}>{bid.objeto.slice(0, 60)}</td>
         <td>
-          <Badge tone="accent">{humanize(bid.modalidade)}</Badge>
+          <Badge tone="accent">{bidModalityLabel(bid.modalidade)}</Badge>
         </td>
         <td>{toDate(bid.dataAssinatura)}</td>
         <td className={numericCell}>{toCurrency(bid.valorTotal)}</td>

@@ -1,4 +1,4 @@
-import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import { ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste, garantirSemVinculos } from "../shared/ExclusaoSegura";
 import type { EdicaoLicitacao, LicitacaoRepository } from "../ports/LicitacaoRepository";
 
@@ -28,11 +28,6 @@ export class EditarLicitacao {
           vinculos,
         );
       }
-    }
-
-    if (dados.numero && dados.numero !== atual.numero) {
-      const duplicada = await this.licitacoes.existeNumero(orgaoId, dados.numero, id);
-      if (duplicada) throw new Conflito(`Já existe licitação com o número ${dados.numero}`);
     }
 
     await this.licitacoes.atualizar(orgaoId, id, dados);

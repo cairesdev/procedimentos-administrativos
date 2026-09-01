@@ -17,8 +17,17 @@ import type {
   NovoContrato,
 } from "../../application/ports/ContratoRepository";
 
+/**
+ * Categoria vazia é ausência de categoria.
+ *
+ * `''` e `NULL` são o mesmo "sem categoria" para quem lê a tela, mas
+ * agrupariam em dois blocos distintos — e o CHECK da tabela recusa string em
+ * branco justamente para o caso não existir no banco.
+ */
+const categoriaLimpa = (valor?: string | null): string | null =>
+  valor?.trim() || null;
+
 const SQL = {
-  existeNumero: `SELECT 1 FROM contrato WHERE orgao_id = $1 AND numero = $2`,
   criar: `
     INSERT INTO contrato (orgao_id, numero, fornecedor_id, licitacao_id, ata_id,
                           data_inicio, data_fim, valor_total, fiscal_nome_matricula)
@@ -27,8 +36,9 @@ const SQL = {
   vincularUnidade: `INSERT INTO contrato_unidade (contrato_id, unidade_id) VALUES ($1, $2)`,
   criarItem: `
     INSERT INTO item (orgao_id, contrato_id, produto, descricao, unidade_medida, marca,
-                      quantidade_total, saldo_disponivel, modo_medicao, valor_unitario, valor_total)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10)`,
+                      quantidade_total, saldo_disponivel, modo_medicao, valor_unitario,
+                      valor_total, categoria)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10, $11)`,
   listar: `
     SELECT id, numero, fornecedor_id AS "fornecedorId",
            data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal",
@@ -117,10 +127,19 @@ const SQL = {
        AND ($2::uuid IS NULL OR EXISTS (
              SELECT 1 FROM contrato_unidade cu
               WHERE cu.contrato_id = c.id AND cu.unidade_id = $2))
+       -- A busca é por número, objeto ou fornecedor: são os três jeitos de o
+       -- servidor se referir ao contrato. Sem texto, $3 é nulo e a cláusula
+       -- some — a lista completa continua servindo a quem tem poucos contratos.
+       AND ($3::text IS NULL OR
+            c.numero ILIKE $3 OR
+            f.razao_social ILIKE $3 OR
+            coalesce(a.objeto, l.objeto, '') ILIKE $3 OR
+            coalesce(a.numero, l.numero, '') ILIKE $3)
      GROUP BY c.id, c.numero, a.objeto, l.objeto, f.razao_social,
               c.data_inicio, c.data_fim, c.valor_total, a.numero, l.numero
     HAVING count(i.id) FILTER (WHERE i.saldo_disponivel > 0) > 0
-     ORDER BY c.numero`,
+     ORDER BY c.numero
+     LIMIT 30`,
   unidadeTemAcesso: `SELECT 1 FROM contrato_unidade WHERE contrato_id = $1 AND unidade_id = $2`,
   contratosForaDaUnidade: `
     SELECT c.numero
@@ -161,17 +180,17 @@ const SQL = {
     SELECT id, produto, descricao, unidade_medida AS "unidadeMedida", marca,
            quantidade_total AS "quantidadeTotal", saldo_disponivel AS "saldoDisponivel",
            modo_medicao AS "modoMedicao", valor_unitario AS "valorUnitario",
-           valor_total AS "valorTotal"
+           valor_total AS "valorTotal", categoria
       FROM item
      WHERE orgao_id = $1 AND contrato_id = $2
-     ORDER BY produto`,
+     ORDER BY categoria NULLS LAST, produto`,
 
   buscarItem: `
     SELECT id, contrato_id AS "contratoId", produto, descricao,
            unidade_medida AS "unidadeMedida", marca,
            quantidade_total AS "quantidadeTotal", saldo_disponivel AS "saldoDisponivel",
            modo_medicao AS "modoMedicao", valor_unitario AS "valorUnitario",
-           valor_total AS "valorTotal",
+           valor_total AS "valorTotal", categoria,
            quantidade_total - saldo_disponivel AS consumido
       FROM item
      WHERE orgao_id = $1 AND id = $2`,
@@ -189,7 +208,8 @@ const SQL = {
        SET produto = $3, descricao = $4, unidade_medida = $5, marca = $6,
            saldo_disponivel = saldo_disponivel + ($7 - quantidade_total),
            quantidade_total = $7,
-           modo_medicao = $8, valor_unitario = $9, valor_total = $10
+           modo_medicao = $8, valor_unitario = $9, valor_total = $10,
+           categoria = $11
      WHERE orgao_id = $1 AND id = $2`,
 
   removerItem: `DELETE FROM item WHERE orgao_id = $1 AND id = $2`,
@@ -236,7 +256,7 @@ export class PostgresContratoRepository implements ContratoRepository {
     await pool.query(SQL.atualizarItem, [
       orgaoId, itemId, dados.produto, dados.descricao ?? null, dados.unidadeMedida,
       dados.marca ?? null, dados.quantidadeTotal, dados.modoMedicao,
-      dados.valorUnitario, dados.valorTotal,
+      dados.valorUnitario, dados.valorTotal, categoriaLimpa(dados.categoria),
     ]);
   };
 
@@ -244,10 +264,6 @@ export class PostgresContratoRepository implements ContratoRepository {
     await pool.query(SQL.removerItem, [orgaoId, itemId]);
   };
 
-  existeNumero = async (orgaoId: string, numero: string): Promise<boolean> => {
-    const { rowCount } = await pool.query(SQL.existeNumero, [orgaoId, numero]);
-    return (rowCount ?? 0) > 0;
-  };
 
   criar = async (dados: NovoContrato, tx: Tx): Promise<string> => {
     const { rows } = await tx.query(SQL.criar, [
@@ -278,6 +294,7 @@ export class PostgresContratoRepository implements ContratoRepository {
         item.modoMedicao,
         item.valorUnitario,
         item.valorTotal,
+        categoriaLimpa(item.categoria),
       ]);
     }
     return id;
@@ -318,8 +335,12 @@ export class PostgresContratoRepository implements ContratoRepository {
   listarParaSolicitacao = async (
     orgaoId: string,
     unidadeId?: string,
+    busca?: string,
   ): Promise<ContratoParaSolicitacao[]> => {
-    const { rows } = await pool.query(SQL.listarParaSolicitacao, [orgaoId, unidadeId ?? null]);
+    const texto = busca?.trim();
+    const { rows } = await pool.query(SQL.listarParaSolicitacao, [
+      orgaoId, unidadeId ?? null, texto ? `%${texto}%` : null,
+    ]);
     // `count` e `sum` voltam como string no driver: sem o Number, o valor
     // chegaria à tela como texto e a formatação de moeda mostraria NaN.
     return rows.map((linha) => ({

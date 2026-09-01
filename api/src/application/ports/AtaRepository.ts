@@ -57,7 +57,6 @@ export type EdicaoAta = Partial<Omit<NovaAta, "orgaoId" | "itens" | "licitacaoId
 };
 
 export interface AtaRepository {
-  existeNumero(orgaoId: string, numero: string, ignorarId?: string): Promise<boolean>;
   buscar(orgaoId: string, id: string): Promise<AtaResumo | null>;
   /** Detalhe: itens, licitação de origem e contratos gerados. */
   buscarCompleta(orgaoId: string, id: string): Promise<AtaCompleta | null>;

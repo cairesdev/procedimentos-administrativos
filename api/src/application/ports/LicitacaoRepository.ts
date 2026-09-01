@@ -52,7 +52,6 @@ export type EdicaoLicitacao = Partial<Omit<NovaLicitacao, "orgaoId" | "resumo">>
 };
 
 export interface LicitacaoRepository {
-  existeNumero(orgaoId: string, numero: string, ignorarId?: string): Promise<boolean>;
   criar(dados: NovaLicitacao): Promise<string>;
   listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<LicitacaoResumo>>;
   buscarPorId(orgaoId: string, id: string): Promise<LicitacaoResumo | null>;

@@ -111,3 +111,21 @@
   font-size: 13px;
   color: var(--texto_suave);
 }
+
+/**
+ * O contrato já escolhido, como cabeçalho fixo acima dos itens.
+ *
+ * Não é mais um botão da lista: depois de escolhido ele sai da lista e vira
+ * contexto. Manter a lista aberta ao lado dos itens convidava a pedir do
+ * contrato errado — erro que só aparecia no envio.
+ */
+.escolhido {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--borda);
+  background: var(--acao_suave);
+}

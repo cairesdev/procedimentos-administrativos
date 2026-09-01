@@ -1,4 +1,4 @@
-import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import { ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste, garantirSemVinculos } from "../shared/ExclusaoSegura";
 import type { AtaRepository, EdicaoAta } from "../ports/AtaRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
@@ -21,11 +21,6 @@ export class EditarAta {
         422,
         vinculos,
       );
-    }
-
-    if (dados.numero && dados.numero !== atual.numero) {
-      const duplicada = await this.atas.existeNumero(orgaoId, dados.numero, id);
-      if (duplicada) throw new Conflito(`Já existe ata com o número ${dados.numero}`);
     }
 
     const assinatura = dados.dataAssinatura ?? atual.dataAssinatura;

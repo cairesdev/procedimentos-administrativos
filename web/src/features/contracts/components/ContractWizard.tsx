@@ -173,6 +173,7 @@ export const ContractWizard = ({
       {step === 2 ? (
         <Card title="Itens do contrato">
           <ItemsEditor
+            withCategory
             control={form.control}
             register={form.register}
             name="itens"

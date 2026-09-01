@@ -4,6 +4,14 @@ import type { Tx } from "./Transacao";
 export type NovoItemContrato = {
   produto: string;
   descricao?: string;
+  /**
+   * Agrupador dentro do contrato — "Saúde", "Educação", "Limpeza".
+   *
+   * Texto livre e opcional: a maior parte dos contratos tem uma frente só,
+   * e exigir categoria neles seria pedir que alguém escreva "Geral" mil
+   * vezes. Item sem categoria cai num bloco à parte, no fim da lista.
+   */
+  categoria?: string | null;
   unidadeMedida: string;
   marca?: string;
   quantidadeTotal: number;
@@ -40,6 +48,14 @@ export type ItemComSaldo = {
   id: string;
   produto: string;
   descricao: string | null;
+  /**
+   * Agrupador dentro do contrato — "Saúde", "Educação", "Limpeza".
+   *
+   * Texto livre e opcional: a maior parte dos contratos tem uma frente só,
+   * e exigir categoria neles seria pedir que alguém escreva "Geral" mil
+   * vezes. Item sem categoria cai num bloco à parte, no fim da lista.
+   */
+  categoria: string | null;
   unidadeMedida: string;
   marca: string | null;
   quantidadeTotal: number;
@@ -59,6 +75,7 @@ export type ItemComSaldo = {
 export type EdicaoItemContrato = {
   produto: string;
   descricao?: string | null;
+  categoria?: string | null;
   unidadeMedida: string;
   marca?: string | null;
   quantidadeTotal: number;
@@ -150,7 +167,6 @@ export type ItemDoContrato = ItemComSaldo & {
 };
 
 export interface ContratoRepository {
-  existeNumero(orgaoId: string, numero: string): Promise<boolean>;
   criar(dados: NovoContrato, tx: Tx): Promise<string>;
   listar(
     orgaoId: string,
@@ -162,7 +178,9 @@ export interface ContratoRepository {
    * Contratos que a unidade pode usar: vigentes, com item em saldo e
    * destinados a ela. Sem `unidadeId`, todos os vigentes do órgão.
    */
-  listarParaSolicitacao(orgaoId: string, unidadeId?: string): Promise<ContratoParaSolicitacao[]>;
+  listarParaSolicitacao(
+    orgaoId: string, unidadeId?: string, busca?: string,
+  ): Promise<ContratoParaSolicitacao[]>;
   unidadeTemAcesso(contratoId: string, unidadeId: string): Promise<boolean>;
   /**
    * Números dos contratos que NÃO estão destinados à unidade. Em uma consulta

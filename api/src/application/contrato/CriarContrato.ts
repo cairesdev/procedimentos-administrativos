@@ -1,5 +1,5 @@
 import { exigirCaberNaLicitacao } from "./TetoDaLicitacao";
-import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
+import { ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ContratoRepository, NovoContrato } from "../ports/ContratoRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
@@ -33,10 +33,8 @@ export class CriarContrato {
       valorTotal: dados.valorTotal,
     });
 
-    const duplicado = await this.contratos.existeNumero(dados.orgaoId, dados.numero);
-    if (duplicado) {
-      throw new Conflito(`Já existe contrato com o número ${dados.numero}`, { numero: dados.numero });
-    }
+    // O número **pode repetir**: a numeração reinicia a cada exercício, e o
+    // número de uma ata carrega o do órgão de origem. Quem identifica é o id.
 
     return this.transacao(async (tx) => {
       const id = await this.contratos.criar(dados, tx);

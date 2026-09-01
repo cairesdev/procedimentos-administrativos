@@ -1,5 +1,6 @@
-import { humanize, toCurrency, toDate, toDocument } from "@/shared/ui/labels";
+import { toCurrency, toDate, toDocument } from "@/shared/ui/labels";
 import { Card, SummaryGrid } from "@/shared/ui/layout";
+import { bidModalityLabel } from "@/features/bids/types";
 
 export type DadosDoFornecedor = {
   razaoSocial: string;
@@ -50,7 +51,7 @@ export const Apresentacao = ({
           : []),
         { label: procedimento.rotulo, value: procedimento.numero ?? "—" },
         ...(procedimento.modalidade
-          ? [{ label: "Modalidade", value: humanize(procedimento.modalidade) }]
+          ? [{ label: "Modalidade", value: bidModalityLabel(procedimento.modalidade) }]
           : []),
         ...(procedimento.data
           ? [{ label: "Assinatura", value: toDate(procedimento.data) }]

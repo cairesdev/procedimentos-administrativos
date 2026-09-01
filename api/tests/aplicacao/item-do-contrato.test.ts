@@ -15,6 +15,7 @@ const ITEM: ItemDoContrato = {
   contratoId: "contrato-1",
   produto: "ARROZ TIPO 1",
   descricao: null,
+  categoria: null,
   unidadeMedida: "KG",
   marca: null,
   quantidadeTotal: 1000,

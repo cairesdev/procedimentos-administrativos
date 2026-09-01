@@ -1257,3 +1257,32 @@ aplicado a um processo, os sete itens nascem com seção e exigência de anexo, 
 o link externo mostra exatamente três.
 
 662 testes na API, 15 no web, 104 invariantes, 423 consultas com `PREPARE`.
+
+## Número repetido, modalidades, categorias e busca
+
+**Número livre** em licitação, contrato e ata (migration 0039): a numeração
+reinicia a cada exercício e a da ata vem do órgão de origem. As três checagens
+prévias e o `existeNumero` inteiro saíram do código.
+
+**Dezenove modalidades** (0040) num catálogo único com a sigla do Tribunal, com
+teste estrutural ligando domínio, CHECK do banco e o espelho do web — quebrei os
+três de propósito e os três acusam.
+
+**Categoria no item** (0041), texto livre e opcional, com agrupamento em faixas
+na tela do contrato e na da solicitação. Oito testes no web cobrem o agrupador:
+vazio e nulo no mesmo bloco, bloco sem categoria por último, acento ordenando
+como em português, lista fora do formato não derrubando nada.
+
+**Busca do contrato** na solicitação, por número, objeto, fornecedor ou número da
+origem, no lugar da lista completa.
+
+**Verificação** contra Postgres com a API no ar: duas licitações com o mesmo
+número entram; as 19 modalidades passam pelo CHECK; contrato nasce com itens em
+duas categorias e um sem, e `"  "` chega ao banco como nulo; a busca acha por
+número e por fornecedor.
+
+668 testes na API, 22 no web, 104 invariantes, 420 consultas com `PREPARE`.
+
+**Fica para decidir:** a busca não olha o nome do produto — procurar "seringa"
+não acha o contrato que a tem. Dá para incluir, ao custo de um `EXISTS` sobre a
+tabela de itens em toda tecla digitada.

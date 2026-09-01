@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Send } from "lucide-react";
+import { ChevronRight, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
-import { SelectField } from "@/shared/ui/form-field";
+import { InputField, SelectField } from "@/shared/ui/form-field";
 import { Alert, Badge, Card, Stack, SummaryGrid } from "@/shared/ui/layout";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import type { ContractForRequest, ContractItem } from "@/features/contracts/types";
@@ -44,10 +44,12 @@ export const RequestBuilder = ({
   // uma unidade enquanto outra já está selecionada, e "carregando" é derivado
   // em vez de ser mais um estado para manter em sincronia.
   const [carregado, setCarregado] = useState<
-    { unidade: string; contratos: ContractForRequest[] } | null
+    { chave: string; contratos: ContractForRequest[] } | null
   >(null);
-  const [aberto, setAberto] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+  const [escolhido, setEscolhido] = useState<ContractForRequest | null>(null);
   const [itensPorContrato, setItensPorContrato] = useState<Record<string, ContractItem[]>>({});
+  const [carregandoItens, setCarregandoItens] = useState(false);
   const [escolhas, setEscolhas] = useState<Record<string, Escolha>>({});
   const [busy, setBusy] = useState(false);
 
@@ -61,48 +63,67 @@ export const RequestBuilder = ({
     return resposta.json() as Promise<T>;
   }, []);
 
+  /**
+   * A busca substituiu a lista de todos os contratos da unidade.
+   *
+   * Despejar tudo funcionava com dez contratos e virava rolagem com cem — e o
+   * servidor sabe o número ou o fornecedor do contrato que procura, não a
+   * posição dele numa lista. Dois caracteres é o piso: uma letra casaria com
+   * metade da prefeitura.
+   */
+  const termo = busca.trim();
+  const chave = `${unitId}|${termo}`;
+  const podeBuscar = Boolean(unitId) && termo.length >= 2;
+
   useEffect(() => {
-    if (!unitId) return;
+    if (!podeBuscar) return;
     let cancelado = false;
 
-    buscar<ContractForRequest[]>(`/contratos/para-solicitacao?unidade=${unitId}`)
-      .then((lista) => {
-        if (!cancelado) setCarregado({ unidade: unitId, contratos: lista });
-      })
-      .catch((erro: Error) => {
-        if (!cancelado) toast.error(erro.message);
-      });
+    // Espera o usuário parar de digitar: sem isto cada tecla vira consulta, e a
+    // resposta da penúltima chega depois da última.
+    const relogio = setTimeout(() => {
+      buscar<ContractForRequest[]>(
+        `/contratos/para-solicitacao?unidade=${unitId}&busca=${encodeURIComponent(termo)}`,
+      )
+        .then((lista) => {
+          if (!cancelado) setCarregado({ chave, contratos: lista });
+        })
+        .catch((erro: Error) => {
+          if (!cancelado) toast.error(erro.message);
+        });
+    }, 300);
 
     return () => {
       cancelado = true;
+      clearTimeout(relogio);
     };
-  }, [unitId, buscar]);
+  }, [chave, unitId, termo, podeBuscar, buscar]);
 
-  const contratos = carregado?.unidade === unitId ? carregado.contratos : [];
-  const carregandoContratos = unitId !== "" && carregado?.unidade !== unitId;
+  const contratos = podeBuscar && carregado?.chave === chave ? carregado.contratos : [];
+  const procurando = podeBuscar && carregado?.chave !== chave;
 
   const trocarUnidade = (novaUnidade: string) => {
     setUnitId(novaUnidade);
-    setAberto(null);
+    setEscolhido(null);
+    setBusca("");
     // Trocar de unidade zera o pedido: os itens escolhidos eram de contratos
     // que talvez nem sirvam à unidade nova.
     setEscolhas({});
   };
 
   const abrirContrato = async (contrato: ContractForRequest) => {
-    if (aberto === contrato.id) {
-      setAberto(null);
-      return;
-    }
-    setAberto(contrato.id);
+    setEscolhido(contrato);
     if (itensPorContrato[contrato.id]) return;
 
+    setCarregandoItens(true);
     try {
       const itens = await buscar<ContractItem[]>(`/contratos/${contrato.id}/itens`);
       setItensPorContrato((atual) => ({ ...atual, [contrato.id]: itens }));
     } catch (erro) {
       toast.error((erro as Error).message);
-      setAberto(null);
+      setEscolhido(null);
+    } finally {
+      setCarregandoItens(false);
     }
   };
 
@@ -187,34 +208,89 @@ export const RequestBuilder = ({
         )}
       </Card>
 
-      <Card
-        title={
-          contratos.length > 0
-            ? `Contratos disponíveis (${contratos.length})`
-            : "Contratos disponíveis"
-        }
-        padded={false}
-      >
-        {carregandoContratos ? (
-          <p className={styles.aviso}>Carregando contratos…</p>
-        ) : !unitId ? (
-          <p className={styles.aviso}>Escolha a unidade para ver os contratos.</p>
+      <Card title="Contrato" padded={false}>
+        <div style={{ padding: "14px 16px 0" }}>
+          <InputField
+            label="Procurar contrato"
+            name="buscaContrato"
+            placeholder="Número, objeto ou fornecedor"
+            hint={
+              !unitId
+                ? "Escolha a unidade primeiro."
+                : procurando
+                  ? "Procurando…"
+                  : "Dois caracteres, no mínimo. Só contratos vigentes, com saldo e destinados à unidade."
+            }
+            disabled={!unitId}
+            value={busca}
+            onChange={(evento) => setBusca(evento.target.value)}
+          />
+        </div>
+
+        {/* Achou e escolheu: o contrato sai da lista e vira cabeçalho fixo, com
+            os itens dele logo abaixo. Manter a lista aberta ao lado dos itens
+            convidava a pedir do contrato errado — o erro que só aparecia no
+            envio. */}
+        {escolhido ? (
+          <>
+            <div className={styles.escolhido}>
+              <span className={styles.contrato_dados}>
+                <strong>Contrato {escolhido.numero}</strong>
+                <span className={styles.objeto}>
+                  {escolhido.objeto || "Sem objeto registrado na origem"}
+                </span>
+                <small>
+                  {escolhido.fornecedorRazaoSocial} · {vigencia(escolhido)}
+                  {escolhido.origemNumero
+                    ? ` · ${escolhido.origem === "ATA" ? "Ata" : "Licitação"} ${escolhido.origemNumero}`
+                    : ""}
+                </small>
+              </span>
+              <span className={styles.contrato_tags}>
+                <span className={styles.saldo}>
+                  {toCurrency(escolhido.saldoDisponivel)} de saldo
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setEscolhido(null);
+                    setBusca("");
+                  }}
+                >
+                  Trocar
+                </Button>
+              </span>
+            </div>
+
+            {carregandoItens ? (
+              <p className={styles.aviso}>Carregando itens…</p>
+            ) : (
+              <ItemPicker
+                itens={itensPorContrato[escolhido.id] ?? []}
+                escolhas={Object.fromEntries(
+                  escolhidos.map(([id, escolha]) => [id, escolha.quantidade]),
+                )}
+                onChange={(item, quantidade) => definirQuantidade(escolhido, item, quantidade)}
+              />
+            )}
+          </>
+        ) : procurando ? (
+          <p className={styles.aviso}>Procurando…</p>
+        ) : !podeBuscar ? (
+          <p className={styles.aviso}>
+            Digite parte do número, do objeto ou do nome do fornecedor.
+          </p>
         ) : contratos.length === 0 ? (
-          <div style={{ padding: "14px 16px" }}>
+          <div style={{ padding: "0 16px 14px" }}>
             <Alert tone="info">
-              Nenhum contrato vigente com saldo destinado a esta unidade. Contratos são vinculados
-              às unidades no cadastro do contrato.
+              Nada encontrado com esse texto. Só entram contratos vigentes, com saldo e destinados
+              à unidade escolhida — o vínculo com a unidade se define no cadastro do contrato.
             </Alert>
           </div>
         ) : (
-          <>
-            <p className={styles.aviso}>
-              Escolha o contrato pelo objeto. Os itens dele aparecem logo abaixo, e só os dele.
-            </p>
-            <ul className={styles.contratos}>
-              {contratos.map((contrato) => {
-              const expandido = aberto === contrato.id;
-              const itens = itensPorContrato[contrato.id];
+          <ul className={styles.contratos}>
+            {contratos.map((contrato) => {
               const escolhidosAqui = escolhidos.filter(
                 ([, escolha]) => escolha.contratoNumero === contrato.numero,
               ).length;
@@ -225,10 +301,9 @@ export const RequestBuilder = ({
                     type="button"
                     className={styles.contrato}
                     onClick={() => void abrirContrato(contrato)}
-                    aria-expanded={expandido}
                   >
                     <span className={styles.chevron}>
-                      {expandido ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      <ChevronRight size={16} />
                     </span>
                     <span className={styles.contrato_dados}>
                       <strong>Contrato {contrato.numero}</strong>
@@ -259,27 +334,10 @@ export const RequestBuilder = ({
                       )}
                     </span>
                   </button>
-
-                  {expandido ? (
-                    itens ? (
-                      <ItemPicker
-                        itens={itens}
-                        escolhas={Object.fromEntries(
-                          escolhidos.map(([id, escolha]) => [id, escolha.quantidade]),
-                        )}
-                        onChange={(item, quantidade) =>
-                          definirQuantidade(contrato, item, quantidade)
-                        }
-                      />
-                    ) : (
-                      <p className={styles.aviso}>Carregando itens…</p>
-                    )
-                  ) : null}
                 </li>
               );
-              })}
-            </ul>
-          </>
+            })}
+          </ul>
         )}
       </Card>
 
