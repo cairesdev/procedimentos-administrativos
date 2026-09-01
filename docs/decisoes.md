@@ -1004,16 +1004,6 @@ livres para divergir bem no dado que o PNAE cobra.
 
 - Página inicial do processo, a apresentação.
 
-- Adicionar edição de itens do contrato.
-
-- Bloquear a criação do contrato caso os valores somados ultrapassem o valor da licitação.
-
-- Ordem de fornecimento gerado pelo compras, exibir tambem para a controladoria, a geração não, apenas leitura.
-
-- Nota fiscal não obrigatorio e preenchivel pela controladoria
-
-- CheckList de preenchimento de arquivos e anexos.
-
 Anexo de arquivos nos processos.
 
 Adicionar documento de solicitação de pagamento do fornecedor, com direito a costumização de timbragem.
@@ -1157,7 +1147,6 @@ armazenamento MinIO e o mesmo streaming pela API que os anexos de processo já
 usam. Afrouxar `anexo.processo_id` para nullable seria mais barato hoje e
 tiraria do banco a garantia de que todo anexo de processo pertence a um.
 
-
 ### A vigência do cumprimento
 
 Cumprir um item nem sempre encerra o assunto. A certidão negativa entregue hoje
@@ -1176,7 +1165,7 @@ tabela guarda a história.
   aceita aqui.
 - **Vencer devolve o item a pendente, sem apagar nada.** O ciclo anterior fica
   no histórico com seu anexo e suas datas: a prestação de contas do ano passado
-  precisa poder mostrar a certidão que valia *naquele* momento, e não a atual.
+  precisa poder mostrar a certidão que valia _naquele_ momento, e não a atual.
   Sobrescrever o cumprimento economizaria uma tabela e perderia exatamente o
   que dá valor ao registro.
 - **Só item marcado como recorrente vence.** "Entregar o projeto assinado" se
@@ -1189,11 +1178,10 @@ tabela guarda a história.
   dependência nova no caminho de uma tela.
 
 **Consequência para a conclusão.** Um checklist com item recorrente nunca fica
-"concluído para sempre": ele está completo *enquanto* todos os cumprimentos
+"concluído para sempre": ele está completo _enquanto_ todos os cumprimentos
 estiverem vigentes. A declaração emitida continua valendo como registro do dia
 em que saiu — é o mesmo princípio do documento emitido, que congela os dados —,
 mas a tela precisa dizer "completo hoje", e não "completo".
-
 
 ## Checklist — o link externo (2ª fatia)
 
@@ -1353,3 +1341,93 @@ Junto veio a trava: **asserção non-null (`x!.y`) é proibida em componente de
 cliente**, verificada por teste estrutural. Ela não gera checagem nenhuma,
 apenas cala o compilador — e num componente de cliente o estouro não deixa
 rastro em lugar nenhum.
+
+### Rotação por idade da chave, não por deploy
+
+`deploy.sh` troca a chave do MinIO quando ela passa de `ROTACAO_MINIO_DIAS`
+(padrão 30). Trocar a cada `git push` foi considerado e descartado: o que limita
+o estrago de um vazamento é o tempo até a próxima troca, e esse tempo é o mesmo
+se no intervalo houve um deploy ou quarenta. O que muda é o risco — cada troca
+recria três serviços, e amarrá-la a toda atualização multiplica as ocasiões de
+algo dar errado por um ganho que não existe. Quem discordar põe `0` no
+`.env.prod` e passa a rotacionar a cada atualização.
+
+`JWT_SECRET` e `AUTH_SECRET` ficam **fora** da rotação automática: trocá-los
+derruba toda sessão aberta, e o servidor da prefeitura perderia o formulário
+pela metade a cada versão que subisse.
+
+### A rotação prova antes de dar por feita
+
+O script troca a chave, recria os serviços e então **lista o bucket com a chave
+nova**. Se não conseguir, devolve o `.env.prod` anterior e sobe tudo de volta
+sozinho.
+
+A afirmação "trocar a credencial root do MinIO é só reiniciar" é verdadeira na
+versão que usamos, mas é uma afirmação sobre software de terceiro, e não pôde
+ser testada aqui — sem Docker no ambiente de desenvolvimento, e com o binário do
+MinIO fora do alcance. Produção não é lugar de descobrir que ela mudou.
+
+### O que vazou não era a chave deste MinIO
+
+O `api/.env.example` do primeiro commit apontava para
+`bucket.administracaopublica.com.br` — um servidor de armazenamento **externo**,
+não o MinIO que sobe no compose. Rotacionar a chave local não invalida aquela
+credencial: são serviços diferentes, e a revogação tem de acontecer no servidor
+externo.
+
+Vale como lição sobre o que é um `.env.example`: aquele arquivo era um `.env` de
+trabalho renomeado. A varredura do CI existe para recusar o próximo.
+
+### O vínculo é a primeira pergunta, não um campo no meio
+
+Criar checklist virou assistente de três passos: vínculo, conteúdo, revisão.
+
+O formulário único abria com um campo "Referente a" listando sete tipos. Quem
+ia criar uma lista avulsa precisava entender e descartar aquilo; quem ia prender
+a lista a um processo tinha o seletor espremido entre o título e os itens. A
+pergunta que de fato bifurca o trabalho é uma só — **isto acompanha um registro,
+ou não?** — e feita primeiro, sozinha, ela deixa o segundo passo ser só a busca
+do processo.
+
+Nascendo de dentro de um registro, o alvo já vem resolvido e o assistente
+começa no segundo passo: perguntar o vínculo do que já está vinculado é
+burocracia.
+
+Cada passo diz **por que** não avança, em vez de desabilitar o botão em
+silêncio. Botão parado sem explicação é o mesmo beco sem saída do botão que não
+fazia nada.
+
+### Formulário que reprova precisa dizer isso
+
+`handleSubmit` do react-hook-form não chama a ação quando o schema reprova. Se o
+campo reprovado não estiver desenhado na tela, o clique não produz nada — nem
+toast, nem console, nem requisição — e o usuário conclui que o sistema travou.
+
+Foi o que aconteceu no cadastro de modelo: o formulário declarava `itens: []`, o
+schema exigia ao menos um, e a mensagem caía num campo que o JSX não renderiza.
+Duas correções, uma para o caso e outra para a classe:
+
+- `templateFormSchema` descreve só o que o **formulário** controla; a lista de
+  itens vive em estado próprio e é conferida ali, com mensagem que diz qual
+  linha está errada. `templateSchema`, completo, segue valendo na server action,
+  que é onde os dois pedaços se juntam.
+- `useResourceForm` ganhou o segundo argumento do `handleSubmit`: reprovou,
+  aparece um toast com a primeira mensagem da árvore de erros, em qualquer
+  profundidade. Vale para todos os formulários do sistema.
+
+### Liquidação e pagamento como segundo modelo global
+
+As sete etapas — ordem de fornecimento, solicitação de pagamento, nota fiscal,
+certidões, parecer do controle interno e os dois comprovantes de validação —
+vêm da lei e da instrução do Tribunal, não do organograma de um município. Como
+o PNTP, entram semeadas com `orgao_id IS NULL`; o que muda entre prefeituras é
+quem faz cada etapa, e isso se define na cópia.
+
+Três delas são do fornecedor (`para_fornecedor`): a solicitação de pagamento, a
+nota fiscal e as certidões. São as que aparecem no link externo — ele abre o
+endereço, anexa e devolve, sem conta no sistema. Emitir a ordem, dar o parecer e
+validar DANFE e certidões é da prefeitura.
+
+Todas exigem anexo, e nenhuma traz prazo em dias: o relógio da liquidação começa
+em eventos diferentes conforme o contrato — entrega, medição, aceite —, e prazo
+errado no modelo vira data errada em toda cópia aplicada.

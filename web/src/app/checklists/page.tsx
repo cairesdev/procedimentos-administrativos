@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listChecklists, listChecklistTemplates } from "@/features/checklists/queries";
-import { ChecklistForm } from "@/features/checklists/components/ChecklistForm";
+import { ChecklistWizard } from "@/features/checklists/components/ChecklistWizard";
 import { listSectors } from "@/features/sectors/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { toDate } from "@/shared/ui/labels";
@@ -40,7 +40,7 @@ export default async function ChecklistsPage({ searchParams }: PageProps) {
               title="Novo checklist"
               description="De um modelo, ou escrito na hora."
             >
-              <ChecklistForm modelos={modelos.filter((m) => m.ativo)} setores={setores} />
+              <ChecklistWizard modelos={modelos.filter((m) => m.ativo)} setores={setores} />
             </ModalTrigger>
           ) : null
         }

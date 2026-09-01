@@ -11,6 +11,18 @@ env:
   IMAGE_REPO: workcenterma/br-consultoria
 
 jobs:
+  segredo:
+    name: Nenhum segredo no repositório
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # As chaves do MinIO já entraram num `.env.example` e ficaram três
+      # semanas num repositório público. O arquivo de exemplo é onde a guarda
+      # cai: ele "não é o .env de verdade", então parece inofensivo colar ali o
+      # valor que está funcionando. Este passo recusa o commit que repetir isso.
+      - run: ./scripts/procurar-segredo.sh
+
   verificar:
     name: Verificação
     runs-on: ubuntu-latest
@@ -50,7 +62,7 @@ jobs:
 
   publicar:
     name: Build e push (${{ matrix.projeto }})
-    needs: verificar
+    needs: [verificar, segredo]
     # PR só verifica; imagem sai apenas de main e de tag.
     if: github.event_name == 'push'
     runs-on: ubuntu-latest

@@ -9,7 +9,7 @@ import { FieldGrid } from "@/shared/ui/layout";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import { createTemplate, updateTemplate } from "../actions";
-import { templateSchema, type TemplateInput } from "../schemas";
+import { templateFormSchema, type TemplateFormInput } from "../schemas";
 import type { ChecklistTemplateDetail } from "../types";
 
 const ITEM_VAZIO = {
@@ -57,17 +57,49 @@ export const TemplateForm = ({
     })) ?? [{ ...ITEM_VAZIO }],
   );
 
-  const { form, onSubmit, isSubmitting } = useResourceForm<TemplateInput>({
-    schema: templateSchema,
+  const { form, onSubmit, isSubmitting } = useResourceForm<TemplateFormInput>({
+    schema: templateFormSchema,
     defaultValues: {
       nome: modelo?.nome ?? "",
       descricao: modelo?.descricao ?? "",
       ativo: modelo?.ativo ?? true,
-      itens: [],
     },
-    action: (values) => (modelo
-      ? updateTemplate(modelo.id, { ...values, itens })
-      : createTemplate({ ...values, itens })),
+    /**
+     * Os itens entram aqui, vindos do estado — e são conferidos aqui.
+     *
+     * Recusar antes de chamar a API dá a mensagem certa na hora certa: o
+     * servidor diria "o modelo precisa de ao menos um item" depois da ida e
+     * volta, e "titulo: obrigatório" sem dizer *qual* linha.
+     */
+    action: (values) => {
+      const preenchidos = itens.filter((item) => item.titulo.trim());
+
+      if (preenchidos.length === 0) {
+        return Promise.resolve({
+          error: "O modelo precisa de ao menos um item com título.",
+        });
+      }
+
+      const vazio = itens.findIndex((item) => !item.titulo.trim());
+      if (vazio >= 0) {
+        return Promise.resolve({
+          error: `O item ${vazio + 1} está sem título. Preencha ou remova a linha.`,
+        });
+      }
+
+      const semPeriodicidade = itens.findIndex(
+        (item) => item.recorrente && !item.periodicidadeDias,
+      );
+      if (semPeriodicidade >= 0) {
+        return Promise.resolve({
+          error: `O item ${semPeriodicidade + 1} vence, mas não diz de quantos em quantos dias.`,
+        });
+      }
+
+      return modelo
+        ? updateTemplate(modelo.id, { ...values, itens })
+        : createTemplate({ ...values, itens });
+    },
     resetOnSuccess: !modelo,
     onDone: closeModal,
   });

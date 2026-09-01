@@ -5,6 +5,7 @@ import { useForm, type DefaultValues, type FieldValues, type Resolver } from "re
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import type { ZodType } from "zod";
+import { primeiraMensagem } from "./erros-do-formulario";
 
 export type ActionResult = {
   error?: string;
@@ -45,21 +46,40 @@ export const useResourceForm = <T extends FieldValues>({
     mode: "onBlur",
   });
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    const result = await action(values);
+  const onSubmit = form.handleSubmit(
+    async (values) => {
+      const result = await action(values);
 
-    if (result.error) {
-      toast.error(result.error);
-      return;
-    }
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
 
-    toast.success(result.success ?? "Registro salvo");
-    if (resetOnSuccess) form.reset(defaultValues);
-    onDone?.();
-    onCreated?.(result);
-    if (redirectTo) router.push(redirectTo);
-    router.refresh();
-  });
+      toast.success(result.success ?? "Registro salvo");
+      if (resetOnSuccess) form.reset(defaultValues);
+      onDone?.();
+      onCreated?.(result);
+      if (redirectTo) router.push(redirectTo);
+      router.refresh();
+    },
+    /**
+     * Reprovado na validação: dizer isso em voz alta.
+     *
+     * Sem este segundo argumento, `handleSubmit` simplesmente não chama a ação
+     * quando o schema reprova — e se o campo reprovado não estiver desenhado na
+     * tela, o clique não produz **nada**. Nenhum erro, nenhum toast, nenhuma
+     * linha no console: o botão fica mudo e o usuário conclui que o sistema
+     * travou.
+     *
+     * Foi o que aconteceu no cadastro de modelo de checklist: o formulário
+     * declarava `itens: []`, o schema exigia ao menos um, e a mensagem caía num
+     * campo que o JSX não renderiza. O erro estava certo; faltava sair do
+     * formulário.
+     */
+    (errosDoFormulario) => {
+      toast.error(primeiraMensagem(errosDoFormulario) ?? "Confira os campos destacados");
+    },
+  );
 
   return { form, onSubmit, isSubmitting: form.formState.isSubmitting };
 };

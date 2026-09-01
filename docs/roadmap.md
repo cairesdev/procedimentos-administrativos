@@ -1200,3 +1200,60 @@ seções, códigos e classificações.
 
 **Pendência que fica:** a listagem de checklists mostra o alvo pelo id, não pelo
 número do processo — falta o join na API.
+
+## Pendências de segurança
+
+**O que vazou não era a chave deste MinIO.** O `api/.env.example` do primeiro
+commit era um `.env` de trabalho renomeado, apontando para
+`bucket.administracaopublica.com.br` — um servidor de armazenamento externo.
+Rotacionar a chave local não invalida aquela credencial: a revogação precisa
+acontecer no servidor de fora. Ficou público em 11/08; o repositório tem 0
+forks e 0 stars, o que não diz nada sobre quem apenas clonou.
+
+**Três scripts novos**, todos exercitados antes de entregar:
+
+- `rotacionar-minio.sh` — gera o par na VPS, recria minio, minio-init e api,
+  **prova** que a chave nova abre o bucket e volta sozinho se não abrir. Testado
+  com um `docker` simulado nos três caminhos: ensaio sem efeito, prova falhando
+  com reversão byte a byte, e caminho feliz. Nenhum segredo aparece na saída.
+- `procurar-segredo.sh` — roda no CI a cada push e bloqueia a publicação da
+  imagem. Acusa o vazamento real no histórico e o ignora depois de limpo; cinco
+  cenários conferidos, zero falso positivo em 56 commits.
+- `limpar-historico.sh` — descobre sozinho o que remover (não carrega o segredo
+  escrito, senão a ferramenta de apagar credencial seria o último lugar onde ela
+  sobrevive), pede confirmação, faz espelho de segurança e reescreve. Testado em
+  clone descartável: 56 commits preservados, arquivo antigo intacto com o valor
+  substituído.
+
+**Rotação por idade**, ligada ao `deploy.sh`: `ROTACAO_MINIO_DIAS` no
+`.env.prod`, padrão 30, `0` a cada atualização, `-1` desliga. Acontece antes de
+trocar a imagem — se falhar e reverter, a produção fica na versão que já
+funcionava.
+
+**Não pôde ser testado aqui:** a rotação contra um MinIO de verdade. O ambiente
+não tem Docker e o binário do MinIO está fora de alcance. É por isso que o
+script prova e reverte em vez de confiar.
+
+**Falta, e é com o João:** revogar a chave no servidor externo, tornar o
+repositório privado, rodar os dois scripts na VPS, refazer o clone de lá depois
+da reescrita, e tirar `ADMIN_SENHA` do `.env.prod` — enquanto estiver lá, todo
+deploy reaplica aquela senha.
+
+## Polimento do checklist
+
+**O botão que não respondia** era validação reprovando num campo invisível. O
+caso foi corrigido e a classe também: nenhum formulário do sistema fica mudo ao
+reprovar. Seis testes novos no web cobrem a busca da mensagem na árvore de
+erros.
+
+**Criação em passos** — vínculo, conteúdo, revisão —, com o TargetPicker
+ganhando o passo inteiro. Os oito movimentos do assistente foram exercitados em
+jsdom: trava sem escolha, trava sem registro, trava sem título, avança com
+modelo, e envia o vínculo e o modelo corretos.
+
+**Migration 0038**: modelo global de liquidação e pagamento, sete etapas, três
+delas do fornecedor. Conferido contra Postgres de verdade com a API no ar —
+aplicado a um processo, os sete itens nascem com seção e exigência de anexo, e
+o link externo mostra exatamente três.
+
+662 testes na API, 15 no web, 104 invariantes, 423 consultas com `PREPARE`.

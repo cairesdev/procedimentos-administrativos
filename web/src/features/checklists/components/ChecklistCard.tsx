@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listChecklistsOf, listChecklistTemplates } from "../queries";
 import { listSectors } from "@/features/sectors/queries";
 import { ModalTrigger } from "@/shared/ui/Modal";
-import { ChecklistForm } from "./ChecklistForm";
+import { ChecklistWizard } from "./ChecklistWizard";
 import { Alert, Badge, Card, Table } from "@/shared/ui/layout";
 import { toDate } from "@/shared/ui/labels";
 import styles from "./Checklist.module.css";
@@ -47,7 +47,7 @@ export const ChecklistCard = async ({
       title="Novo checklist"
       description="Já vinculado a este registro."
     >
-      <ChecklistForm
+      <ChecklistWizard
         modelos={modelos.filter((modelo) => modelo.ativo)}
         setores={setores}
         alvo={{ tipo: alvoTipo, id: alvoId }}

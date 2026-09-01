@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import { ApiError } from "./http-client";
 import type { ActionResult } from "@/shared/ui/use-resource-form";
 
@@ -20,6 +21,23 @@ export const runAction = async (
         : "";
       return { error: details ? `${error.message} — ${details}` : error.message };
     }
+
+    /**
+     * A server action revalida com o mesmo schema antes de chamar a API, e o
+     * `ZodError` caía no genérico abaixo. "Não foi possível concluir a
+     * operação" é o que se diz quando não se sabe o que houve — aqui se sabe,
+     * e o campo reprovado é justamente o que o usuário precisa corrigir.
+     */
+    if (error instanceof ZodError) {
+      const primeiro = error.issues[0];
+      const campo = primeiro?.path.join(".");
+      return {
+        error: primeiro
+          ? `${campo ? `${campo}: ` : ""}${primeiro.message}`
+          : "Dados inválidos",
+      };
+    }
+
     return { error: "Não foi possível concluir a operação" };
   }
 };

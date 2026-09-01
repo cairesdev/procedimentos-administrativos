@@ -57,6 +57,50 @@ else
   echo "  banco não está de pé — primeira subida, nada a salvar"
 fi
 
+# ---- Rotação da chave do MinIO ---------------------------------------------
+# Segredo que não muda nunca é segredo que, no dia em que vaza, vale para
+# sempre. A chave do MinIO já esteve num arquivo versionado — não vai acontecer
+# de novo, mas a defesa não pode depender disso.
+#
+# A conta é por **idade da chave**, não por deploy. Rotacionar a cada `git
+# push` não protege mais: o que limita o estrago de um vazamento é o tempo até
+# a próxima troca, e esse tempo é o mesmo se o intervalo for de trinta dias com
+# um deploy ou com quarenta. O que muda é o risco — toda troca recria três
+# serviços, e amarrar isso a cada atualização é multiplicar as ocasiões de algo
+# dar errado por um ganho que não existe.
+#
+# No .env.prod: ROTACAO_MINIO_DIAS=0 troca a cada atualização; um valor
+# negativo (-1) desliga. Ausente ou vazio vale 30 — o padrão é rotacionar, e
+# quem quiser o contrário precisa dizer isso por escrito.
+#
+# JWT_SECRET e AUTH_SECRET **não** entram aqui de propósito: trocá-los derruba
+# toda sessão aberta, e um servidor perderia o formulário pela metade a cada
+# atualização. Eles se rotacionam à mão, fora do expediente — a seção 7 do
+# docs/deploy-vps.md explica.
+ROTACAO_DIAS=$(grep -E '^ROTACAO_MINIO_DIAS=' "$ENV_FILE" | cut -d= -f2- || echo "")
+ROTACAO_DIAS=${ROTACAO_DIAS:-30}
+
+if [ "$ROTACAO_DIAS" -ge 0 ] 2>/dev/null; then
+  ULTIMA=$(grep -E '^MINIO_ROTACIONADO_EM=' "$ENV_FILE" | cut -d= -f2- || echo "")
+
+  if [ -z "$ULTIMA" ]; then
+    # Sem data é chave que nunca foi rotacionada — inclusive a que vazou.
+    IDADE=99999
+  else
+    IDADE=$(( ( $(date '+%s') - $(date -d "$ULTIMA" '+%s') ) / 86400 ))
+  fi
+
+  if [ "$IDADE" -ge "$ROTACAO_DIAS" ]; then
+    passo "Chave do MinIO com ${IDADE} dia(s) — rotacionando antes de atualizar"
+    # Antes da imagem nova: assim, se a rotação falhar e voltar atrás, a
+    # produção continua na versão que já estava funcionando.
+    ./scripts/rotacionar-minio.sh || falhar "a rotação falhou e foi revertida; o deploy parou aqui"
+  else
+    echo
+    echo "Chave do MinIO tem ${IDADE} dia(s); rotaciona com ${ROTACAO_DIAS}."
+  fi
+fi
+
 # ---- Código novo -----------------------------------------------------------
 passo "Atualizando o repositório"
 git pull --ff-only

@@ -232,59 +232,94 @@ ssh -L 9001:localhost:9001 usuario@vps
 
 ## 7. Rotacionar segredo vazado
 
-Vale para qualquer segredo que tenha passado por um arquivo versionado. As
-chaves do MinIO estiveram no `.env.example` em commits antigos — os arquivos
-já foram corrigidos, mas **o histórico do git guarda o que foi commitado**, e
-quem clonar o repositório lê o valor antigo. Corrigir o arquivo não invalida a
-chave; só a rotação invalida.
+### O que vazou, exatamente
 
-### MinIO
+O primeiro commit do repositório (`d42b6a7`, 11/08/2026) trouxe um
+`api/.env.example` que era, na verdade, um `.env` de trabalho:
 
-O MinIO guarda os objetos como arquivos em `./data/minio`. A chave é
-credencial de acesso, **não** chave de criptografia: trocá-la não torna nada
-ilegível e nenhum anexo se perde. É um restart.
+```
+MINIO_ENDPOINT="bucket.administracaopublica.com.br"
+MINIO_ACCESS_KEY="krp8HTx…"      # 20 caracteres, em texto puro
+MINIO_SECRET_KEY="8sMbhnM…"      # 40 caracteres, em texto puro
+```
+
+(Os valores completos não são repetidos aqui de propósito. Estão no commit,
+que é onde o `scripts/limpar-historico.sh` vai buscá-los — copiá-los para a
+documentação seria reintroduzir no repositório justamente o que se quer tirar
+dele.)
+
+**Leia o endpoint.** Essa chave não é do MinIO que sobe no
+`docker-compose.prod.yml` — é de um servidor de armazenamento **externo**, com
+SSL e bucket próprio, provavelmente compartilhado com outros sistemas. Trocar
+`MINIO_SECRET_KEY` no `.env.prod` desta VPS **não invalida essa credencial**:
+são dois serviços diferentes, e a chave vazada abre o de fora.
+
+Quem precisa revogá-la é o administrador de
+`bucket.administracaopublica.com.br`. Enquanto isso não acontecer, ela vale —
+está pública desde 11/08 num repositório aberto, e bots varrem o GitHub à
+procura exatamente disso.
+
+A ordem, então, é esta:
+
+1. **Revogar a chave no servidor externo.** É o que fecha o buraco.
+2. **Rotacionar a chave do MinIO local** (`./scripts/rotacionar-minio.sh`) — não
+   porque ela vazou, mas porque a chave deste ambiente nunca foi trocada.
+3. **Tornar o repositório privado** e **limpar o histórico**
+   (`./scripts/limpar-historico.sh`) — apaga o valor do passado, mas só depois
+   de 1 e 2: limpar o histórico não invalida nada, e quem já clonou continua
+   com o valor em disco.
+
+### MinIO local
+
+A chave do MinIO é credencial de acesso, **não** chave de criptografia: trocá-la
+não torna nada ilegível e nenhum anexo se perde. É um restart.
 
 ```bash
 cd /caminho/do/projeto
-alias dcp='docker compose -f docker-compose.prod.yml --env-file .env.prod'
-
-# 1. Gere o par novo (o usuário do MinIO exige 3+ caracteres; a senha, 8+)
-openssl rand -hex 12      # MINIO_ACCESS_KEY
-openssl rand -base64 32   # MINIO_SECRET_KEY
-
-# 2. Guarde de onde dá para voltar, se algo sair errado
-cp .env.prod .env.prod.bak && chmod 600 .env.prod.bak
-
-# 3. Edite as duas linhas no .env.prod
-nano .env.prod            # MINIO_ACCESS_KEY= / MINIO_SECRET_KEY=
-
-# 4. Suba minio e api juntos: a API lê a mesma variável e ficaria
-#    com a chave velha se você reiniciasse só o minio.
-dcp up -d --force-recreate minio minio-init api
-
-# 5. Confira
-dcp ps                    # minio healthy, minio-init com exit 0
-dcp logs --tail 30 api    # sem erro de credencial
+./scripts/rotacionar-minio.sh --seco    # mostra o que faria
+./scripts/rotacionar-minio.sh           # faz
 ```
 
-Depois disso, **abra um anexo antigo pelo sistema** — é o teste que importa: a
-API assina a URL com a chave nova sobre um objeto gravado com a antiga. Se
-baixar, a rotação está completa e o `.env.prod.bak` pode ser apagado.
+O script gera o par na própria VPS, guarda o `.env.prod` anterior, recria
+`minio`, `minio-init` e `api` juntos — a API lê a mesma variável e ficaria com a
+chave velha se só o minio reiniciasse — e então **prova** que a chave nova
+abre o bucket. Se a prova falhar, ele devolve o `.env.prod` anterior e sobe os
+serviços de volta sozinho.
+
+Sobra um teste que nenhum script faz por você: **abrir um anexo antigo pelo
+sistema**. É o caso que importa — a API assina a URL com a chave nova sobre um
+objeto gravado com a antiga. Se baixar, apague o `.env.prod.bak-*`, que guarda a
+chave velha em texto puro.
 
 Se o `minio-init` falhar com `Access Denied`, a senha nova tem menos de 8
 caracteres ou o `.env.prod` ficou com aspas em volta do valor — o Compose as
 trata como parte do texto.
 
-### O resto do que passou pelo histórico
+### A rotação que acontece sozinha
 
-`JWT_SECRET`, `AUTH_SECRET` e `POSTGRES_PASSWORD` seguem a mesma regra. Dois
-avisos sobre o efeito colateral, que não existe no MinIO:
+`./scripts/deploy.sh` rotaciona a chave do MinIO quando ela passa de
+`ROTACAO_MINIO_DIAS` (padrão 30, gravado no `.env.prod`). `0` troca a cada
+atualização; `-1` desliga.
 
-- Trocar `JWT_SECRET` ou `AUTH_SECRET` **derruba todas as sessões abertas**:
-  todo mundo refaz login. Faça fora do horário de expediente.
-- Trocar `POSTGRES_PASSWORD` no `.env.prod` **não** troca a senha no banco já
+A conta é por **idade da chave**, e não por deploy, de propósito. O que limita o
+estrago de um vazamento é o tempo até a próxima troca — e esse tempo é o mesmo
+com um deploy no mês ou com quarenta. O que muda é o risco: cada troca recria
+três serviços, e amarrar isso a toda atualização multiplica as ocasiões de algo
+dar errado sem ganho correspondente.
+
+A rotação roda **antes** de trocar a imagem. Se ela falhar e voltar atrás, o
+deploy para ali, com a produção na versão que já estava funcionando.
+
+### JWT_SECRET, AUTH_SECRET e POSTGRES_PASSWORD
+
+Ficam fora da rotação automática, cada um por seu motivo:
+
+- `JWT_SECRET` e `AUTH_SECRET` **derrubam todas as sessões abertas**. Rotacionar
+  a cada deploy faria o servidor da prefeitura perder o formulário pela metade
+  toda vez que uma versão subisse. Troque à mão, fora do expediente.
+- `POSTGRES_PASSWORD` no `.env.prod` **não** troca a senha do banco já
   inicializado — a variável só é lida no `initdb`. É preciso alterar dentro do
-  Postgres e só então subir os serviços com o valor novo:
+  Postgres e só então subir com o valor novo:
 
   ```bash
   dcp exec db psql -U procedimentos -c "ALTER USER procedimentos PASSWORD 'nova';"
@@ -292,16 +327,41 @@ avisos sobre o efeito colateral, que não existe no MinIO:
   dcp up -d --force-recreate api backup
   ```
 
-Reescrever o histórico do git (`git filter-repo`) remove o valor do passado,
-mas exige `push --force` e quebra todo clone existente. Com a chave já
-rotacionada, o valor antigo no histórico não abre mais nada — deixar como está
-é a escolha razoável, desde que o repositório seja privado.
+### Limpar o histórico do git
+
+```bash
+./scripts/limpar-historico.sh
+```
+
+Faz um clone espelho de segurança, troca o valor por `***REMOVIDO***` em toda a
+história com `git filter-repo`, confere que sumiu e para. O `push --force` é a
+parte irreversível e fica com você — o script imprime os comandos.
+
+Reescrever o histórico troca o hash de todos os commits: **o clone da VPS fica
+incompatível** e precisa ser refeito. O roteiro para isso, incluindo como
+preservar `.env.prod`, `data/` e `backups/`, está na saída do script.
+
+### Impedir a próxima vez
+
+```bash
+./scripts/procurar-segredo.sh              # o que está versionado
+./scripts/procurar-segredo.sh --historico  # todo o passado
+```
+
+Roda no CI a cada push e pull request, e barra a publicação da imagem. Procura
+valor com cara de credencial em campo com cara de segredo, ignorando
+placeholders — `JWT_SECRET=troque-este-segredo` passa, trinta e dois caracteres
+aleatórios não.
 
 ## 8. Checklist de segurança
 
+- [ ] **Chave do MinIO externo revogada em `bucket.administracaopublica.com.br`**
+      — é a que vazou, e a única que a rotação local NÃO resolve (seção 7)
 - [ ] `.env.prod` com `chmod 600` e fora do git
-- [ ] Chaves do MinIO rotacionadas (estiveram no histórico do git — seção 7)
+- [ ] Chave do MinIO local rotacionada (`./scripts/rotacionar-minio.sh`)
+- [ ] Anexo antigo aberto pelo sistema depois da rotação
 - [ ] Repositório privado no GitHub
+- [ ] Histórico limpo (`./scripts/limpar-historico.sh`) e clone da VPS refeito
 - [ ] Firewall liberando só 22, 80 e 443
 - [ ] `ADMIN_SENHA` removida do `.env.prod` depois do primeiro login
 - [ ] Backups sendo copiados para fora da VPS

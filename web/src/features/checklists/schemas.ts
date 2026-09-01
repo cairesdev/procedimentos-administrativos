@@ -33,6 +33,21 @@ export const templateSchema = z.object({
   itens: z.array(templateItemSchema).min(1, "O modelo precisa de ao menos um item"),
 });
 
+/**
+ * O que o **formulário** controla — sem os itens.
+ *
+ * A lista de itens vive num `useState` próprio, porque cada linha tem campos
+ * que aparecem e somem conforme as opções marcadas. Mandar o resolver validar
+ * um campo que o formulário nunca preenche criava um beco sem saída: o schema
+ * reprovava por "precisa de ao menos um item", a mensagem caía num campo que o
+ * JSX não desenha, e o botão de salvar ficava mudo — clicava e não acontecia
+ * nada, com os itens visivelmente preenchidos na tela.
+ *
+ * `templateSchema`, completo, continua valendo na server action: é lá que os
+ * dois pedaços se juntam, e é lá que a regra precisa ser conferida.
+ */
+export const templateFormSchema = templateSchema.omit({ itens: true });
+
 export const checklistSchema = z.object({
   titulo: z.string().max(200).optional(),
   descricao: z.string().max(2000).optional(),
@@ -56,6 +71,7 @@ export const dismissSchema = z.object({
 });
 
 export type TemplateInput = z.input<typeof templateSchema>;
+export type TemplateFormInput = z.input<typeof templateFormSchema>;
 export type ChecklistInput = z.input<typeof checklistSchema>;
 export type FulfillInput = z.input<typeof fulfillSchema>;
 export type RefuseInput = z.input<typeof refuseSchema>;

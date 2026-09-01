@@ -1,0 +1,44 @@
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.cartao {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  cursor: pointer;
+  color: var(--texto_suave);
+  transition: border-color var(--transicao), background var(--transicao);
+}
+
+.cartao:hover {
+  border-color: var(--acao);
+}
+
+.cartao_ativo {
+  border-color: var(--acao);
+  background: var(--acao_suave);
+  color: var(--acao_escura);
+}
+
+.cartao_titulo {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--texto);
+}
+
+.cartao_ativo .cartao_titulo {
+  color: var(--acao_escura);
+}
+
+.cartao_dica {
+  font-size: 12px;
+  color: var(--texto_apagado);
+}
