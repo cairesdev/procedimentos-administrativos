@@ -6,7 +6,9 @@ import { container } from "../../../container";
 import { LIMIAR_ALERTA_DIAS } from "../../../domain/shared/Prazos";
 import { enviarArquivo } from "../enviarArquivo";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
-import { despacharSchema, ordemFornecimentoSchema, parecerSchema } from "../schemas/tramitacao";
+import {
+  despacharSchema, notaFiscalSchema, ordemFornecimentoSchema, parecerSchema,
+} from "../schemas/tramitacao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
@@ -158,11 +160,16 @@ processosRouter.delete("/:id/anexos/:anexoId", exigirPermissao("processes:dispat
   }
 });
 
-// Mesma guarda do POST: a ordem é peça de compras, e quem não a emite
-// também não precisa da lista para emitir o documento dela.
+/**
+ * Ler a ordem não é emitir a ordem.
+ *
+ * A listagem pedia `processes:order`, a mesma permissão de emitir — e a
+ * controladoria, que precisa conferir a ordem para dar parecer no processo,
+ * não a via. Quem alcança o processo alcança as ordens dele.
+ */
 processosRouter.get(
   "/:id/ordens",
-  exigirPermissao("processes:order"),
+  exigirPermissao("processes:read"),
   async (req, res, next) => {
     try {
       const ordens = await container.tramitacao.listarOrdens(
@@ -170,6 +177,26 @@ processosRouter.get(
         req.params.id!,
       );
       res.json(ordens);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Informar a nota não é emitir a ordem: a controladoria também alcança.
+processosRouter.patch(
+  "/:id/ordens/:ordemId",
+  exigirPermissao("orders:invoice"),
+  async (req, res, next) => {
+    try {
+      const { numeroNotaFiscal } = notaFiscalSchema.parse(req.body);
+      await container.informarNotaFiscal.executar({
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        ordemId: req.params.ordemId!,
+        numero: numeroNotaFiscal,
+      });
+      res.json({ message: "Nota fiscal registrada" });
     } catch (error) {
       next(error);
     }

@@ -993,3 +993,40 @@ telas do almoxarifado respondiam "Erro interno". Cada rota escrevia à mão
 documentos inteiro nunca passou por `PREPARE`. Um `d.data_validade` que não
 existe só apareceu ao emitir o comprovante contra um Postgres de verdade.
 Corrigido: 351 → **375 consultas conferidas**, 24 delas pela primeira vez.
+
+## Contrato, ordem e apresentação — pronto
+
+Cinco pedidos do uso real, com o módulo de Processos já em produção.
+
+- **Itens editáveis** — todos os campos, inclusive quantidade e valor. A trava é
+  uma só: a quantidade não desce abaixo do que já saiu em solicitação, porque o
+  saldo ficaria negativo e o contrato deveria material que não tem. Item com
+  consumo também não é excluído — o pedido antigo aponta para ele. O saldo
+  acompanha a correção (`saldo + (novo − antigo)`), senão aumentar a quantidade
+  criaria unidades que ninguém poderia pedir.
+- **Teto da licitação** — bloqueio ao salvar, somando os contratos que já
+  nasceram dela. Fechar exatamente no valor autorizado é permitido; um centavo
+  além, não. A conta é em centavos: em ponto flutuante, `0.1 + 0.2 > 0.3`, e o
+  contrato que fecha no teto seria recusado por um erro invisível ao usuário.
+  Contrato de ata fica de fora — a ata tem saldo próprio, por item.
+- **Ordem visível à controladoria** — a listagem pedia `processes:order`, a
+  mesma permissão de emitir, então quem precisa conferir para dar parecer não a
+  via. Passou a `processes:read`.
+- **Nota fiscal** — `orders:invoice`, nova, para compras e controladoria. É a
+  primeira escrita da controladoria, e é deliberada: informar o número é ato de
+  conferência. Continua editável, e em branco grava `NULL` — string vazia
+  colidiria no índice de unicidade na segunda ordem do mesmo fornecedor.
+- **Apresentação** — primeira seção do contrato e da licitação: o fornecedor
+  com endereço e contato (que só existiam duas telas adiante) e o procedimento
+  com modalidade, objeto, valor e assinatura.
+
+**Uma divergência que a edição tornou visível:** o valor do contrato é digitado
+e a soma dos itens é outra conta, e nada as confrontava. Ficaram separadas por
+decisão — o arredondamento do edital nem sempre bate com a soma —, mas a tela
+agora mostra as duas e avisa quando diferem. Por consequência, o valor virou
+editável: um aviso sem conserto possível seria só um incômodo.
+
+**573 testes**, 72 invariantes em Postgres real, 381 consultas com `PREPARE`.
+Verificado contra a API no ar, com banco de verdade, e quebrando cada guarda:
+teto virando "menor que", teto sem centavos, piso do item virando o saldo, e
+exclusão ignorando o consumo — os quatro acusam.

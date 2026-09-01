@@ -32,6 +32,10 @@ export const PERMISSOES = [
   "requests:read", "requests:create",
   "workflows:read", "workflows:write",
   "processes:read", "processes:dispatch", "processes:opinion", "processes:order",
+  // A nota fiscal chega dias depois da ordem, e quem a confere é quem a tem em
+  // mãos: compras e controladoria. Separada de `processes:order` porque
+  // informar o número não é emitir a ordem.
+  "orders:invoice",
   // Três atos diferentes: ver a peça de um registro que já se alcança, emitir
   // uma nova, e mexer no modelo — este último é administração da prefeitura.
   "documents:read", "documents:issue", "documents:template",
@@ -99,7 +103,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   GESTOR: [
     ...ADMINISTRA_A_PREFEITURA.filter((p) => p !== "audit:read"),
     ...CONDUZ_CONTRATACAO,
-    "processes:order",
+    "processes:order", "orders:invoice",
     "assets:read", "assets:write",
     "fleet:read", "fleet:write", "trips:create",
     "protocol:read", "protocol:serve", "protocol:manage",
@@ -114,6 +118,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "contracts:read", "contracts:write",
     "requests:read",
     "processes:read", "processes:dispatch", "processes:order",
+    "orders:invoice",
     "documents:read", "documents:issue",
   ],
 
@@ -123,6 +128,14 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "suppliers:read", "bids:read", "contracts:read", "requests:read",
     "workflows:read",
     "processes:read", "processes:dispatch", "processes:opinion",
+    /**
+     * A única escrita da controladoria, e deliberada.
+     *
+     * Informar o número da nota fiscal é ato de conferência, não de cadastro:
+     * a nota chega com a mercadoria, dias depois da ordem, e quem a confere é
+     * quem a tem em mãos.
+     */
+    "orders:invoice",
     "assets:read",
     "documents:issue",
     "audit:read",

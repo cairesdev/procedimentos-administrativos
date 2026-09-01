@@ -33,6 +33,8 @@ import { EditarLicitacao } from "./application/licitacao/EditarLicitacao";
 import { EditarContrato } from "./application/contrato/EditarContrato";
 import { GeradorNumeroProcesso } from "./application/shared/GeradorNumeroProcesso";
 import { CriarLicitacao } from "./application/licitacao/CriarLicitacao";
+import { InformarNotaFiscal } from "./application/tramitacao/InformarNotaFiscal";
+import { EditarItemDoContrato } from "./application/contrato/EditarItemDoContrato";
 import { CriarContrato } from "./application/contrato/CriarContrato";
 import { MontarRascunhoSolicitacao } from "./application/solicitacao/MontarRascunhoSolicitacao";
 import { EnviarSolicitacao } from "./application/solicitacao/EnviarSolicitacao";
@@ -155,6 +157,10 @@ export const container = {
   editarLicitacao: new EditarLicitacao(licitacoes),
   editarContrato: new EditarContrato(contratos, executarEmTransacao),
   criarLicitacao: new CriarLicitacao(licitacoes),
+  editarItemDoContrato: new EditarItemDoContrato(contratos, auditoria),
+
+  informarNotaFiscal: new InformarNotaFiscal(tramitacao, auditoria),
+
   criarContrato: new CriarContrato(contratos, auditoria, executarEmTransacao),
   montarRascunho: new MontarRascunhoSolicitacao(
     solicitacoes, contratos, usuarios, executarEmTransacao,

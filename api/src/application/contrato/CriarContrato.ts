@@ -1,3 +1,4 @@
+import { exigirCaberNaLicitacao } from "./TetoDaLicitacao";
 import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type { ContratoRepository, NovoContrato } from "../ports/ContratoRepository";
@@ -25,6 +26,12 @@ export class CriarContrato {
     if (dados.itens.length === 0) {
       throw new ErroDeNegocio("Contrato precisa de ao menos um item");
     }
+
+    await exigirCaberNaLicitacao(this.contratos, {
+      orgaoId: dados.orgaoId,
+      licitacaoId: dados.licitacaoId,
+      valorTotal: dados.valorTotal,
+    });
 
     const duplicado = await this.contratos.existeNumero(dados.orgaoId, dados.numero);
     if (duplicado) {

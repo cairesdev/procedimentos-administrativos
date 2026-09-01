@@ -4,12 +4,18 @@ import type { Tx } from "./Transacao";
 // Só eventos de negócio — nunca edição simples de cadastro.
 export type TipoEvento =
   | "CONTRATO_CRIADO"
+  // Itens do contrato passaram a ser corrigíveis: o antes e o depois ficam
+  // na trilha, porque mudam o valor do que já foi contratado.
+  | "ITEM_CONTRATO_EDITADO"
+  | "ITEM_CONTRATO_EXCLUIDO"
   | "SOLICITACAO_ENVIADA"
   | "SOLICITACAO_CANCELADA"
   | "PROCESSO_DESPACHADO"
   | "PROCESSO_MOVIDO"
   | "PARECER_EMITIDO"
   | "ORDEM_EMITIDA"
+  // A nota chega dias depois da ordem; quem a informou fica registrado.
+  | "NOTA_FISCAL_INFORMADA"
   | "ANEXO_ADICIONADO"
   | "ANEXO_REMOVIDO"
   | "BENS_TOMBADOS"

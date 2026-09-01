@@ -89,6 +89,27 @@ VALUES ('33333333-3333-3333-3333-333333333333','11111111-1111-1111-1111-11111111
 INSERT INTO setor (id, orgao_id, nome, tipo)
 VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd','11111111-1111-1111-1111-111111111111',
         'Alimentacao Escolar','ALIMENTACAO_ESCOLAR');
+INSERT INTO fornecedor (id, documento, razao_social)
+VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff','12345678000199','FORNECEDOR TESTE LTDA');
+INSERT INTO licitacao (id, orgao_id, numero, objeto, modalidade, data_assinatura, valor_total)
+VALUES ('eeee1111-eeee-1111-eeee-111111111111','11111111-1111-1111-1111-111111111111',
+        '001/2026','Generos alimenticios','PREGAO_ELETRONICO', current_date, 100000);
+INSERT INTO processo (id, orgao_id, numero_protocolo, numero_processo_adm,
+                      tipo_processo, status)
+VALUES ('eeee2222-eeee-2222-eeee-222222222222','11111111-1111-1111-1111-111111111111',
+        '0001/2026','0001/2026','CONTRATO','ABERTO');
+INSERT INTO contrato (id, orgao_id, processo_id, numero, fornecedor_id, licitacao_id,
+                      data_inicio, data_fim, valor_total)
+VALUES ('eeee3333-eeee-3333-eeee-333333333333','11111111-1111-1111-1111-111111111111',
+        'eeee2222-eeee-2222-eeee-222222222222','C-001',
+        'ffffffff-ffff-ffff-ffff-ffffffffffff','eeee1111-eeee-1111-eeee-111111111111',
+        current_date, current_date + 365, 5000);
+-- 1000 contratados, 300 já consumidos: o item que a correção precisa respeitar.
+INSERT INTO item (id, orgao_id, contrato_id, produto, unidade_medida, quantidade_total,
+                  saldo_disponivel, modo_medicao, valor_unitario, valor_total)
+VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','11111111-1111-1111-1111-111111111111',
+        'eeee3333-eeee-3333-eeee-333333333333','ARROZ TIPO 1','KG', 1000, 700,
+        'UNIDADE', 5, 5000);
 INSERT INTO tipo_estoque (id, orgao_id, nome)
 VALUES ('44444444-4444-4444-4444-444444444444','11111111-1111-1111-1111-111111111111','Alimentacao');
 INSERT INTO produto (id, nome, unidade_medida)
@@ -484,6 +505,19 @@ CASOS: list[tuple[str, str, bool]] = [
      "INSERT INTO almoxarifado (orgao_id, nome, setor_id) VALUES "
      "('11111111-1111-1111-1111-111111111111','Fantasma',"
      "'00000000-0000-0000-0000-000000000000')",
+     False),
+    # ---- item do contrato: a correcao nao pode zerar o saldo -------------
+    ("saldo negativo no item e recusado pelo banco",
+     "UPDATE item SET saldo_disponivel = -1 WHERE id = "
+     "'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'",
+     False),
+    ("corrigir a quantidade para cima soma no saldo",
+     "UPDATE item SET saldo_disponivel = saldo_disponivel + (1200 - quantidade_total), "
+     "quantidade_total = 1200 WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'",
+     True),
+    ("baixar abaixo do consumido estoura o CHECK",
+     "UPDATE item SET saldo_disponivel = saldo_disponivel + (100 - quantidade_total), "
+     "quantidade_total = 100 WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'",
      False),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "

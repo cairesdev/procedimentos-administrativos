@@ -1,3 +1,4 @@
+import { exigirCaberNaLicitacao } from "./TetoDaLicitacao";
 import { ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
 import { garantirExiste, garantirSemVinculos } from "../shared/ExclusaoSegura";
 import type { ContratoRepository, EdicaoContrato } from "../ports/ContratoRepository";
@@ -18,6 +19,23 @@ export class EditarContrato {
     const fim = dados.dataFim === undefined ? atual.dataFim : dados.dataFim;
     if (fim && new Date(fim) < new Date(inicio)) {
       throw new ErroDeNegocio("Fim da vigência não pode ser anterior ao início");
+    }
+
+    /**
+     * O teto vale na edição também.
+     *
+     * Sem isto, a trava da criação seria contornável em dois passos: cria-se o
+     * contrato dentro do limite e aumenta-se o valor depois.
+     */
+    if (dados.valorTotal !== undefined && atual.licitacaoId) {
+      await exigirCaberNaLicitacao(this.contratos, {
+        orgaoId,
+        licitacaoId: atual.licitacaoId,
+        valorTotal: dados.valorTotal,
+        // Fora da soma: senão o próprio contrato entraria nela duas vezes, e
+        // qualquer edição de um contrato no teto seria recusada.
+        exceto: id,
+      });
     }
 
     await this.contratos.atualizar(orgaoId, id, dados);

@@ -2,6 +2,7 @@ import { IssueDocumentPanel } from "@/features/documents/components/IssueDocumen
 import type { DocumentTemplate, IssuedDocument } from "@/features/documents/types";
 import { Alert, SummaryGrid } from "@/shared/ui/layout";
 import { toCurrency, toDate } from "@/shared/ui/labels";
+import { InvoiceField } from "./InvoiceField";
 import type { SupplyOrder } from "../types";
 
 /**
@@ -15,12 +16,17 @@ export const SupplyOrderPanel = ({
   modelos,
   voltarPara,
   podeEmitir,
+  processId,
+  podeInformarNota,
 }: {
   ordens: SupplyOrder[];
   documentosPorOrdem: Record<string, IssuedDocument[]>;
   modelos: DocumentTemplate[];
   voltarPara: string;
   podeEmitir: boolean;
+  processId: string;
+  /** Compras e controladoria: quem tem a nota em mãos. */
+  podeInformarNota: boolean;
 }) => {
   if (ordens.length === 0) {
     return (
@@ -45,9 +51,22 @@ export const SupplyOrderPanel = ({
               { label: "Valor", value: toCurrency(ordem.valor) },
               { label: "Emitida em", value: toDate(ordem.data) },
               { label: "Empenho", value: ordem.numeroEmpenho ?? "—" },
-              { label: "Nota fiscal", value: ordem.numeroNotaFiscal ?? "—" },
+              ...(podeInformarNota
+                ? []
+                : [{ label: "Nota fiscal", value: ordem.numeroNotaFiscal ?? "—" }]),
             ]}
           />
+
+          {/* Editável para quem confere; só leitura para os demais. */}
+          {podeInformarNota ? (
+            <div style={{ marginTop: "10px", maxWidth: "420px" }}>
+              <InvoiceField
+                processId={processId}
+                ordemId={ordem.id}
+                atual={ordem.numeroNotaFiscal}
+              />
+            </div>
+          ) : null}
 
           <div style={{ marginTop: "12px" }}>
             <IssueDocumentPanel

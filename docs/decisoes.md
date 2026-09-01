@@ -91,7 +91,7 @@ tomadas na implementação, todas reversíveis:
   pedido por ela, salvo com `frota_config.compartilha_entre_secretarias` ligado.
 - **Conflito de agenda só avisa** (janela de 4h para frente e para trás), como decidido — a API
   devolve os conflitos junto com a viagem criada e a tela mostra no toast.
-**2ª fatia entregue** — o módulo está completo:
+  **2ª fatia entregue** — o módulo está completo:
 
 - **Abastecimento durante a viagem**: litros, valor, ou os dois; só aceito de viagem RETIRADA ou
   FINALIZADA (antes da retirada não há o que abastecer). É coisa distinta da nota de combustível
@@ -340,7 +340,7 @@ Relatório da Controladoria e duas Ordens de Serviço/Fornecimento (São Bernard
 Parnaíba/MA). Todas seguem a mesma anatomia: timbre, título em caixa alta, corpo com dados do
 processo interpolados, local e data por extenso, bloco de assinatura com cargo ou setor.
 
-**Observação que orientou o desenho**: as duas ordens de serviço são o *mesmo tipo de documento*
+**Observação que orientou o desenho**: as duas ordens de serviço são o _mesmo tipo de documento_
 em prefeituras diferentes e têm layouts que não se parecem — São Bernardo usa uma tabela corrida
 de itens, Alto Parnaíba usa um formulário em seções numeradas com três colunas de assinatura.
 Documento oficial é identidade do órgão, não do produto.
@@ -351,8 +351,8 @@ Documento oficial é identidade do órgão, não do produto.
   código-fonte: é linha no banco com `orgao_id` nulo — o **modelo global**, mantido pelo painel do
   produto. A prefeitura que precisa de outra redação edita e passa a ter uma linha própria, que
   vence sobre a global; quem não mexeu continua seguindo o global.
-  *Por que não constante no código*: poluiria o fonte com texto jurídico e exigiria deploy para
-  corrigir vírgula. *Por que não copiar o global para cada prefeitura na criação*: um erro de
+  _Por que não constante no código_: poluiria o fonte com texto jurídico e exigiria deploy para
+  corrigir vírgula. _Por que não copiar o global para cada prefeitura na criação_: um erro de
   redação viraria correção prefeitura por prefeitura, com script de migração para as já
   cadastradas. Com resolução por fallback, é um `UPDATE` só.
 - **"Restaurar padrão" é apagar a linha da prefeitura.** Sem campo de controle, sem cópia de volta.
@@ -367,7 +367,7 @@ Documento oficial é identidade do órgão, não do produto.
   interpolado e um JSON com os dados usados. A peça é remontada sempre a partir desse retrato: sai
   igual hoje e daqui a cinco anos, sem guardar PDF no storage. **Editar um modelo — global ou da
   prefeitura — vale só para emissões novas**; documento já emitido nunca muda.
-  *Por que não renderizar dos dados atuais*: a peça que alguém assinou em março sairia diferente em
+  _Por que não renderizar dos dados atuais_: a peça que alguém assinou em março sairia diferente em
   agosto se o contrato, o item ou o modelo mudassem, e a página de conferência atestaria uma versão
   que não é a do papel.
 - **Assinatura em duas camadas.** Rodapé com autoria registrada (nome, cargo, matrícula, data e
@@ -384,13 +384,13 @@ Documento oficial é identidade do órgão, não do produto.
 
 `documento_modelo` (novo):
 
-| Coluna | Observação |
-| --- | --- |
-| `orgao_id` | **Nulo = modelo global**, mantido pelo painel do produto |
+| Coluna           | Observação                                                |
+| ---------------- | --------------------------------------------------------- |
+| `orgao_id`       | **Nulo = modelo global**, mantido pelo painel do produto  |
 | `modulo`, `tipo` | PROCESSOS/PATRIMONIO/FROTAS/ALMOXARIFADO + o tipo da peça |
-| `nome` | Rótulo que aparece no botão de emissão |
-| `corpo` | Texto com marcadores |
-| `ativo` | Prefeitura pode desligar uma peça que não usa |
+| `nome`           | Rótulo que aparece no botão de emissão                    |
+| `corpo`          | Texto com marcadores                                      |
+| `ativo`          | Prefeitura pode desligar uma peça que não usa             |
 
 Único parcial por (`orgao_id`, `tipo`) e um único global por `tipo` onde `orgao_id IS NULL` —
 duas linhas globais do mesmo tipo tornariam a resolução ambígua.
@@ -480,12 +480,12 @@ ATENDIMENTO_EXTERNO` e anexo enviado por requerente existem e nunca foram usados
 
 ### Riscos assumidos, com as contramedidas
 
-| Risco | O que fazemos |
-| --- | --- |
-| Abertura pública vira spam | Limite por IP na abertura, além do teto geral |
-| Upload público de arquivo malicioso | Lista de tipos aceitos, teto de tamanho, storage privado (nunca servido direto) |
-| Varredura de protocolos | Consulta exige documento; limite por IP; resposta idêntica para inexistente e documento errado |
-| Dado pessoal exposto | A consulta devolve só o que é do próprio requerente; nada de terceiros, nada de peça interna |
+| Risco                               | O que fazemos                                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Abertura pública vira spam          | Limite por IP na abertura, além do teto geral                                                  |
+| Upload público de arquivo malicioso | Lista de tipos aceitos, teto de tamanho, storage privado (nunca servido direto)                |
+| Varredura de protocolos             | Consulta exige documento; limite por IP; resposta idêntica para inexistente e documento errado |
+| Dado pessoal exposto                | A consulta devolve só o que é do próprio requerente; nada de terceiros, nada de peça interna   |
 
 ### Fatiamento
 
@@ -610,18 +610,18 @@ chamar a rota direto para passar por cima da tela.
 
 ### Alcance de cada papel, depois da revisão
 
-| Papel | Alcança |
-| --- | --- |
-| ADMIN | tudo que a prefeitura contratou |
-| GESTOR | contratação, cadastros, todos os módulos operacionais — menos a auditoria |
-| COMPRAS | fornecedor, licitação, contrato, ordem de fornecimento |
-| CONTROLADORIA | leitura para parecer, e a auditoria |
-| SERVIDOR | solicitação e acompanhamento do trâmite |
-| PROTOCOLO | só o balcão |
-| NUTRICIONISTA | almoxarifado inteiro, e nada de frota, patrimônio ou licitação |
-| UNIDADE | o ciclo do material da própria unidade |
-| PATRIMONIO | bens, tombamento, inventário |
-| FROTAS | veículos, motoristas, viagens |
+| Papel         | Alcança                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| ADMIN         | tudo que a prefeitura contratou                                           |
+| GESTOR        | contratação, cadastros, todos os módulos operacionais — menos a auditoria |
+| COMPRAS       | fornecedor, licitação, contrato, ordem de fornecimento                    |
+| CONTROLADORIA | leitura para parecer, e a auditoria                                       |
+| SERVIDOR      | solicitação e acompanhamento do trâmite                                   |
+| PROTOCOLO     | só o balcão                                                               |
+| NUTRICIONISTA | almoxarifado inteiro, e nada de frota, patrimônio ou licitação            |
+| UNIDADE       | o ciclo do material da própria unidade                                    |
+| PATRIMONIO    | bens, tombamento, inventário                                              |
+| FROTAS        | veículos, motoristas, viagens                                             |
 
 A auditoria ficou com ADMIN e CONTROLADORIA — é a conduta dos próprios
 servidores, e quem é auditado não escolhe o que aparece.
@@ -723,12 +723,12 @@ relatório passa a valorar sem mudar de forma.
 
 ### As quatro grandezas, e de onde cada uma vem
 
-| Grandeza | Origem | Por quê |
-| --- | --- | --- |
-| Recebido | `liberacao_lote.quantidade_confirmada` | O que a escola **confirmou**, não o que o almoxarifado despachou — contar o despachado infla o relatório com o que se perdeu no caminho |
-| Perdido | `liberacao_lote.quantidade_perdida` | Sempre com motivo: o banco recusa perda sem ele |
-| Consumido | `consumo` | O que a unidade declarou usar |
-| Devolvido | `devolucao` com status `ACEITA` | Pendente não voltou ao saldo de ninguém; recusada nunca voltará |
+| Grandeza  | Origem                                 | Por quê                                                                                                                                 |
+| --------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Recebido  | `liberacao_lote.quantidade_confirmada` | O que a escola **confirmou**, não o que o almoxarifado despachou — contar o despachado infla o relatório com o que se perdeu no caminho |
+| Perdido   | `liberacao_lote.quantidade_perdida`    | Sempre com motivo: o banco recusa perda sem ele                                                                                         |
+| Consumido | `consumo`                              | O que a unidade declarou usar                                                                                                           |
+| Devolvido | `devolucao` com status `ACEITA`        | Pendente não voltou ao saldo de ninguém; recusada nunca voltará                                                                         |
 
 **O corte é pela data da confirmação**, não da liberação: material despachado em
 março e conferido em abril é movimento de abril, que é quando a escola assumiu a
@@ -779,7 +779,7 @@ listava `quantidade` antes de `marca`, e o tipo declarava o contrário.
 **Agora são duas etapas.** Cola, diz o que é cada coluna, importa. A prévia
 mostra as primeiras linhas sob os rótulos escolhidos — é conferindo o conteúdo
 embaixo do nome que se percebe a coluna trocada. Coluna que não interessa fica
-como *ignorar*.
+como _ignorar_.
 
 A detecção continua existindo, **rebaixada a sugestão**: quando reconhece o
 cabeçalho, oferece a sequência num botão. Aceitar é ato do usuário, e ela exige
@@ -851,10 +851,10 @@ Revisado em agosto/2026, confrontando cada decisão com o repositório.
 
 ### Decidido e ainda ausente
 
-| Decisão | Onde parou |
-| --- | --- |
-| **Campos extras do contrato** | `contrato_campo_extra` e `item_valor_extra` existem desde a 0002. Nenhuma linha do sistema **cria ou lê** as duas — só há um `DELETE` na limpeza do contrato. É a feature de "colunas extras da planilha" do levantamento, viva só como tabela. |
-| **Visibilidade estendida da etapa** | Gravada em `fluxo_etapa`, oferecida no painel de fluxos, nunca lida. |
+| Decisão                             | Onde parou                                                                                                                                                                                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Campos extras do contrato**       | `contrato_campo_extra` e `item_valor_extra` existem desde a 0002. Nenhuma linha do sistema **cria ou lê** as duas — só há um `DELETE` na limpeza do contrato. É a feature de "colunas extras da planilha" do levantamento, viva só como tabela. |
+| **Visibilidade estendida da etapa** | Gravada em `fluxo_etapa`, oferecida no painel de fluxos, nunca lida.                                                                                                                                                                            |
 
 ### A quarta configuração sem efeito
 
@@ -999,3 +999,87 @@ teria como cadastrar uma escola. O CRUD passa a existir também em
 `local` — que é o que ela sempre foi, um local físico compartilhado entre
 módulos. Tabela própria faria a mesma escola existir duas vezes, com dois CNPJs
 livres para divergir bem no dado que o PNAE cobra.
+
+### Alterações e ajustes
+
+Página inicial do processo, a apresentação.
+
+Adicionar edição de itens do contrato.
+
+Bloquear a criação do contrato caso os valores somados ultrapassem o valor da licitação.
+
+Ordem de fornecimento gerado pelo compras, exibir tambem para a controladoria, a geração não, apenas leitura.
+
+Nota fiscal não obrigatorio e preenchivel pela controladoria
+
+- CheckList de preenchimento de arquivos e anexos.
+
+Anexo de arquivos nos processos.
+
+Adicionar documento de solicitação de pagamento do fornecedor, com direito a costumização de timbragem.
+
+Relatorios gerais (por unidade, licitações, fornecedores e contratos)
+
+Relatorio de detalhamento geral de processo (licitação e contrato)
+
+Relatório detalhado por setor
+
+Bug no protocolo: o lado publico, erro ao anexar documento ele nao e enviado junto.
+
+## Contrato, ordem e apresentação — decidido
+
+Cinco pedidos que o uso real trouxe, depois de o módulo de Processos estar em
+produção.
+
+### Editar os itens do contrato
+
+A planilha entra por colagem, e erro de digitação em preço ou quantidade só
+aparece depois — hoje, a única saída era refazer o contrato inteiro.
+
+**Todos os campos são editáveis, inclusive quantidade e valor. A trava é uma
+só: o saldo não pode ficar negativo.** Baixar a quantidade abaixo do que já
+saiu em solicitação faria o contrato dever material que ele não tem, e o CHECK
+`saldo_disponivel >= 0` recusaria no banco de qualquer forma — a diferença é
+que a tela diz quanto já foi consumido em vez de devolver erro de constraint.
+
+Pelo mesmo motivo, item com consumo não pode ser excluído: a solicitação
+antiga aponta para ele. Item que ninguém tocou, sim.
+
+### O teto da licitação
+
+Contratos derivados de uma licitação não podem, somados, passar do valor dela.
+A conta é feita ao salvar — criando **e** editando —, sobre os contratos que já
+existem daquela licitação mais o que está entrando. Passou, recusa dizendo
+quanto ainda cabia.
+
+Bloqueio, e não aviso: aviso que se pode ignorar é aviso que se ignora sempre,
+e o número aqui é o que a licitação autorizou gastar. Contrato de ata de
+registro de preços não entra na regra — a ata tem lógica de saldo própria, por
+item, e somar valores de atas diferentes não diria nada.
+
+### Ordem de fornecimento: ler não é emitir
+
+A listagem pedia `processes:order`, a mesma permissão de emitir — então a
+controladoria, que precisa conferir a ordem para dar parecer, não a via. Passa
+a pedir `processes:read` para ler; emitir continua com `processes:order`.
+
+### Nota fiscal, depois e por quem confere
+
+A ordem nasce sem nota fiscal — ela chega com a mercadoria, dias depois —, e o
+número passa a ser preenchido por compras **e** pela controladoria, numa
+permissão própria (`orders:invoice`). É a primeira escrita que a controladoria
+ganha, e é deliberada: informar o número da nota é ato de conferência, não de
+cadastro. Quem preencheu fica na auditoria.
+
+Continua editável: número de nota digitado errado é comum, e travar a correção
+empurraria o acerto para fora do sistema.
+
+### A apresentação
+
+Quem abre um contrato ou uma licitação quer saber, antes de tudo, **de quem se
+trata**. As duas telas passam a abrir por uma seção de apresentação — o
+fornecedor com razão social, CNPJ, endereço e contato, e o procedimento com
+número, modalidade, objeto, valor e vigência.
+
+Fica nas telas que já existem, e não numa capa nova: a capa mostraria a mesma
+informação num segundo lugar, e informação duplicada é informação que diverge.

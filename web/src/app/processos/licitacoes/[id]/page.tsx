@@ -2,10 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { findBid } from "@/features/bids/queries";
+import { Apresentacao } from "@/features/contracts/components/Apresentacao";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { humanize, toCurrency, toDate } from "@/shared/ui/labels";
-import { Badge, Card, PageHeader, Stack, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
+import {
+  Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, numericCell,
+} from "@/shared/ui/layout";
 
 type BidPageProps = { params: Promise<{ id: string }> };
 
@@ -20,6 +23,14 @@ export default async function BidDetailPage({ params }: BidPageProps) {
 
   const hoje = new Date();
   const contratado = licitacao.contratos.reduce((soma, contrato) => soma + contrato.valorTotal, 0);
+  /**
+   * O que ainda cabe.
+   *
+   * Deixou de ser informação e virou regra: a API recusa contrato que faça a
+   * soma passar do valor licitado. A tela mostra o número antes de alguém
+   * tentar.
+   */
+  const disponivel = Math.round((licitacao.valorTotal - contratado) * 100) / 100;
 
   return (
     <>
@@ -39,18 +50,39 @@ export default async function BidDetailPage({ params }: BidPageProps) {
       />
 
       <Stack>
-        <Card title="Dados da licitação">
+        <Apresentacao
+          procedimento={{
+            rotulo: "Licitação",
+            numero: licitacao.numero,
+            modalidade: licitacao.modalidade,
+            objeto: licitacao.objeto,
+            valor: licitacao.valorTotal,
+            data: licitacao.dataAssinatura,
+          }}
+        />
+
+        <Card title="Execução">
           <SummaryGrid
             items={[
-              { label: "Modalidade", value: humanize(licitacao.modalidade) },
-              { label: "Assinatura", value: toDate(licitacao.dataAssinatura) },
               { label: "Valor licitado", value: toCurrency(licitacao.valorTotal) },
-              { label: "Valor já contratado", value: toCurrency(contratado) },
-              { label: "Objeto", value: licitacao.objeto, wide: true },
-              ...(licitacao.resumo ? [{ label: "Resumo", value: licitacao.resumo, wide: true }] : []),
+              { label: "Já contratado", value: toCurrency(contratado) },
+              {
+                label: "Ainda cabe",
+                value: toCurrency(disponivel),
+              },
+              ...(licitacao.resumo
+                ? [{ label: "Resumo", value: licitacao.resumo, wide: true }]
+                : []),
             ]}
           />
         </Card>
+
+        {disponivel <= 0 ? (
+          <Alert tone="info">
+            O valor licitado já foi todo contratado. Contrato novo a partir desta licitação será
+            recusado enquanto o valor não for revisto.
+          </Alert>
+        ) : null}
 
         <Card title={`Atas de registro de preços (${licitacao.atas.length})`} padded={false}>
           <Table

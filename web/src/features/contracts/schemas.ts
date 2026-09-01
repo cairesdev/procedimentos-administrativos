@@ -45,10 +45,32 @@ export const contractEditSchema = z
     dataFim: z.string().optional(),
     fiscalNomeMatricula: z.string().max(200).optional(),
     unidadesDestinadas: z.array(z.uuid()).min(1, "Selecione ao menos uma unidade"),
+    // O valor assinado, que o teto da licitação mede. Editável porque o aviso
+    // de divergência com a soma dos itens precisa de conserto possível.
+    valorTotal: z.coerce.number<number>().positive("Informe o valor do contrato"),
   })
   .refine((data) => !data.dataFim || new Date(data.dataFim) >= new Date(data.dataInicio), {
     message: "Fim da vigência não pode ser anterior ao início",
     path: ["dataFim"],
   });
+
+/**
+ * Corrigir um item já gravado.
+ *
+ * `quantidadeTotal`, e não `quantidade` como na criação: aqui o nome é o da
+ * API, porque este formulário fala direto com ela.
+ */
+export const contractItemEditSchema = z.object({
+  produto: z.string().min(1, "Informe o produto").max(150),
+  descricao: z.string().optional(),
+  unidadeMedida: z.string().min(1, "Informe a unidade").max(20),
+  marca: z.string().optional(),
+  quantidadeTotal: z.coerce.number<number>().positive("Quantidade deve ser maior que zero"),
+  modoMedicao: z.enum(MEASUREMENT_MODES),
+  valorUnitario: z.coerce.number<number>().nonnegative(),
+  valorTotal: z.coerce.number<number>().positive("Valor deve ser maior que zero"),
+});
+
+export type ContractItemEditInput = z.input<typeof contractItemEditSchema>;
 
 export type ContractEditInput = z.input<typeof contractEditSchema>;

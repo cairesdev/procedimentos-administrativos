@@ -102,4 +102,9 @@ export interface TramitacaoRepository {
   existeNotaFiscal(orgaoId: string, fornecedorId: string, numeroNotaFiscal: string): Promise<boolean>;
   criarOrdem(dados: NovaOrdemFornecimento, tx: Tx): Promise<string>;
   listarOrdens(orgaoId: string, processoId: string): Promise<OrdemDoProcesso[]>;
+  buscarOrdem(orgaoId: string, id: string): Promise<{
+    id: string; numero: string; processoId: string; numeroNotaFiscal: string | null;
+  } | null>;
+  /** `null` limpa o número — nota lançada na ordem errada acontece. */
+  informarNotaFiscal(orgaoId: string, id: string, numero: string | null): Promise<void>;
 }

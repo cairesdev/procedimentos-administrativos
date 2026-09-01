@@ -10,6 +10,8 @@ import type {
   ContratoDetalhe,
   ContratoRepository,
   ContratoResumo,
+  EdicaoItemContrato,
+  ItemDoContrato,
   EdicaoContrato,
   ItemComSaldo,
   NovoContrato,
@@ -48,6 +50,15 @@ const SQL = {
            c.valor_total AS "valorTotal",
            c.fiscal_nome_matricula AS "fiscalNomeMatricula",
            f.razao_social AS "fornecedorRazaoSocial", f.documento AS "fornecedorDocumento",
+           -- A apresentação da tela: quem abre um contrato quer saber, antes
+           -- de tudo, de quem se trata e como falar com ele.
+           f.endereco AS "fornecedorEndereco", f.email AS "fornecedorEmail",
+           f.telefone AS "fornecedorTelefone",
+           f.inscricao_estadual AS "fornecedorInscricaoEstadual",
+           l.modalidade AS "origemModalidade",
+           coalesce(a.valor_total, l.valor_total) AS "origemValor",
+           coalesce(to_char(a.data_assinatura, 'YYYY-MM-DD'),
+                    to_char(l.data_assinatura, 'YYYY-MM-DD')) AS "origemData",
            CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS origem,
            coalesce(c.ata_id, c.licitacao_id) AS "origemId",
            coalesce(a.numero, l.numero) AS "origemNumero",
@@ -121,13 +132,15 @@ const SQL = {
      ORDER BY c.numero`,
   buscar: `
     SELECT id, numero, fornecedor_id AS "fornecedorId", processo_id AS "processoId",
+           licitacao_id AS "licitacaoId",
            data_inicio AS "dataInicio", data_fim AS "dataFim", valor_total AS "valorTotal"
       FROM contrato WHERE orgao_id = $1 AND id = $2`,
   atualizar: `
     UPDATE contrato
        SET data_inicio = COALESCE($3, data_inicio),
            data_fim = CASE WHEN $4::boolean THEN $5 ELSE data_fim END,
-           fiscal_nome_matricula = CASE WHEN $6::boolean THEN $7 ELSE fiscal_nome_matricula END
+           fiscal_nome_matricula = CASE WHEN $6::boolean THEN $7 ELSE fiscal_nome_matricula END,
+           valor_total = COALESCE($8, valor_total)
      WHERE orgao_id = $1 AND id = $2`,
   limparUnidades: `DELETE FROM contrato_unidade WHERE contrato_id = $1`,
   vinculos: `
@@ -152,9 +165,85 @@ const SQL = {
       FROM item
      WHERE orgao_id = $1 AND contrato_id = $2
      ORDER BY produto`,
+
+  buscarItem: `
+    SELECT id, contrato_id AS "contratoId", produto, descricao,
+           unidade_medida AS "unidadeMedida", marca,
+           quantidade_total AS "quantidadeTotal", saldo_disponivel AS "saldoDisponivel",
+           modo_medicao AS "modoMedicao", valor_unitario AS "valorUnitario",
+           valor_total AS "valorTotal",
+           quantidade_total - saldo_disponivel AS consumido
+      FROM item
+     WHERE orgao_id = $1 AND id = $2`,
+
+  /**
+   * O saldo acompanha a quantidade.
+   *
+   * Corrigir 1.000 para 1.200 precisa somar 200 ao saldo, e não deixá-lo como
+   * estava: senão o contrato passa a ter 200 unidades que ninguém pode pedir.
+   * A diferença é aplicada ao saldo; o `CHECK` da tabela recusa se o resultado
+   * for negativo, e o caso de uso confere antes para dizer por quê.
+   */
+  atualizarItem: `
+    UPDATE item
+       SET produto = $3, descricao = $4, unidade_medida = $5, marca = $6,
+           saldo_disponivel = saldo_disponivel + ($7 - quantidade_total),
+           quantidade_total = $7,
+           modo_medicao = $8, valor_unitario = $9, valor_total = $10
+     WHERE orgao_id = $1 AND id = $2`,
+
+  removerItem: `DELETE FROM item WHERE orgao_id = $1 AND id = $2`,
+
+  tetoDaLicitacao: `
+    SELECT li.valor_total AS "valorLicitacao",
+           coalesce((
+             SELECT sum(c.valor_total) FROM contrato c
+              WHERE c.licitacao_id = li.id
+                AND c.id <> coalesce($3, '00000000-0000-0000-0000-000000000000'::uuid)
+           ), 0) AS "jaContratado"
+      FROM licitacao li
+     WHERE li.orgao_id = $1 AND li.id = $2`,
 };
 
 export class PostgresContratoRepository implements ContratoRepository {
+  tetoDaLicitacao = async (orgaoId: string, licitacaoId: string, exceto?: string) => {
+    const { rows } = await pool.query(SQL.tetoDaLicitacao, [orgaoId, licitacaoId, exceto ?? null]);
+    const linha = rows[0];
+    if (!linha) return null;
+    return {
+      valorLicitacao: Number(linha.valorLicitacao),
+      jaContratado: Number(linha.jaContratado),
+    };
+  };
+
+  buscarItem = async (orgaoId: string, itemId: string): Promise<ItemDoContrato | null> => {
+    const { rows } = await pool.query(SQL.buscarItem, [orgaoId, itemId]);
+    const linha = rows[0];
+    if (!linha) return null;
+    return {
+      ...linha,
+      quantidadeTotal: Number(linha.quantidadeTotal),
+      saldoDisponivel: Number(linha.saldoDisponivel),
+      valorUnitario: Number(linha.valorUnitario),
+      valorTotal: Number(linha.valorTotal),
+      consumido: Number(linha.consumido),
+    } as ItemDoContrato;
+  };
+
+  atualizarItem = async (
+    orgaoId: string, itemId: string, dados: EdicaoItemContrato,
+  ): Promise<void> => {
+    await pool.query(SQL.atualizarItem, [
+      orgaoId, itemId, dados.produto, dados.descricao ?? null, dados.unidadeMedida,
+      dados.marca ?? null, dados.quantidadeTotal, dados.modoMedicao,
+      dados.valorUnitario, dados.valorTotal,
+    ]);
+  };
+
+  removerItem = async (orgaoId: string, itemId: string): Promise<void> => {
+    await pool.query(SQL.removerItem, [orgaoId, itemId]);
+  };
+
   existeNumero = async (orgaoId: string, numero: string): Promise<boolean> => {
     const { rowCount } = await pool.query(SQL.existeNumero, [orgaoId, numero]);
     return (rowCount ?? 0) > 0;
@@ -216,6 +305,10 @@ export class PostgresContratoRepository implements ContratoRepository {
     ]);
     return {
       ...contrato,
+      valorTotal: Number(contrato.valorTotal),
+      // `NUMERIC` vem como string do driver; a tela soma e compara este número
+      // com o dos itens para avisar quando divergem.
+      origemValor: contrato.origemValor === null ? null : Number(contrato.origemValor),
       solicitacoes: Number(contrato.solicitacoes),
       unidades: unidades.rows,
       itens,
@@ -264,6 +357,7 @@ export class PostgresContratoRepository implements ContratoRepository {
       orgaoId, id, dados.dataInicio ?? null,
       dados.dataFim !== undefined, dados.dataFim ?? null,
       dados.fiscalNomeMatricula !== undefined, dados.fiscalNomeMatricula ?? null,
+      dados.valorTotal ?? null,
     ]);
 
     if (dados.unidadesDestinadas) {

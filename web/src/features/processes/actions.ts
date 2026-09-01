@@ -31,6 +31,23 @@ export const emitOpinion = async (processId: string, input: OpinionInput) =>
     revalidatePath("/processos/fila");
   }, "Parecer registrado e processo encerrado");
 
+/**
+ * Informa (ou limpa) a nota fiscal de uma ordem já emitida.
+ *
+ * Compras e controladoria alcançam: conferir a nota é ato de quem a tem em
+ * mãos, e a controladoria é quem confere.
+ */
+export const informInvoice = async (
+  processId: string, ordemId: string, numeroNotaFiscal: string | null,
+) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.processes}/${processId}/ordens/${ordemId}`, {
+      method: "PATCH",
+      body: { numeroNotaFiscal },
+    });
+    revalidatePath(`/processos/fila/${processId}`);
+  }, numeroNotaFiscal ? "Nota fiscal registrada" : "Nota fiscal removida");
+
 export const emitSupplyOrder = async (processId: string, input: SupplyOrderInput) =>
   runAction(async () => {
     const body = supplyOrderSchema.parse(input);

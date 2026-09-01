@@ -76,4 +76,24 @@ export const editarContratoSchema = z.object({
   dataFim: z.string().date().nullable().optional(),
   fiscalNomeMatricula: z.string().max(200).nullable().optional(),
   unidadesDestinadas: z.array(z.string().uuid()).min(1).optional(),
+  // O valor assinado, que o teto da licitação mede.
+  valorTotal: z.number().positive().optional(),
+});
+
+/**
+ * Corrigir um item já gravado.
+ *
+ * Mesmos campos da criação: a planilha entra por colagem, e o erro pode estar
+ * em qualquer um deles. `null` em descrição e marca apaga o que estava lá —
+ * `undefined` não distinguiria "não mexi" de "quero em branco".
+ */
+export const editarItemContratoSchema = z.object({
+  produto: z.string().min(1).max(150),
+  descricao: z.string().nullable().optional(),
+  unidadeMedida: z.string().min(1).max(20),
+  marca: z.string().max(100).nullable().optional(),
+  quantidadeTotal: z.number().positive(),
+  modoMedicao: z.enum(["UNIDADE", "PERCENTUAL", "VALOR"]),
+  valorUnitario: z.number().nonnegative(),
+  valorTotal: z.number().positive(),
 });

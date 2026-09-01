@@ -49,7 +49,15 @@ export type ContractDetail = Contract & {
   processoId: string | null;
   fornecedorRazaoSocial: string;
   fornecedorDocumento: string;
+  fornecedorEndereco: string | null;
+  fornecedorEmail: string | null;
+  fornecedorTelefone: string | null;
+  fornecedorInscricaoEstadual: string | null;
   fiscalNomeMatricula: string | null;
+  /** Nulo quando a origem é ata: modalidade é da licitação. */
+  origemModalidade: string | null;
+  origemValor: number | null;
+  origemData: string | null;
   origem: "LICITACAO" | "ATA";
   origemId: string | null;
   origemNumero: string | null;

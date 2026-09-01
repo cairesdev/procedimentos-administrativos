@@ -29,6 +29,7 @@ export const ContractEditForm = ({
       dataFim: contract.dataFim?.slice(0, 10) ?? "",
       fiscalNomeMatricula: "",
       unidadesDestinadas: selectedUnits,
+      valorTotal: contract.valorTotal,
     },
     action: (values) => updateContract(contract.id, values),
     resetOnSuccess: false,
@@ -40,7 +41,8 @@ export const ContractEditForm = ({
   return (
     <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
       <Alert tone="info">
-        Número, valor e itens não mudam depois de criado — solicitações emitidas dependem deles.
+        Número e itens não mudam por aqui — os itens têm tela própria, e o número identifica o
+        contrato nos documentos já emitidos.
       </Alert>
 
       <FieldGrid>
@@ -59,6 +61,16 @@ export const ContractEditForm = ({
           {...form.register("dataFim")}
         />
       </FieldGrid>
+
+      <InputField
+        label="Valor do contrato"
+        type="number"
+        step="0.01"
+        required
+        hint="O valor assinado. Somado aos outros contratos, não pode passar do valor da licitação."
+        error={errors.valorTotal?.message}
+        {...form.register("valorTotal")}
+      />
 
       <InputField
         label="Fiscal do contrato"

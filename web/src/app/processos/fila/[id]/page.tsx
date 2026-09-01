@@ -79,9 +79,13 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
       label: `Contrato ${contrato.numero}`,
     }));
 
-  // A ordem é peça de compras: só quem a emite recebe a lista, e a API
-  // recusa os demais. Quem não pode não vê o card em vez de ver um erro.
-  const podeVerOrdens = viewer.can("processes:order");
+  /**
+   * Ler a ordem não é emitir a ordem.
+   *
+   * Pedia `processes:order` — a mesma permissão de emitir —, e a controladoria,
+   * que precisa conferir a ordem para dar parecer, não via o card.
+   */
+  const podeVerOrdens = viewer.can("processes:read");
   const ordens = podeVerOrdens ? await listSupplyOrders(process.id).catch(() => []) : [];
 
   // Os documentos de cada ordem são buscados pela referência dela, não do
@@ -194,6 +198,8 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
                 modelos={modelos.filter((modelo) => modelo.escopo === "ORDEM_FORNECIMENTO")}
                 voltarPara={`/processos/fila/${process.id}`}
                 podeEmitir={viewer.can("documents:issue")}
+                processId={process.id}
+                podeInformarNota={viewer.can("orders:invoice")}
               />
             </Card>
           ) : null}

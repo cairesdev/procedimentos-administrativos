@@ -1,12 +1,15 @@
 /** Espelha TipoEvento da API. Só eventos de negócio entram na trilha. */
 export const AUDIT_EVENTS = [
   "CONTRATO_CRIADO",
+  "ITEM_CONTRATO_EDITADO",
+  "ITEM_CONTRATO_EXCLUIDO",
   "SOLICITACAO_ENVIADA",
   "SOLICITACAO_CANCELADA",
   "PROCESSO_DESPACHADO",
   "PROCESSO_MOVIDO",
   "PARECER_EMITIDO",
   "ORDEM_EMITIDA",
+  "NOTA_FISCAL_INFORMADA",
   "ANEXO_ADICIONADO",
   "ANEXO_REMOVIDO",
   "BENS_TOMBADOS",
@@ -76,8 +79,10 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   {
     group: "Processos",
     events: [
-      "CONTRATO_CRIADO", "SOLICITACAO_ENVIADA", "SOLICITACAO_CANCELADA",
+      "CONTRATO_CRIADO", "ITEM_CONTRATO_EDITADO", "ITEM_CONTRATO_EXCLUIDO",
+      "SOLICITACAO_ENVIADA", "SOLICITACAO_CANCELADA",
       "PROCESSO_DESPACHADO", "PROCESSO_MOVIDO", "PARECER_EMITIDO", "ORDEM_EMITIDA",
+      "NOTA_FISCAL_INFORMADA",
       "ANEXO_ADICIONADO", "ANEXO_REMOVIDO",
     ],
   },
@@ -145,11 +150,14 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
 /** Frase no lugar do enum cru: a trilha é lida por gestor, não por dev. */
 export const EVENT_LABELS: Record<AuditEvent, string> = {
   CONTRATO_CRIADO: "Contrato cadastrado",
+  ITEM_CONTRATO_EDITADO: "Item do contrato corrigido",
+  ITEM_CONTRATO_EXCLUIDO: "Item do contrato excluído",
   SOLICITACAO_ENVIADA: "Solicitação enviada",
   SOLICITACAO_CANCELADA: "Solicitação cancelada",
   PROCESSO_DESPACHADO: "Processo despachado",
   PROCESSO_MOVIDO: "Processo encaminhado a outro setor",
   PARECER_EMITIDO: "Parecer emitido",
+  NOTA_FISCAL_INFORMADA: "Nota fiscal informada",
   ORDEM_EMITIDA: "Ordem de fornecimento emitida",
   ANEXO_ADICIONADO: "Anexo adicionado",
   ANEXO_REMOVIDO: "Anexo removido",

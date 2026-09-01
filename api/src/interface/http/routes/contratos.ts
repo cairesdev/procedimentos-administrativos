@@ -2,7 +2,9 @@ import { filtroDaQuery } from "../queryParam";
 import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
-import { criarContratoSchema, editarContratoSchema } from "../schemas/processos";
+import {
+  criarContratoSchema, editarContratoSchema, editarItemContratoSchema,
+} from "../schemas/processos";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 export const contratosRouter = Router();
@@ -88,6 +90,43 @@ contratosRouter.patch("/:id", exigirPermissao("contracts:write"), async (req, re
     next(error);
   }
 });
+
+// Itens do contrato: corrigir o que a planilha trouxe errado. A trava do
+// saldo mora no caso de uso, que sabe dizer quanto já saiu.
+contratosRouter.put(
+  "/:id/itens/:itemId",
+  exigirPermissao("contracts:write"),
+  async (req, res, next) => {
+    try {
+      await container.editarItemDoContrato.executar({
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        itemId: req.params.itemId!,
+        dados: editarItemContratoSchema.parse(req.body),
+      });
+      res.json({ message: "Item atualizado" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+contratosRouter.delete(
+  "/:id/itens/:itemId",
+  exigirPermissao("contracts:write"),
+  async (req, res, next) => {
+    try {
+      await container.editarItemDoContrato.remover({
+        orgaoId: req.sessao!.orgaoId,
+        usuarioId: req.sessao!.usuarioId,
+        itemId: req.params.itemId!,
+      });
+      res.json({ message: "Item excluído" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 contratosRouter.delete("/:id", exigirPermissao("contracts:write"), async (req, res, next) => {
   try {

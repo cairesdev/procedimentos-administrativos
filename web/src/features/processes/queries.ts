@@ -31,6 +31,11 @@ export const listClosedProcesses = (sectorId?: string, pagina?: string) => {
 export const findProcess = (id: string) =>
   apiRequest<ProcessDetail>(`${endpoints.processes}/${id}`);
 
-/** Ordens já emitidas no processo — só o setor de compras enxerga. */
+/**
+ * Ordens já emitidas no processo.
+ *
+ * Pede `processes:read`, e não `processes:order`: a controladoria precisa
+ * conferir a ordem para dar parecer, e antes não a via.
+ */
 export const listSupplyOrders = (processId: string) =>
   apiRequest<SupplyOrder[]>(`${endpoints.processes}/${processId}/ordens`);

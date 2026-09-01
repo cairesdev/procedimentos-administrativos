@@ -23,6 +23,9 @@ export type Permission =
   | "processes:dispatch"
   | "processes:opinion"
   | "processes:order"
+  // Informar o número da nota fiscal na ordem já emitida. Separado de
+  // `processes:order` porque conferir a nota não é emitir a ordem.
+  | "orders:invoice"
   // Trilha de conduta dos servidores: só o ADMIN da prefeitura.
   | "audit:read"
   | "assets:read"
@@ -72,6 +75,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "documents:template",
     "fleet:read",
     "fleet:write",
+    "orders:invoice",
     "processes:dispatch",
     "processes:opinion",
     "processes:order",
@@ -109,6 +113,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "documents:template",
     "fleet:read",
     "fleet:write",
+    "orders:invoice",
     "processes:dispatch",
     "processes:order",
     "processes:read",
@@ -140,6 +145,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "contracts:write",
     "documents:issue",
     "documents:read",
+    "orders:invoice",
     "processes:dispatch",
     "processes:order",
     "processes:read",
@@ -156,6 +162,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "contracts:read",
     "documents:issue",
     "documents:read",
+    "orders:invoice",
     "processes:dispatch",
     "processes:opinion",
     "processes:read",

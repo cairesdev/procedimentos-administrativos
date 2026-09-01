@@ -49,22 +49,62 @@ export type ItemComSaldo = {
   valorTotal: number;
 };
 
-// Só campos administrativos: número, valor e itens ficam de fora de propósito,
-// porque solicitações já emitidas dependem deles.
+/**
+ * O que se pode corrigir num item já gravado.
+ *
+ * Tudo, inclusive quantidade e valor: a planilha entra por colagem, e erro de
+ * digitação em preço só aparece depois. A única trava é o saldo — ver
+ * `EditarItemDoContrato`.
+ */
+export type EdicaoItemContrato = {
+  produto: string;
+  descricao?: string | null;
+  unidadeMedida: string;
+  marca?: string | null;
+  quantidadeTotal: number;
+  modoMedicao: "UNIDADE" | "PERCENTUAL" | "VALOR";
+  valorUnitario: number;
+  valorTotal: number;
+};
+
+// Só campos administrativos: número e valor ficam de fora de propósito, porque
+// solicitações já emitidas dependem deles. Os **itens** passaram a ser
+// editáveis um a um, por `EditarItemDoContrato`.
 export type EdicaoContrato = {
   dataInicio?: string;
   dataFim?: string | null;
   fiscalNomeMatricula?: string | null;
   unidadesDestinadas?: string[];
+  /**
+   * O valor do contrato assinado, digitado — não a soma dos itens.
+   *
+   * Os dois números são separados de propósito: o arredondamento do edital nem
+   * sempre bate com a soma dos itens, e a tela mostra os dois avisando quando
+   * divergem. Editável porque, sem isso, o aviso apontaria um problema sem
+   * conserto — e porque é ele que o teto da licitação mede.
+   */
+  valorTotal?: number;
 };
 
-export type ContratoDetalhe = ContratoResumo & { processoId: string | null };
+export type ContratoDetalhe = ContratoResumo & {
+  processoId: string | null;
+  /** De onde o contrato nasceu; é a licitação que impõe o teto. */
+  licitacaoId: string | null;
+};
 
 /** Contrato com tudo que a tela de detalhe mostra numa vez só. */
 export type ContratoCompleto = ContratoResumo & {
   processoId: string | null;
   fornecedorRazaoSocial: string;
   fornecedorDocumento: string;
+  fornecedorEndereco: string | null;
+  fornecedorEmail: string | null;
+  fornecedorTelefone: string | null;
+  fornecedorInscricaoEstadual: string | null;
+  /** Nulo quando a origem é ata: modalidade é da licitação. */
+  origemModalidade: string | null;
+  origemValor: number | null;
+  origemData: string | null;
   fiscalNomeMatricula: string | null;
   /** De onde o contrato nasceu: licitação ou ata de registro de preços. */
   origem: "LICITACAO" | "ATA";
@@ -98,6 +138,17 @@ export type ContratoParaSolicitacao = {
   saldoDisponivel: number;
 };
 
+/** Um item com o que já saiu dele — é o consumo que decide o que pode mudar. */
+export type ItemDoContrato = ItemComSaldo & {
+  contratoId: string;
+  /**
+   * Quanto já foi reservado por solicitações: a diferença entre o total e o
+   * saldo. Guardado assim, e não recontado das solicitações, porque é o mesmo
+   * número que o banco usa para manter `saldo_disponivel >= 0`.
+   */
+  consumido: number;
+};
+
 export interface ContratoRepository {
   existeNumero(orgaoId: string, numero: string): Promise<boolean>;
   criar(dados: NovoContrato, tx: Tx): Promise<string>;
@@ -123,7 +174,19 @@ export interface ContratoRepository {
     contratoIds: string[],
     unidadeId: string,
   ): Promise<string[]>;
+  /**
+   * Quanto a licitação autorizou e quanto dela já virou contrato.
+   *
+   * `exceto` tira um contrato da soma — é o que está sendo editado, e contá-lo
+   * duas vezes faria toda edição de contrato no teto ser recusada.
+   */
+  tetoDaLicitacao(
+    orgaoId: string, licitacaoId: string, exceto?: string,
+  ): Promise<{ valorLicitacao: number; jaContratado: number } | null>;
   listarItens(orgaoId: string, contratoId: string): Promise<ItemComSaldo[]>;
+  buscarItem(orgaoId: string, itemId: string): Promise<ItemDoContrato | null>;
+  atualizarItem(orgaoId: string, itemId: string, dados: EdicaoItemContrato): Promise<void>;
+  removerItem(orgaoId: string, itemId: string): Promise<void>;
   buscar(orgaoId: string, id: string): Promise<ContratoDetalhe | null>;
   atualizar(orgaoId: string, id: string, dados: EdicaoContrato): Promise<void>;
   contarVinculos(orgaoId: string, id: string): Promise<Record<string, number>>;

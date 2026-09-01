@@ -161,6 +161,25 @@ const SQL = {
       JOIN fornecedor f ON f.id = o.fornecedor_id
      WHERE o.orgao_id = $1 AND o.processo_id = $2
      ORDER BY o.data DESC`,
+
+  buscarOrdem: `
+    SELECT id, numero, processo_id AS "processoId",
+           numero_nota_fiscal AS "numeroNotaFiscal"
+      FROM ordem_fornecimento
+     WHERE orgao_id = $1 AND id = $2`,
+
+  /**
+   * A nota fiscal, informada depois.
+   *
+   * A ordem nasce sem ela — a nota chega com a mercadoria, dias depois. Vazio
+   * grava `NULL`, e não string vazia: o índice `UNIQUE (orgao_id,
+   * fornecedor_id, numero_nota_fiscal)` deixa passar vários `NULL`, mas
+   * recusaria a segunda ordem com `''` do mesmo fornecedor.
+   */
+  informarNotaFiscal: `
+    UPDATE ordem_fornecimento
+       SET numero_nota_fiscal = $3
+     WHERE orgao_id = $1 AND id = $2`,
 };
 
 export class PostgresTramitacaoRepository implements TramitacaoRepository {
@@ -271,6 +290,19 @@ export class PostgresTramitacaoRepository implements TramitacaoRepository {
       orgaoId, setorId ?? null, paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
     return montarPagina<ProcessoEncerrado>(rows as never, paginacao);
+  };
+
+  buscarOrdem = async (orgaoId: string, id: string) => {
+    const { rows } = await pool.query(SQL.buscarOrdem, [orgaoId, id]);
+    return (rows[0] as {
+      id: string; numero: string; processoId: string; numeroNotaFiscal: string | null;
+    }) ?? null;
+  };
+
+  informarNotaFiscal = async (
+    orgaoId: string, id: string, numero: string | null,
+  ): Promise<void> => {
+    await pool.query(SQL.informarNotaFiscal, [orgaoId, id, numero]);
   };
 
   listarOrdens = async (orgaoId: string, processoId: string): Promise<OrdemDoProcesso[]> => {

@@ -14,6 +14,11 @@ export const parecerSchema = z.object({
   justificativa: z.string().optional(),
 });
 
+/** Vazio limpa o número: nota lançada na ordem errada acontece. */
+export const notaFiscalSchema = z.object({
+  numeroNotaFiscal: z.string().max(40).nullable(),
+});
+
 export const ordemFornecimentoSchema = z.object({
   lotacaoId: z.string().uuid(),
   contratoId: z.string().uuid(),
