@@ -94,22 +94,3 @@
   background: var(--superficie_alt);
   overflow-x: auto;
 }
-
-/**
- * Faixa da categoria dentro da tabela de itens.
- *
- * Uma linha inteira em vez de tabelas separadas: as colunas seguem alinhadas de
- * ponta a ponta, e quem compara saldo entre duas frentes não mede duas grades
- * diferentes com o olho.
- */
-.categoria {
-  text-align: left;
-  padding: 10px 12px 6px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--texto_suave);
-  background: var(--superficie_alt);
-  border-top: 1px solid var(--borda);
-}

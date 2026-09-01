@@ -29,6 +29,8 @@ export type RequestItemDetail = {
   descricao: string | null;
   unidadeMedida: string;
   marca: string | null;
+  /** Agrupador do item dentro do contrato. Nulo quando o contrato não usa. */
+  categoria: string | null;
   modoMedicao: "UNIDADE" | "PERCENTUAL" | "VALOR";
   valorUnitario: number;
   quantidadeSolicitada: number;

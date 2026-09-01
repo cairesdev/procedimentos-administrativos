@@ -6,6 +6,7 @@ import { useFieldArray, useWatch, type UseFormRegister } from "react-hook-form";
 import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./button";
+import { InputField } from "./form-field";
 import { Alert } from "./layout";
 import {
   CAMPOS_DO_ITEM, CAMPOS_DO_PDF, converterItensComSequencia, converterItensDoPdf,
@@ -91,11 +92,37 @@ export const ItemsEditor = <T extends FieldValues>({
   const [modo, setModo] = useState<"planilha" | "pdf">("planilha");
   const [camposPdf, setCamposPdf] = useState<FieldSpec<string>[]>([]);
 
+  /**
+   * A categoria do lote que está entrando.
+   *
+   * Perguntada **antes** de confirmar, e não coluna a coluna depois: quem
+   * importa cola os itens da saúde de uma vez e os da educação em seguida — é
+   * assim que a planilha de origem vem separada. Corrigir item a item na tabela
+   * seria digitar "Saúde" quarenta vezes para dizer uma coisa só.
+   *
+   * Fica retida entre importações de propósito: dois lotes seguidos costumam
+   * ser de categorias diferentes, mas o campo já preenchido mostra qual foi a
+   * última — e trocar é uma palavra, enquanto lembrar não é.
+   */
+  const [categoriaDoLote, setCategoriaDoLote] = useState("");
+
   const watched = useWatch({ control, name: name as unknown as Path<T> }) as
     | PastedItem[]
     | undefined;
 
   const total = (watched ?? []).reduce((sum, item) => sum + Number(item?.valorTotal ?? 0), 0);
+
+  /**
+   * As categorias já escritas nas linhas, para sugerir enquanto se digita.
+   *
+   * É o que impede "Saude" e "Saúde" convivendo no mesmo contrato sem exigir
+   * uma tabela de cadastro: quem digita a segunda vê a primeira na lista.
+   */
+  const categoriasUsadas = [...new Set(
+    (watched ?? [])
+      .map((item) => (item as { categoria?: string })?.categoria?.trim())
+      .filter((nome): nome is string => Boolean(nome)),
+  )].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const divergence = expectedTotal ? Math.abs(expectedTotal - total) > 0.01 : false;
 
   /** Recebe o texto e abre o mapeamento — nada entra na tabela ainda. */
@@ -129,7 +156,13 @@ export const ItemsEditor = <T extends FieldValues>({
     }
 
     const current = (watched ?? []).filter((item) => item?.produto?.trim());
-    const incoming = result.items.map((item) => ({ ...emptyItem, ...item }));
+    const incoming = result.items.map((item) => ({
+      ...emptyItem,
+      ...item,
+      // A categoria do lote vale para todos os itens que entram agora. Vazia,
+      // não sobrescreve: item sem categoria é caso normal.
+      ...(categoriaDoLote.trim() ? { categoria: categoriaDoLote.trim() } : {}),
+    }));
     items.replace([...current, ...incoming] as FieldArray<T, ArrayPath<T>>[]);
 
     setShowPasteBox(false);
@@ -157,7 +190,13 @@ export const ItemsEditor = <T extends FieldValues>({
     }
 
     const current = (watched ?? []).filter((item) => item?.produto?.trim());
-    const incoming = result.items.map((item) => ({ ...emptyItem, ...item }));
+    const incoming = result.items.map((item) => ({
+      ...emptyItem,
+      ...item,
+      // A categoria do lote vale para todos os itens que entram agora. Vazia,
+      // não sobrescreve: item sem categoria é caso normal.
+      ...(categoriaDoLote.trim() ? { categoria: categoriaDoLote.trim() } : {}),
+    }));
     items.replace([...current, ...incoming] as FieldArray<T, ArrayPath<T>>[]);
 
     setShowPasteBox(false);
@@ -223,6 +262,22 @@ export const ItemsEditor = <T extends FieldValues>({
             </>
           ) : null}
 
+          {/* Antes dos dois modos porque vale para os dois, e antes do botão
+              porque é isso que evita a correção linha a linha depois. */}
+          {textoColado && withCategory ? (
+            <div style={{ maxWidth: "340px", marginBottom: "12px" }}>
+              <InputField
+                label="Categoria destes itens"
+                name="categoriaDoLote"
+                placeholder="Saúde"
+                hint="Aplicada a todos os itens deste lote. Em branco: sem categoria."
+                list="categorias-do-contrato"
+                value={categoriaDoLote}
+                onChange={(evento) => setCategoriaDoLote(evento.target.value)}
+              />
+            </div>
+          ) : null}
+
           {textoColado && modo === "pdf" ? (
             <>
               <FieldSequencePicker
@@ -286,12 +341,20 @@ export const ItemsEditor = <T extends FieldValues>({
         </div>
       ) : null}
 
+      {withCategory ? (
+        <datalist id="categorias-do-contrato">
+          {categoriasUsadas.map((nome) => (
+            <option key={nome} value={nome} />
+          ))}
+        </datalist>
+      ) : null}
+
       <div className={styles.table_wrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Produto</th>
-              <th>Descrição</th>
+              <th className={styles.coluna_texto}>Produto</th>
+              <th className={styles.coluna_texto}>Descrição</th>
               {withCategory ? <th>Categoria</th> : null}
               <th>Unidade</th>
               <th>Marca</th>
@@ -307,14 +370,14 @@ export const ItemsEditor = <T extends FieldValues>({
               <tr key={field.id}>
                 <td>
                   <input
-                    className={styles.cell_input}
+                    className={`${styles.cell_input} ${styles.cell_texto}`}
                     placeholder="Copo descartável"
                     {...register(`${name}.${index}.produto` as Path<T>)}
                   />
                 </td>
                 <td>
                   <input
-                    className={styles.cell_input}
+                    className={`${styles.cell_input} ${styles.cell_texto}`}
                     {...register(`${name}.${index}.descricao` as Path<T>)}
                   />
                 </td>

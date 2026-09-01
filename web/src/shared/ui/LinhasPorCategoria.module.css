@@ -1,0 +1,11 @@
+.faixa {
+  text-align: left;
+  padding: 10px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texto_suave);
+  background: var(--superficie_alt);
+  border-top: 1px solid var(--borda);
+}

@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { findContract } from "@/features/contracts/queries";
 import { Apresentacao } from "@/features/contracts/components/Apresentacao";
 import { ChecklistCard } from "@/features/checklists/components/ChecklistCard";
+import { LinhasPorCategoria } from "@/shared/ui/LinhasPorCategoria";
 import { ContractItemActions } from "@/features/contracts/components/ContractItemActions";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
@@ -159,7 +160,11 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
             isEmpty={contrato.itens.length === 0}
             emptyMessage="Nenhum item neste contrato."
           >
-            {contrato.itens.map((item) => (
+            <LinhasPorCategoria
+              itens={contrato.itens}
+              colunas={podeEditarItens ? 8 : 7}
+            >
+              {(item) => (
               <tr key={item.id}>
                 <td>
                   <strong>{item.produto}</strong>
@@ -190,7 +195,8 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
                   </td>
                 ) : null}
               </tr>
-            ))}
+              )}
+            </LinhasPorCategoria>
           </Table>
         </Card>
 

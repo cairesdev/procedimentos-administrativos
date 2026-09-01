@@ -77,6 +77,7 @@ const SQL = {
   itensCompletos: `
     SELECT si.item_id AS "itemId", i.contrato_id AS "contratoId",
            i.produto, i.descricao, i.unidade_medida AS "unidadeMedida", i.marca,
+           i.categoria,
            i.modo_medicao AS "modoMedicao", i.valor_unitario AS "valorUnitario",
            si.quantidade_solicitada AS "quantidadeSolicitada",
            si.valor_calculado AS "valorCalculado",
@@ -85,7 +86,7 @@ const SQL = {
       FROM solicitacao_item si
       JOIN item i ON i.id = si.item_id
      WHERE si.solicitacao_id = $1
-     ORDER BY i.produto`,
+     ORDER BY i.categoria NULLS LAST, i.produto`,
   // Contratos de onde saíram os itens desta solicitação.
   contratosDaSolicitacao: `
     SELECT DISTINCT c.id, c.numero, c.data_inicio AS "dataInicio", c.data_fim AS "dataFim",

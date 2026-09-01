@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { agruparPorCategoria, categoriasUsadas } from "../src/features/contracts/categorias.ts";
+import { agruparPorCategoria, categoriasUsadas } from "../src/shared/lib/categorias.ts";
 
 const item = (produto: string, categoria?: string | null) => ({ produto, categoria });
 

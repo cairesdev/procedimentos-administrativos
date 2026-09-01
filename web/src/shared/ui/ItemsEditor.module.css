@@ -151,3 +151,19 @@
 .divergence {
   color: var(--alerta);
 }
+
+/**
+ * Produto e descrição com a mesma largura.
+ *
+ * Sem largura declarada, a tabela distribuía o espaço pelo conteúdo: produto
+ * ficava espremido entre a borda e uma descrição que raramente é preenchida.
+ * O produto é o campo que sempre tem texto e o que se lê para conferir a
+ * importação — merece pelo menos o mesmo espaço.
+ */
+.coluna_texto {
+  width: 22%;
+}
+
+.cell_texto {
+  min-width: 170px;
+}

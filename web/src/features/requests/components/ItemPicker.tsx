@@ -1,9 +1,8 @@
 "use client";
 
-import { Fragment } from "react";
 import { humanize, toCurrency } from "@/shared/ui/labels";
 import type { ContractItem } from "@/features/contracts/types";
-import { agruparPorCategoria } from "@/features/contracts/categorias";
+import { LinhasPorCategoria } from "@/shared/ui/LinhasPorCategoria";
 import styles from "./ItemPicker.module.css";
 
 const unitLabel = (item: ContractItem) =>
@@ -35,13 +34,7 @@ export const ItemPicker = ({
   itens: ContractItem[];
   escolhas: Record<string, number>;
   onChange: (item: ContractItem, quantidade: number) => void;
-}) => {
-  const grupos = agruparPorCategoria(itens);
-  // Uma faixa só, dizendo "Sem categoria", seria ruído num contrato que não usa
-  // categorias — que é a maioria.
-  const mostrarFaixas = grupos.length > 1 || grupos[0]?.categoria !== null;
-
-  return (
+}) => (
   <div className={styles.wrapper}>
     <table className={styles.table}>
       <thead>
@@ -54,65 +47,55 @@ export const ItemPicker = ({
         </tr>
       </thead>
       <tbody>
-        {grupos.map((grupo) => (
-          <Fragment key={grupo.categoria ?? "__sem_categoria__"}>
-            {mostrarFaixas ? (
-              <tr>
-                <th scope="rowgroup" colSpan={5} className={styles.categoria}>
-                  {grupo.categoria ?? "Sem categoria"}
-                </th>
-              </tr>
-            ) : null}
-            {grupo.itens.map((item) => {
-              const quantity = escolhas[item.id] ?? 0;
-              const exceeded = quantity > item.saldoDisponivel;
+        <LinhasPorCategoria itens={itens} colunas={5}>
+          {(item) => {
+            const quantity = escolhas[item.id] ?? 0;
+            const exceeded = quantity > item.saldoDisponivel;
 
-              return (
-                <tr key={item.id} className={quantity > 0 ? styles.row_chosen : ""}>
-                  <td>
-                    <span className={styles.product}>{item.produto}</span>
-                    <span className={styles.mode}>
-                      {humanize(item.modoMedicao)}
-                      {item.marca ? ` · ${item.marca}` : ""}
-                    </span>
-                  </td>
-                  <td className={styles.numeric}>
-                    <span className={item.saldoDisponivel === 0 ? styles.empty : ""}>
-                      {item.saldoDisponivel.toLocaleString("pt-BR")} {unitLabel(item)}
-                    </span>
-                    <span className={styles.of_total}>
-                      de {item.quantidadeTotal.toLocaleString("pt-BR")}
-                    </span>
-                  </td>
-                  <td className={styles.numeric}>
-                    {item.modoMedicao === "UNIDADE"
-                      ? `${toCurrency(item.valorUnitario)} / ${item.unidadeMedida}`
-                      : toCurrency(item.valorTotal)}
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min={0}
-                      max={item.saldoDisponivel}
-                      step={item.modoMedicao === "UNIDADE" ? 1 : 0.01}
-                      disabled={item.saldoDisponivel === 0}
-                      className={`${styles.quantity} ${exceeded ? styles.quantity_invalid : ""}`}
-                      value={quantity || ""}
-                      placeholder="0"
-                      onChange={(event) => onChange(item, Number(event.target.value))}
-                    />
-                    {exceeded ? <span className={styles.error}>Acima do saldo</span> : null}
-                  </td>
-                  <td className={styles.numeric}>
-                    {quantity > 0 ? toCurrency(lineValue(item, quantity)) : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </Fragment>
-        ))}
+            return (
+              <tr key={item.id} className={quantity > 0 ? styles.row_chosen : ""}>
+                <td>
+                  <span className={styles.product}>{item.produto}</span>
+                  <span className={styles.mode}>
+                    {humanize(item.modoMedicao)}
+                    {item.marca ? ` · ${item.marca}` : ""}
+                  </span>
+                </td>
+                <td className={styles.numeric}>
+                  <span className={item.saldoDisponivel === 0 ? styles.empty : ""}>
+                    {item.saldoDisponivel.toLocaleString("pt-BR")} {unitLabel(item)}
+                  </span>
+                  <span className={styles.of_total}>
+                    de {item.quantidadeTotal.toLocaleString("pt-BR")}
+                  </span>
+                </td>
+                <td className={styles.numeric}>
+                  {item.modoMedicao === "UNIDADE"
+                    ? `${toCurrency(item.valorUnitario)} / ${item.unidadeMedida}`
+                    : toCurrency(item.valorTotal)}
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min={0}
+                    max={item.saldoDisponivel}
+                    step={item.modoMedicao === "UNIDADE" ? 1 : 0.01}
+                    disabled={item.saldoDisponivel === 0}
+                    className={`${styles.quantity} ${exceeded ? styles.quantity_invalid : ""}`}
+                    value={quantity || ""}
+                    placeholder="0"
+                    onChange={(event) => onChange(item, Number(event.target.value))}
+                  />
+                  {exceeded ? <span className={styles.error}>Acima do saldo</span> : null}
+                </td>
+                <td className={styles.numeric}>
+                  {quantity > 0 ? toCurrency(lineValue(item, quantity)) : "—"}
+                </td>
+              </tr>
+            );
+          }}
+        </LinhasPorCategoria>
       </tbody>
     </table>
   </div>
-  );
-};
+);

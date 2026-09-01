@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Alert, Badge, Card, Stack, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate, toDateTime, toDocument, humanize } from "@/shared/ui/labels";
 import { MEASUREMENT_LABELS, type RequestDetail } from "../types";
+import { LinhasPorCategoria } from "@/shared/ui/LinhasPorCategoria";
 
 const quantidade = (valor: number) =>
   new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(valor);
@@ -64,7 +65,8 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
           isEmpty={request.itens.length === 0}
           emptyMessage="Nenhum item nesta solicitação."
         >
-          {request.itens.map((item) => (
+          <LinhasPorCategoria itens={request.itens} colunas={7}>
+            {(item) => (
             <tr key={item.itemId}>
               <td>
                 <strong>{item.produto}</strong>
@@ -87,7 +89,8 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
                 {quantidade(item.quantidadeTotalContratada)}
               </td>
             </tr>
-          ))}
+            )}
+          </LinhasPorCategoria>
 
           {request.itens.length > 0 ? (
             <tr>

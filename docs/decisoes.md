@@ -1493,3 +1493,31 @@ licitação ou ata de origem, e devolve no máximo trinta.
 Escolhido, o contrato **sai da lista** e vira cabeçalho fixo acima dos itens.
 Manter a lista aberta ao lado convidava a pedir do contrato errado, que era um
 erro só descoberto no envio.
+
+### A categoria se aplica ao lote, não ao item
+
+O campo mora no painel de importação, **antes** de confirmar: quem importa cola
+os itens da saúde de uma vez e os da educação em seguida — é assim que a
+planilha de origem vem separada. Corrigir item a item na tabela seria digitar
+"Saúde" quarenta vezes para dizer uma coisa só. O campo vale para os dois modos,
+planilha e PDF, e em branco não sobrescreve: item sem categoria é caso normal.
+
+O valor fica retido entre importações de propósito. Dois lotes seguidos
+costumam ser de categorias diferentes, mas o campo preenchido mostra qual foi a
+última — e trocar é uma palavra, enquanto lembrar não é.
+
+As categorias já escritas nas linhas viram sugestão num `datalist`. É o que
+impede "Saude" e "Saúde" no mesmo contrato sem exigir uma tabela de cadastro:
+quem digita a segunda vê a primeira na lista.
+
+### A faixa de categoria num componente só
+
+`LinhasPorCategoria` emite as linhas de qualquer tabela agrupadas por categoria.
+Nasceu de duas cópias — a da montagem do pedido e a que o detalhe do contrato ia
+receber —, e duas cópias já são o começo de duas aparências.
+
+Faixas dentro da mesma tabela, e não tabelas empilhadas: as colunas seguem
+alinhadas de ponta a ponta, e quem compara saldo entre duas frentes não mede
+duas grades com o olho. Contrato sem categorias não ganha faixa nenhuma — uma
+linha "Sem categoria" acima de tudo seria ruído sobre um recurso que aquele
+contrato não usa.

@@ -1286,3 +1286,19 @@ número e por fornecedor.
 **Fica para decidir:** a busca não olha o nome do produto — procurar "seringa"
 não acha o contrato que a tem. Dá para incluir, ao custo de um `EXISTS` sobre a
 tabela de itens em toda tecla digitada.
+
+## Categoria em lote e listagens divididas
+
+**Na importação**, um campo de categoria antes de confirmar aplica a categoria a
+todo o lote colado. Exercitado em jsdom: o lote inteiro nasce com ela, o
+segundo lote não mexe no primeiro, as categorias usadas viram sugestão, e em
+branco o item fica sem categoria.
+
+**Nas listagens**, `LinhasPorCategoria` agrupa os itens no detalhe do contrato,
+no detalhe da solicitação e na montagem do pedido. A solicitação passou a trazer
+a categoria da API — uma coluna a mais no `SELECT` que já lê a tabela de itens.
+
+**Duas pontas soltas fechadas:** o `datalist` de sugestões, que existia como
+atributo apontando para um elemento inexistente, e a coluna de produto, que
+ficava espremida porque nenhuma largura era declarada — agora tem a mesma de
+descrição.
