@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { apiRequest } from "@/shared/api/http-client";
+import { apiRequest, ApiError } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import {
@@ -183,3 +183,36 @@ export const reopenItem = async (checklistId: string, itemId: string) =>
     });
     revalidatePath(`${BASE}/${checklistId}`);
   }, "Item reaberto");
+
+// ---------------------------------------------------------------------------
+// O link externo
+
+/**
+ * Gera o link e devolve o token **uma vez**.
+ *
+ * Fora do `runAction` de propósito: ele devolve só sucesso ou erro, e aqui o
+ * token precisa chegar à tela — é a única vez em que ele existe em texto. O
+ * banco guarda o hash.
+ */
+export const inviteToChecklist = async (
+  checklistId: string, destinatario?: string,
+): Promise<{ token: string; expiraEm: string } | { error: string }> => {
+  try {
+    const dados = await apiRequest<{ token: string; expiraEm: string }>(
+      `${endpoints.checklists}/${checklistId}/convite`,
+      { method: "POST", body: { destinatario: semVazio(destinatario) ?? null } },
+    );
+    revalidatePath(`${BASE}/${checklistId}`);
+    return dados;
+  } catch (erro) {
+    return {
+      error: erro instanceof ApiError ? erro.message : "Não foi possível gerar o link",
+    };
+  }
+};
+
+export const revokeChecklistInvite = async (checklistId: string) =>
+  runAction(async () => {
+    await apiRequest(`${endpoints.checklists}/${checklistId}/convite`, { method: "DELETE" });
+    revalidatePath(`${BASE}/${checklistId}`);
+  }, "Link revogado");

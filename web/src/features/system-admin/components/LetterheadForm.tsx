@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
-import { InputField, TextareaField } from "@/shared/ui/form-field";
+import { FileField, TextareaField } from "@/shared/ui/form-field";
 import { Alert } from "@/shared/ui/layout";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
@@ -101,10 +101,9 @@ export const LetterheadForm = ({
         <span style={{ fontSize: "12px", color: "var(--texto_apagado)" }}>Nenhuma imagem.</span>
       )}
 
-      <InputField
+      <FileField
         ref={campoDo(lado)}
         name={`arquivo_${lado}`}
-        type="file"
         label="Imagem"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         hint={dica}

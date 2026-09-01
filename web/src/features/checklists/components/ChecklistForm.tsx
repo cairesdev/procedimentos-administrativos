@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import styles from "./Checklist.module.css";
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField, TextareaField } from "@/shared/ui/form-field";
 import { Alert, FieldGrid } from "@/shared/ui/layout";
@@ -73,7 +74,7 @@ export const ChecklistForm = ({
   };
 
   return (
-    <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
+    <form onSubmit={onSubmit} className={styles.formulario}>
       {modelos.length > 0 ? (
         <SelectField
           label="Modelo"
@@ -123,16 +124,13 @@ export const ChecklistForm = ({
           Os itens virão do modelo escolhido, com os prazos contados a partir de hoje.
         </Alert>
       ) : (
-        <div style={{ display: "grid", gap: "10px" }}>
-          <strong style={{ fontSize: "0.9rem" }}>Itens</strong>
+        <div className={styles.lista}>
+          <strong className={styles.secao_titulo}>Itens</strong>
 
           {itens.map((item, indice) => (
             <div
               key={indice}
-              style={{
-                border: "1px solid var(--borda)", borderRadius: "8px",
-                padding: "12px", display: "grid", gap: "10px",
-              }}
+            className={styles.item}
             >
               <InputField
                 label={`Item ${indice + 1}`}
@@ -161,8 +159,8 @@ export const ChecklistForm = ({
                 />
               </FieldGrid>
 
-              <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-                <label style={{ fontSize: "13px", display: "flex", gap: "6px" }}>
+              <div className={styles.opcoes}>
+                <label className={styles.opcao}>
                   <input
                     type="checkbox"
                     checked={item.exigeAnexo}
@@ -171,7 +169,7 @@ export const ChecklistForm = ({
                   Exige documento anexado
                 </label>
 
-                <label style={{ fontSize: "13px", display: "flex", gap: "6px" }}>
+                <label className={styles.opcao}>
                   <input
                     type="checkbox"
                     checked={item.recorrente}

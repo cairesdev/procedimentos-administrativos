@@ -1075,3 +1075,62 @@ permissões. Três guardas quebradas de propósito — as três acusam.
 
 **Pendente:** ligar `CHECKLIST` para a prefeitura no `/admin` — módulo novo não
 se liga sozinho, e foi assim que o almoxarifado "não apareceu".
+
+
+## Checklist — módulo concluído
+
+A 2ª fatia fecha o módulo: o fornecedor cumprindo exigências pelo link, sem
+conta no sistema.
+
+- **0035** — `checklist_convite`, com o desenho do convite de fornecedor.
+- **`/publico/checklist/:token`** — abrir, cumprir e anexar. Sem sessão e sem
+  tenant: o órgão vem do convite, que vem do checklist.
+- **`/exigencias/:token`** no web — página sem a casca do sistema, com o que
+  falta, o que foi recusado e o que vence.
+- **Botão de link** na tela do checklist, com o token aparecendo **uma vez**.
+
+**Um erro que a verificação pegou, e que valeu a pena:** o CHECK
+`expira_em > criado_em` recusou o meu próprio teste, que tentava simular um
+convite expirado mexendo só numa das datas. A constraint estava certa — ela
+impede um convite que expira antes de nascer, e o teste é que pedia um estado
+impossível.
+
+**633 testes**, 95 invariantes, 417 consultas com `PREPARE`. Verificado com a
+API no ar: o link mostra 1 item de 2, o item interno responde 404 pelo link, o
+ciclo nasce marcado como externo e sem usuário, os quatro tipos de token ruim
+dão a mesma resposta, e a rota interna sem sessão dá 401. Quatro guardas
+quebradas de propósito — as quatro acusam.
+
+**Pendente do módulo:** ligar `CHECKLIST` para a prefeitura no `/admin`.
+
+## Upload quebrado, modais e layout do checklist
+
+**O anexo não subia — em lugar nenhum.** As pontes do Next descartavam o
+`Content-Type` quando o corpo era multipart, com a intenção de deixar o `fetch`
+montar o boundary. Só que o corpo atravessa a ponte como stream **já
+codificado**: o boundary vive dentro do cabeçalho, e o fetch só o regeneraria
+se recebesse um `FormData` montado por ele.
+
+Sem o cabeçalho, o multer não encontrava o arquivo e devolvia "Arquivo
+ausente". Reproduzido contra a API no ar: **com** o `Content-Type` o upload
+chega ao armazenamento; **sem** ele, 422. Valia para anexo de processo, de
+checklist e do requerente — as três pontes tinham a mesma linha, copiada.
+
+Corrigido nas três, com um teste que procura o padrão pela forma: foi copiado
+três vezes, e a quarta cópia entraria pelo mesmo caminho.
+
+**Os modais quebravam no campo de arquivo.** O `input[type=file]` é o único
+controle que o navegador desenha por conta própria, e o timbre da entidade o
+usava dentro de um `InputField` — que aplica `height: 38px`, altura em que um
+botão nativo não cabe. Nas outras três telas ele aparecia cru, com um `<label>`
+improvisado: quatro aparências para o mesmo controle, e o nome de um arquivo
+longo empurrando o diálogo para fora.
+
+Agora existe `FileField`: caixa do sistema, botão nativo estilizado por
+`::file-selector-button`, e o nome truncado em vez de transbordar.
+
+**O layout do checklist** tinha 54 `style={{}}` inline onde o resto do sistema
+usa CSS Modules — sem `:hover`, sem media query, e a mesma caixa de item escrita
+três vezes com três medidas. Passou a `Checklist.module.css`, com as opções em
+`flex-wrap` (num modal estreito as três caixas não cabiam lado a lado) e a
+página pública com respiro próprio no celular.

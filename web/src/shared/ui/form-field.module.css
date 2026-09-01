@@ -83,3 +83,76 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/**
+ * Campo de arquivo.
+ *
+ * O `input[type=file]` cru é o único controle que o navegador desenha à sua
+ * maneira: altura própria, fonte do sistema, botão nativo. Dentro de um modal
+ * de largura fixa, o nome de um arquivo longo empurra o campo para fora e leva
+ * o diálogo junto — foi o que quebrou o formulário de timbre.
+ *
+ * A caixa aqui é do sistema; o `input` fica dentro dela, com o botão nativo
+ * estilizado por `::file-selector-button` e o nome truncado em vez de
+ * transbordando.
+ */
+.arquivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font-size: 13px;
+  /* Sem isto, o nome longo do arquivo estica o campo e o modal junto. */
+  max-width: 100%;
+  overflow: hidden;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.arquivo:hover {
+  border-color: var(--texto_apagado);
+}
+
+.arquivo:focus-within {
+  outline: none;
+  border-color: var(--acao);
+  box-shadow: 0 0 0 3px var(--acao_suave);
+}
+
+.arquivo_invalido {
+  border-color: var(--perigo);
+}
+
+.arquivo input[type="file"] {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--texto_suave);
+  /* `min-width: 0` acima e isto aqui: juntos, o texto trunca em vez de
+     empurrar o container. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arquivo input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie_alt);
+  color: var(--texto);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transicao), border-color var(--transicao);
+}
+
+.arquivo input[type="file"]::file-selector-button:hover {
+  background: var(--acao_suave);
+  border-color: var(--acao);
+  color: var(--acao);
+}

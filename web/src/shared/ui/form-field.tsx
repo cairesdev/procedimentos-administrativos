@@ -153,3 +153,38 @@ export const SelectField = ({
     </select>
   </FieldWrapper>
 );
+
+type FileProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+  name: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  wide?: boolean;
+  ref?: Ref<HTMLInputElement>;
+};
+
+/**
+ * Campo de arquivo com a mesma cara dos outros.
+ *
+ * O `input[type=file]` cru é o único controle que o navegador desenha por
+ * conta própria — altura, fonte e botão nativos. Dentro de um modal, o nome de
+ * um arquivo longo empurrava o campo para fora e levava o diálogo junto.
+ *
+ * A caixa é do sistema e o `input` mora dentro dela, truncando o nome. Existe
+ * porque quatro telas escreviam o `<input type="file">` na mão, cada uma com
+ * um `<label>` improvisado: quatro aparências para o mesmo controle.
+ */
+export const FileField = ({ label, hint, error, wide, ref, ...input }: FileProps) => (
+  <FieldWrapper
+    name={input.name}
+    label={label}
+    required={input.required}
+    hint={hint}
+    error={error}
+    wide={wide}
+  >
+    <div className={`${styles.arquivo} ${error ? styles.arquivo_invalido : ""}`}>
+      <input {...input} ref={ref} id={input.name} type="file" />
+    </div>
+  </FieldWrapper>
+);

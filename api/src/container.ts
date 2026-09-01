@@ -11,7 +11,9 @@ import { PostgresTramitacaoRepository } from "./infrastructure/db/PostgresTramit
 import { ResolverAlcance } from "./application/almoxarifado/ResolverAlcance";
 import { AnexosDoChecklist } from "./application/checklist/AnexosDoChecklist";
 import { CumprirItem } from "./application/checklist/CumprirItem";
+import { ConvidarParaChecklist } from "./application/checklist/ConvidarParaChecklist";
 import { GerenciarChecklist } from "./application/checklist/GerenciarChecklist";
+import { PostgresChecklistConviteRepository } from "./infrastructure/db/PostgresChecklistConviteRepository";
 import { PostgresChecklistRepository } from "./infrastructure/db/PostgresChecklistRepository";
 import { RegistrarQualidade } from "./application/almoxarifado/RegistrarQualidade";
 import { PostgresQualidadeRepository } from "./infrastructure/db/PostgresQualidadeRepository";
@@ -130,6 +132,9 @@ export const container = {
   resolverAlcance: new ResolverAlcance(usuarios, almoxarifado),
 
   gerenciarChecklist: new GerenciarChecklist(checklists, auditoria, executarEmTransacao),
+  convidarParaChecklist: new ConvidarParaChecklist(
+    new PostgresChecklistConviteRepository(), checklists, auditoria, executarEmTransacao,
+  ),
   cumprirItem: new CumprirItem(checklists, auditoria, executarEmTransacao),
   anexosDoChecklist: new AnexosDoChecklist(checklists, new MinioArmazenamento()),
 

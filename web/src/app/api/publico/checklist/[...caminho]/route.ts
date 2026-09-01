@@ -3,23 +3,35 @@ import { apiBaseUrl } from "@/shared/api/http-client";
 import { clientIpHeader } from "@/shared/api/client-ip";
 
 /**
- * Ponte pública das ações do requerente (ver exigências, responder, anexar).
- * O caminho real vai em `?acao=`, para uma rota só cobrir as três.
+ * Ponte pública do checklist: o fornecedor cumprindo pelo link.
  *
- * Multipart passa em streaming — ler o corpo aqui carregaria o arquivo inteiro
+ * Sem sessão e sem token de servidor — a credencial é o token da URL, que já
+ * está no caminho. O IP real vai adiante porque o rate limit da API é por IP,
+ * e atrás do Caddy todos chegariam como o mesmo.
+ *
+ * Multipart passa em streaming: ler o corpo aqui carregaria o arquivo inteiro
  * na memória do Next sem necessidade.
  */
-const ACOES = new Set(["exigencias", "responder", "anexos"]);
+const CAMINHOS = [
+  /^[^/]+\/itens\/[^/]+\/cumprir$/,
+  /^[^/]+\/cumprimentos\/[^/]+\/anexos$/,
+];
 
-export const POST = async (request: Request) => {
-  const acao = new URL(request.url).searchParams.get("acao") ?? "";
-  if (!ACOES.has(acao)) {
+export const POST = async (
+  request: Request,
+  { params }: { params: Promise<{ caminho: string[] }> },
+) => {
+  const { caminho } = await params;
+  const alvo = caminho.join("/");
+
+  // Lista fechada: a ponte encaminha o que ela conhece, e não o que vier.
+  if (!CAMINHOS.some((padrao) => padrao.test(alvo))) {
     return NextResponse.json({ message: "Ação desconhecida" }, { status: 404 });
   }
 
   const contentType = request.headers.get("content-type") ?? "";
 
-  const resposta = await fetch(`${apiBaseUrl}/publico/pedidos/${acao}`, {
+  const resposta = await fetch(`${apiBaseUrl}/publico/checklist/${alvo}`, {
     method: "POST",
     headers: {
       // O `Content-Type` do multipart **precisa** ser repassado.

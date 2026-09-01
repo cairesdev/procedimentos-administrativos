@@ -71,3 +71,8 @@ export const conferirSchema = z.object({
 export const dispensarSchema = z.object({
   motivo: z.string().min(3, "Explique por que o item deixou de ser exigível").max(500),
 });
+
+/** Para quem o link foi enviado — texto livre, e só para o registro. */
+export const conviteSchema = z.object({
+  destinatario: z.string().max(200).nullable().optional(),
+});

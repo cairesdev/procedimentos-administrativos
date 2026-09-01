@@ -12,13 +12,20 @@ const forward = async (request: Request, path: string[]) => {
   const url = new URL(request.url);
   const target = `${apiBaseUrl}/${path.join("/")}${url.search}`;
   const contentType = request.headers.get("content-type") ?? "";
-  const isMultipart = contentType.startsWith("multipart/form-data");
 
   const response = await fetch(target, {
     method: request.method,
     headers: {
       Authorization: `Bearer ${session.accessToken}`,
-      ...(contentType && !isMultipart ? { "Content-Type": contentType } : {}),
+      // O `Content-Type` do multipart **precisa** ser repassado.
+      //
+      // O `boundary` que separa as partes vive dentro dele, e o corpo aqui vai
+      // como stream já codificado — o fetch não tem como regenerá-lo, coisa
+      // que só faria se recebesse um `FormData` montado por ele. Omitir o
+      // cabeçalho deixava o servidor sem saber onde uma parte termina: o
+      // multer não achava o arquivo e devolvia "Arquivo ausente". O anexo
+      // simplesmente não subia.
+      ...(contentType ? { "Content-Type": contentType } : {}),
       ...(await clientIpHeader()),
     },
     body: request.method === "GET" || request.method === "DELETE" ? undefined : request.body,

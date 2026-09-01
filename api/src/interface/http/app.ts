@@ -15,6 +15,7 @@ import { documentosRouter } from "./routes/documentos";
 import { conferenciaRouter } from "./routes/conferencia";
 import { protocoloRouter } from "./routes/protocolo";
 import { protocoloPublicoRouter } from "./routes/protocoloPublico";
+import { checklistPublicoRouter } from "./routes/checklistPublico";
 import { fornecedorPublicoRouter } from "./routes/fornecedorPublico";
 import { setoresRouter, unidadesRouter } from "./routes/organizacao";
 import { fornecedoresRouter } from "./routes/fornecedores";
@@ -47,6 +48,8 @@ export const criarApp = () => {
   app.use("/publico", protocoloPublicoRouter);
   // Página do fornecedor: sem login, credencial é o token do link.
   app.use("/publico/fornecedor", fornecedorPublicoRouter);
+  // Sem sessão e sem tenant: a credencial é o token, e o órgão vem dele.
+  app.use("/publico/checklist", checklistPublicoRouter);
 
   // Painel do produto: escopo de token próprio, fora do isolamento por órgão.
   app.use("/admin", adminRouter);

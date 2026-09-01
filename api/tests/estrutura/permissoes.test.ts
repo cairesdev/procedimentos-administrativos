@@ -35,6 +35,7 @@ const FORA_DO_MODELO: Record<string, string> = {
   "conferencia.ts": "conferência pública do documento, sem login",
   "protocoloPublico.ts": "abertura de protocolo pelo cidadão, sem login",
   "fornecedorPublico.ts": "o fornecedor corrige o próprio cadastro; a credencial é o token do link",
+  "checklistPublico.ts": "o fornecedor cumpre exigências pelo link; a credencial é o token, e ele só alcança os itens marcados como dele",
   "fornecedores.ts": "cadastro global; guarda declarada no próprio arquivo",
 };
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { FileField } from "@/shared/ui/form-field";
 import { Button } from "@/shared/ui/button";
 import { Alert, Card, Stack } from "@/shared/ui/layout";
 import { toDate } from "@/shared/ui/labels";
@@ -108,16 +109,13 @@ export const RequirementReply = ({
               placeholder="Explique o que está enviando."
             />
 
-            <label htmlFor="arquivo" style={{ fontSize: "13px", fontWeight: 500 }}>
-              Documento (opcional)
-            </label>
-            <input
-              id="arquivo"
-              type="file"
+            <FileField
+              name="arquivo"
+              label="Documento (opcional)"
               accept="application/pdf,image/png,image/jpeg,image/webp"
+              hint="PDF, PNG, JPEG ou WEBP, até 10 MB."
               onChange={(evento) => setArquivo(evento.target.files?.[0] ?? null)}
             />
-            <small style={{ color: "var(--texto_suave)" }}>PDF, PNG, JPEG ou WEBP, até 10 MB.</small>
 
             <div>
               <Button type="button" onClick={responder} disabled={enviando}>

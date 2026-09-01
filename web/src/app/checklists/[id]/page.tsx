@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { findChecklist } from "@/features/checklists/queries";
+import { findChecklist, findChecklistInvite } from "@/features/checklists/queries";
+import { InviteButton } from "@/features/checklists/components/InviteButton";
+import styles from "@/features/checklists/components/Checklist.module.css";
 import { ItemActions } from "@/features/checklists/components/ItemActions";
 import { completoHoje, situacaoDoItem, atrasado } from "@/features/checklists/situacao";
 import { SITUACOES } from "@/features/checklists/types";
@@ -25,10 +27,15 @@ export default async function ChecklistPage({ params }: PageProps) {
     throw erro;
   });
 
-  const [modelos, emitidos] = await Promise.all([
+  const [modelos, emitidos, convite] = await Promise.all([
     listTemplates("CHECKLIST").catch(() => []),
     listDocumentsFor(id).catch(() => []),
+    findChecklistInvite(id).catch(() => null),
   ]);
+
+  // O link só faz sentido com item do fornecedor: sem nenhum, ele abriria uma
+  // página vazia — e a API recusa por isso mesmo.
+  const temItemDeFornecedor = checklist.itens.some((item) => item.paraFornecedor);
 
   const completo = completoHoje(checklist.itens);
   const emAberto = checklist.itens.filter((item) => {
@@ -42,7 +49,14 @@ export default async function ChecklistPage({ params }: PageProps) {
       <PageHeader
         title={checklist.titulo}
         subtitle={checklist.descricao ?? undefined}
-        action={completo ? <Badge tone="success">completo hoje</Badge> : null}
+        action={
+          <span className={styles.cabecalho_acoes}>
+            {completo ? <Badge tone="success">completo hoje</Badge> : null}
+            {temItemDeFornecedor && viewer.can("checklists:manage") ? (
+              <InviteButton checklistId={checklist.id} conviteAberto={convite} />
+            ) : null}
+          </span>
+        }
       />
 
       <Stack>
@@ -108,7 +122,7 @@ export default async function ChecklistPage({ params }: PageProps) {
                     {item.recorrente ? (
                       <>
                         <br />
-                        <small style={{ color: "var(--texto_suave)" }}>
+                        <small className={styles.suave}>
                           vence a cada {item.periodicidadeDias} dias
                         </small>
                       </>
@@ -116,7 +130,7 @@ export default async function ChecklistPage({ params }: PageProps) {
                     {item.exigeAnexo ? (
                       <>
                         <br />
-                        <small style={{ color: "var(--texto_suave)" }}>exige documento</small>
+                        <small className={styles.suave}>exige documento</small>
                       </>
                     ) : null}
                   </td>
@@ -148,7 +162,7 @@ export default async function ChecklistPage({ params }: PageProps) {
                     {ciclo?.situacao === "RECUSADO" ? (
                       <>
                         <br />
-                        <small style={{ color: "var(--perigo)" }}>
+                        <small className={styles.recusa}>
                           Recusa: {ciclo.recusaMotivo}
                         </small>
                       </>
@@ -168,25 +182,25 @@ export default async function ChecklistPage({ params }: PageProps) {
                           <div key={anexo.id}>
                             <a
                               href={`/api/proxy/checklists/${checklist.id}/anexos/${anexo.id}/download`}
-                              style={{ fontSize: "12px", color: "var(--acao)" }}
+                              className={styles.anexo}
                             >
                               {anexo.nomeOriginal}
                             </a>
                           </div>
                         ))}
                         {item.historico.length > 0 ? (
-                          <small style={{ color: "var(--texto_apagado)" }}>
+                          <small className={styles.discreto}>
                             {item.historico.length}{" "}
                             {item.historico.length === 1 ? "entrega anterior" : "entregas anteriores"}
                           </small>
                         ) : null}
                       </>
                     ) : (
-                      <span style={{ color: "var(--texto_apagado)" }}>—</span>
+                      <span className={styles.vazio}>—</span>
                     )}
                   </td>
 
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  <td className={styles.celula_acoes}>
                     <ItemActions
                       checklistId={checklist.id}
                       item={item}
@@ -202,7 +216,7 @@ export default async function ChecklistPage({ params }: PageProps) {
         </Card>
 
         <Card title="Documentos" padded={false}>
-          <div style={{ padding: "14px 16px 0" }}>
+          <div className={styles.painel}>
             {completo ? null : (
               <Alert tone="info">
                 A declaração de conclusão fala de uma lista completa. Com item em aberto, ela sairia

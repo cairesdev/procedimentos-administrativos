@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Paperclip, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { toast } from "sonner";
+import styles from "./Checklist.module.css";
 import { Button } from "@/shared/ui/button";
-import { TextareaField } from "@/shared/ui/form-field";
+import { FileField, TextareaField } from "@/shared/ui/form-field";
 import { Modal } from "@/shared/ui/Modal";
 import { acceptItem, dismissItem, fulfillItem, refuseItem, reopenItem } from "../actions";
 import { situacaoDoItem } from "../situacao";
@@ -106,7 +107,7 @@ export const ItemActions = ({
 
   return (
     <>
-      <span style={{ display: "inline-flex", gap: "6px", flexWrap: "wrap" }}>
+      <span className={styles.acoes}>
         {podeCumprir && podeEntregar ? (
           <Button type="button" disabled={ocupado} onClick={() => setCumprindo(true)}>
             Entregar
@@ -164,22 +165,16 @@ export const ItemActions = ({
         title={`Entregar · ${item.titulo}`}
         description="A entrega fica aguardando conferência de quem cobra."
       >
-        <div style={{ display: "grid", gap: "14px" }}>
-          <div>
-            <label
-              htmlFor={`arquivo-${item.id}`}
-              style={{ fontSize: "13px", display: "block", marginBottom: "6px" }}
-            >
-              <Paperclip size={14} aria-hidden="true" style={{ verticalAlign: "-2px" }} />{" "}
-              Documento {item.exigeAnexo ? "(obrigatório)" : "(opcional)"}
-            </label>
-            <input id={`arquivo-${item.id}`} type="file" ref={arquivoRef} />
-            {item.exigeAnexo ? (
-              <small style={{ color: "var(--texto_suave)" }}>
-                Este item exige documento — sem ele, a conferência será recusada.
-              </small>
-            ) : null}
-          </div>
+        <div className={styles.formulario}>
+          <FileField
+            name={`arquivo-${item.id}`}
+            label={`Documento ${item.exigeAnexo ? "(obrigatório)" : "(opcional)"}`}
+            required={item.exigeAnexo}
+            ref={arquivoRef}
+            hint={item.exigeAnexo
+              ? "Sem o documento, a conferência será recusada."
+              : undefined}
+          />
 
           <TextareaField
             label="Observação"
@@ -190,7 +185,7 @@ export const ItemActions = ({
             onChange={(evento) => setTexto(evento.target.value)}
           />
 
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className={styles.rodape}>
             <Button type="button" disabled={ocupado} onClick={() => void entregar()}>
               {ocupado ? "Enviando…" : "Registrar entrega"}
             </Button>
@@ -204,7 +199,7 @@ export const ItemActions = ({
         title="Recusar entrega"
         description="O item volta a pendente, e quem cumpriu vê o motivo."
       >
-        <div style={{ display: "grid", gap: "14px" }}>
+        <div className={styles.formulario}>
           <TextareaField
             label="O que precisa ser corrigido"
             name={`recusa-${item.id}`}
@@ -214,7 +209,7 @@ export const ItemActions = ({
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}
           />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className={styles.rodape}>
             <Button
               type="button"
               disabled={ocupado || texto.trim().length < 3}
@@ -234,7 +229,7 @@ export const ItemActions = ({
         title="Dispensar item"
         description="O item deixa de ser exigível, e sai da cobrança."
       >
-        <div style={{ display: "grid", gap: "14px" }}>
+        <div className={styles.formulario}>
           <TextareaField
             label="Justificativa"
             name={`dispensa-${item.id}`}
@@ -244,7 +239,7 @@ export const ItemActions = ({
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}
           />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className={styles.rodape}>
             <Button
               type="button"
               disabled={ocupado || texto.trim().length < 3}

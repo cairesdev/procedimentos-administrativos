@@ -1193,3 +1193,49 @@ tabela guarda a história.
 estiverem vigentes. A declaração emitida continua valendo como registro do dia
 em que saiu — é o mesmo princípio do documento emitido, que congela os dados —,
 mas a tela precisa dizer "completo hoje", e não "completo".
+
+
+## Checklist — o link externo (2ª fatia)
+
+O fornecedor cumpre exigências sem ter conta. Mesmo desenho do convite de
+fornecedor (0029), que já roda em produção: token sorteado de 256 bits, só o
+hash no banco, prazo de 30 dias, revogável, e um convite aberto por checklist.
+
+**É outro convite, e não o mesmo.** Aquele dá acesso ao cadastro do fornecedor;
+este, a um checklist. Reaproveitar a tabela faria um token de cadastro abrir
+uma lista de exigências — e o alvo de um segredo é parte do segredo.
+
+### O que o link mostra, e o que ele esconde
+
+**Só os itens marcados como do fornecedor.** O checklist mistura exigências de
+Compras, da Controladoria e dele; mandar a lista inteira contaria a quem está
+de fora o que a prefeitura exige de si mesma. Também ficam de fora o alvo (que
+processo é) e o nome de quem conferiu — servidor da prefeitura não é assunto de
+quem está do lado de fora.
+
+A trava é dupla, e a segunda é a que importa: a tela dele não mostra o item
+interno, **e** a API recusa um id de item interno colado na requisição. Sem a
+segunda, a primeira seria só uma sugestão.
+
+### O que ele pode, e o que não pode
+
+Ele **entrega**; não confere. Cumprir e conferir são atos de pessoas
+diferentes, e o link carrega só o primeiro — quem aceita continua sendo quem
+cobra. O ciclo nasce com `cumprido_por_externo`, sem usuário, e a auditoria
+registra "por link externo".
+
+### Cuidados da superfície pública
+
+- **Rate limit por IP real**, com `ipKeyGenerator(ipDoCliente(req))`: atrás do
+  Caddy, sem isso todos os visitantes compartilhariam um só limite, e o
+  primeiro a estourar derrubaria os demais. 30 leituras e 10 envios por minuto.
+- **Anexo com teto menor** que o interno — 25 MB contra 100 MB. Certidão e
+  contrato social cabem; o que não cabe provavelmente não é o que se pediu.
+- **O ciclo é conferido contra o convite** antes de o arquivo ser aceito: sem
+  isso, um id de cumprimento colado na requisição deixaria alguém pendurar
+  arquivo em entrega alheia.
+- **A ponte do Next tem lista fechada** de caminhos: ela encaminha o que
+  conhece, e não o que vier.
+- **Três motivos, uma resposta.** Token inexistente, expirado e revogado dão o
+  mesmo 404: distinguir contaria a quem tem um link velho que ele existiu, e a
+  quem tenta adivinhar que chegou perto.

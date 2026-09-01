@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listChecklistsOf } from "../queries";
 import { Alert, Badge, Card, Table } from "@/shared/ui/layout";
 import { toDate } from "@/shared/ui/labels";
+import styles from "./Checklist.module.css";
 
 /**
  * Os checklists de um registro, onde ele mora.
@@ -46,7 +47,7 @@ export const ChecklistCard = async ({
       </Table>
 
       {checklists.some((checklist) => checklist.emAberto > 0) ? (
-        <div style={{ padding: "0 16px 14px" }}>
+        <div className={styles.painel_card}>
           <Alert tone="info">
             Item pendente não impede a tramitação — o checklist mostra o que falta, e quem despacha
             decide.

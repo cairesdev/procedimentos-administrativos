@@ -6,6 +6,8 @@ export const AUDIT_EVENTS = [
   "CHECKLIST_ITEM_ACEITO",
   "CHECKLIST_ITEM_RECUSADO",
   "CHECKLIST_ITEM_DISPENSADO",
+  "CHECKLIST_CONVITE_ENVIADO",
+  "CHECKLIST_CONVITE_REVOGADO",
   "ITEM_CONTRATO_EDITADO",
   "ITEM_CONTRATO_EXCLUIDO",
   "SOLICITACAO_ENVIADA",
@@ -88,6 +90,7 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
     events: [
       "CHECKLIST_CRIADO", "CHECKLIST_ITEM_CUMPRIDO", "CHECKLIST_ITEM_ACEITO",
       "CHECKLIST_ITEM_RECUSADO", "CHECKLIST_ITEM_DISPENSADO",
+      "CHECKLIST_CONVITE_ENVIADO", "CHECKLIST_CONVITE_REVOGADO",
     ],
   },
   {
@@ -169,6 +172,8 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   CHECKLIST_ITEM_ACEITO: "Item do checklist aceito",
   CHECKLIST_ITEM_RECUSADO: "Item do checklist recusado",
   CHECKLIST_ITEM_DISPENSADO: "Item do checklist dispensado",
+  CHECKLIST_CONVITE_ENVIADO: "Link do checklist enviado",
+  CHECKLIST_CONVITE_REVOGADO: "Link do checklist revogado",
   ITEM_CONTRATO_EDITADO: "Item do contrato corrigido",
   ITEM_CONTRATO_EXCLUIDO: "Item do contrato excluído",
   SOLICITACAO_ENVIADA: "Solicitação enviada",

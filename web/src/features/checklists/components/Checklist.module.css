@@ -1,0 +1,191 @@
+/**
+ * Estilos do checklist.
+ *
+ * As telas nasceram com `style={{}}` inline em 54 lugares — rápido de escrever
+ * e fora do padrão do resto do sistema, que usa CSS Modules. Inline não tem
+ * `:hover`, não responde a media query e não se reaproveita: a mesma caixa de
+ * item foi escrita três vezes, com três medidas diferentes.
+ */
+
+.lista {
+  display: grid;
+  gap: 14px;
+}
+
+/** A caixa de um item, no formulário e na página pública. */
+.item {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie);
+}
+
+.item_cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.item_titulo {
+  font-weight: 600;
+}
+
+.item_descricao {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--texto_suave);
+}
+
+/**
+ * As opções do item (exige anexo, é recorrente).
+ *
+ * `flex-wrap` porque num modal estreito as três caixas não cabem lado a lado —
+ * sem ele, a última era empurrada para fora e levava o diálogo junto.
+ */
+.opcoes {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.opcao {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  /* O rótulo inteiro clica na caixa: alvo maior, e é o que se espera. */
+  cursor: pointer;
+}
+
+.acoes {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rodape {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.formulario {
+  display: grid;
+  gap: 14px;
+}
+
+.secao_titulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/** O endereço gerado, para copiar. */
+.link {
+  display: flex;
+  gap: 8px;
+}
+
+.link input {
+  flex: 1;
+  /* Sem `min-width: 0`, o endereço longo estica o flex e estoura o modal. */
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--fonte_mono, monospace);
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie_alt);
+}
+
+.discreto {
+  font-size: 12px;
+  color: var(--texto_apagado);
+}
+
+.suave {
+  font-size: 13px;
+  color: var(--texto_suave);
+}
+
+.recusa {
+  font-size: 12px;
+  color: var(--perigo);
+}
+
+/** A página pública: sem a casca do sistema, com respiro próprio. */
+.publico {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.publico_cabecalho {
+  margin-bottom: 20px;
+}
+
+.publico_orgao {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto_suave);
+}
+
+.publico_titulo {
+  margin: 4px 0 6px;
+  font-size: 1.4rem;
+}
+
+.publico_rodape {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borda);
+  font-size: 12px;
+  color: var(--texto_apagado);
+}
+
+@media (max-width: 640px) {
+  .publico {
+    padding: 20px 14px;
+  }
+
+  /* No celular, as ações empilham em vez de espremer. */
+  .acoes,
+  .rodape {
+    width: 100%;
+  }
+}
+
+/** A tabela de itens da tela interna. */
+.cabecalho_acoes {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.celula_acoes {
+  white-space: nowrap;
+}
+
+.anexo {
+  font-size: 12px;
+  color: var(--acao);
+}
+
+.anexo:hover {
+  text-decoration: underline;
+}
+
+.painel {
+  padding: 14px 16px 0;
+}
+
+.painel_card {
+  padding: 0 16px 14px;
+}
+
+.vazio {
+  color: var(--texto_apagado);
+}

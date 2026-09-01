@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import styles from "./Checklist.module.css";
 import { Button } from "@/shared/ui/button";
 import { InputField, SelectField, TextareaField } from "@/shared/ui/form-field";
 import { FieldGrid } from "@/shared/ui/layout";
@@ -84,7 +85,7 @@ export const TemplateForm = ({
   };
 
   return (
-    <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
+    <form onSubmit={onSubmit} className={styles.formulario}>
       <InputField
         label="Nome"
         required
@@ -99,16 +100,13 @@ export const TemplateForm = ({
         {...form.register("descricao")}
       />
 
-      <div style={{ display: "grid", gap: "10px" }}>
-        <strong style={{ fontSize: "0.9rem" }}>Itens</strong>
+      <div className={styles.lista}>
+        <strong className={styles.secao_titulo}>Itens</strong>
 
         {itens.map((item, indice) => (
           <div
             key={indice}
-            style={{
-              border: "1px solid var(--borda)", borderRadius: "8px",
-              padding: "12px", display: "grid", gap: "10px",
-            }}
+            className={styles.item}
           >
             <InputField
               label={`Item ${indice + 1}`}
@@ -141,8 +139,8 @@ export const TemplateForm = ({
               />
             </FieldGrid>
 
-            <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <label style={{ fontSize: "13px", display: "flex", gap: "6px" }}>
+            <div className={styles.opcoes}>
+              <label className={styles.opcao}>
                 <input
                   type="checkbox"
                   checked={item.exigeAnexo}
@@ -151,7 +149,7 @@ export const TemplateForm = ({
                 Exige documento
               </label>
 
-              <label style={{ fontSize: "13px", display: "flex", gap: "6px" }}>
+              <label className={styles.opcao}>
                 <input
                   type="checkbox"
                   checked={item.recorrente}

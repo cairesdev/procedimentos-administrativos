@@ -29,3 +29,9 @@ export const listChecklistTemplates = () =>
 
 export const findChecklistTemplate = (id: string) =>
   apiRequest<ChecklistTemplateDetail>(`${endpoints.checklistTemplates}/${id}`);
+
+/** O convite aberto deste checklist, se houver — a tela mostra a situação. */
+export const findChecklistInvite = (id: string) =>
+  apiRequest<{ expiraEm: string; destinatario: string | null; criadoEm: string } | null>(
+    `${endpoints.checklists}/${id}/convite`,
+  );

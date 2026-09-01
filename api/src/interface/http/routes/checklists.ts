@@ -6,7 +6,7 @@ import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { enviarArquivo } from "../enviarArquivo";
 import { paginacaoSchema } from "../schemas/paginacao";
 import {
-  conferirSchema, criarChecklistSchema, cumprirSchema, dispensarSchema,
+  conferirSchema, conviteSchema, criarChecklistSchema, cumprirSchema, dispensarSchema,
   editarChecklistSchema, itensDoChecklistSchema, modeloSchema,
 } from "../schemas/checklist";
 
@@ -277,6 +277,47 @@ checklistsRouter.post(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// O link externo
+//
+// Gerar e revogar é de quem administra a lista. O token volta **uma vez** —
+// o banco guarda só o hash.
+
+checklistsRouter.post("/:id/convite", administra, async (req, res, next) => {
+  try {
+    const { destinatario } = conviteSchema.parse(req.body);
+    res.status(201).json(await container.convidarParaChecklist.convidar({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      checklistId: req.params.id!,
+      destinatario,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+checklistsRouter.get("/:id/convite", async (req, res, next) => {
+  try {
+    res.json(await container.convidarParaChecklist.situacao(req.params.id!));
+  } catch (error) {
+    next(error);
+  }
+});
+
+checklistsRouter.delete("/:id/convite", administra, async (req, res, next) => {
+  try {
+    await container.convidarParaChecklist.revogar({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      checklistId: req.params.id!,
+    });
+    res.json({ message: "Link revogado" });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Anexo do cumprimento

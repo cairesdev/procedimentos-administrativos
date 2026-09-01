@@ -609,6 +609,29 @@ CASOS: list[tuple[str, str, bool]] = [
      "DELETE FROM checklist_item_cumprimento "
      "WHERE id = 'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4'",
      True),
+    # ---- 0035: o link externo do checklist --------------------------------
+    ("convite com prazo no futuro e aceito",
+     "INSERT INTO checklist_convite (checklist_id, token_hash, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('a',64), now() + interval '30 days')",
+     True),
+    ("um convite aberto por checklist",
+     "INSERT INTO checklist_convite (checklist_id, token_hash, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('b',64), now() + interval '30 days')",
+     False),
+    ("prazo no passado e recusado",
+     "INSERT INTO checklist_convite (checklist_id, token_hash, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('c',64), now() - interval '1 day')",
+     False),
+    ("depois de revogar, cabe outro convite",
+     "UPDATE checklist_convite SET revogado_em = now() "
+     "WHERE checklist_id = 'c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2'; "
+     "INSERT INTO checklist_convite (checklist_id, token_hash, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('d',64), now() + interval '30 days')",
+     True),
+    ("apagar o checklist leva o convite junto",
+     "DELETE FROM checklist_convite WHERE checklist_id = "
+     "'c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2'",
+     True),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "
