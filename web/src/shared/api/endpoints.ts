@@ -44,6 +44,11 @@ export const endpoints = {
   stockRequestAction: (id: string, acao: string) => `/almoxarifado/solicitacoes/${id}/${acao}`,
   consumption: "/almoxarifado/consumo",
   returns: "/almoxarifado/devolucoes",
+
+  // Módulo próprio, com prefixo próprio: o checklist atravessa os módulos e
+  // não pertence a nenhum deles.
+  checklists: "/checklists",
+  checklistTemplates: "/checklists/modelos",
   consumptionReports: "/almoxarifado/relatorios",
   quality: "/almoxarifado/qualidade",
   answerReturn: (id: string) => `/almoxarifado/devolucoes/${id}/responder`,

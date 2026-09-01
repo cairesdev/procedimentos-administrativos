@@ -1002,15 +1002,15 @@ livres para divergir bem no dado que o PNAE cobra.
 
 ### Alterações e ajustes
 
-Página inicial do processo, a apresentação.
+- Página inicial do processo, a apresentação.
 
-Adicionar edição de itens do contrato.
+- Adicionar edição de itens do contrato.
 
-Bloquear a criação do contrato caso os valores somados ultrapassem o valor da licitação.
+- Bloquear a criação do contrato caso os valores somados ultrapassem o valor da licitação.
 
-Ordem de fornecimento gerado pelo compras, exibir tambem para a controladoria, a geração não, apenas leitura.
+- Ordem de fornecimento gerado pelo compras, exibir tambem para a controladoria, a geração não, apenas leitura.
 
-Nota fiscal não obrigatorio e preenchivel pela controladoria
+- Nota fiscal não obrigatorio e preenchivel pela controladoria
 
 - CheckList de preenchimento de arquivos e anexos.
 
@@ -1083,3 +1083,113 @@ número, modalidade, objeto, valor e vigência.
 
 Fica nas telas que já existem, e não numa capa nova: a capa mostraria a mesma
 informação num segundo lugar, e informação duplicada é informação que diverge.
+
+## Checklist — levantamento consolidado
+
+Um módulo à parte para acompanhar o cumprimento de exigências: uma lista de
+itens, cada um com responsável, prazo e anexo opcional, que serve por dentro
+(o processo administrativo) e por fora (o fornecedor cumprindo pelo link).
+
+### O que ele **não** é
+
+Já existem três mecanismos vizinhos, e a fronteira entre eles precisa ficar
+escrita antes de virar código:
+
+- **Exigência** (0018) continua sendo a pergunta avulsa do balcão ao cidadão:
+  um texto, um prazo, uma resposta. O checklist é a lista **planejada**, com
+  modelo reutilizável e vários itens. Convivem; nada da exigência muda.
+- **Link externo do fornecedor** (0029) dá acesso ao próprio cadastro. O link
+  do checklist é outro, com outro alvo — mas o **mesmo desenho**: token
+  sorteado, só o hash no banco, prazo de validade, revogável.
+- **Motor de documentos** (0014 em diante) é quem gera a declaração de
+  conclusão. Escopo novo, não máquina nova.
+
+### As oito decisões
+
+1. **Convivem.** Exigência e checklist são coisas diferentes e ambas ficam.
+2. **Prende-se a qualquer registro, ou a nenhum.** Tipo + id: processo,
+   contrato, licitação, fornecedor, bem, veículo — ou vazio, e é uma lista que
+   existe por si. É o que atende "listas que não são só de sistemas internos".
+3. **Nasce de um modelo, ou avulso.** O modelo é copiado ao ser aplicado:
+   mudar o modelo depois **não** mexe no que já foi aplicado, pela mesma razão
+   que o documento emitido congela seus dados — a lista de ontem precisa
+   continuar dizendo o que se exigiu ontem.
+4. **Duas datas, e um ciclo que se repete.** O prazo diz até quando cumprir.
+   O **cumprimento** tem vigência própria: vale da data em que foi cumprido até
+   uma data final, e ao vencer o item volta a ser devido. Ver "A vigência do
+   cumprimento", abaixo — foi o ponto que mais mudou o modelo.
+5. **Quem cumpre marca, quem cobra confere.** O item passa por
+   `PENDENTE → AGUARDANDO_CONFERENCIA → CUMPRIDO`. Ninguém fecha o próprio
+   item: sem a segunda etapa, o checklist deixaria de ser conferência e viraria
+   declaração de quem cumpre.
+6. **Recusa com motivo devolve o item a pendente.** Mesmo desenho da recusa de
+   devolução, que já funciona: a recusa é resposta ao que foi entregue, não o
+   fim da linha.
+7. **A conclusão é documento emitido**, escopo `CHECKLIST`, com modelo editável
+   pela prefeitura e código de conferência pública.
+8. **Responsável no checklist e no item.** O geral acompanha a lista inteira;
+   cada item aponta para quem deve cumpri-lo — setor, departamento ou o
+   fornecedor externo. Uma lista de habilitação mistura Compras, Controladoria
+   e o próprio fornecedor, e cada um precisa ver o que é seu.
+
+### As três que fecham o desenho
+
+9. **`CHECKLIST` é módulo contratável**, como PROTOCOLO e ALMOXARIFADO: entra
+   em `orgao_modulo` e é ligado por prefeitura no painel `/admin`. Nota do
+   histórico: módulo novo **não se liga sozinho**, e a primeira prefeitura
+   precisa ser habilitada à mão — foi assim com o almoxarifado, e a queixa que
+   chegou foi "a opção não aparece".
+10. **Item pendente não bloqueia a tramitação.** O checklist mostra o que falta
+    e a fila sinaliza; quem despacha decide. Travar o processo por causa de uma
+    certidão faria alguém desligar a trava inteira no primeiro caso urgente — e
+    trava desligada não protege ninguém.
+11. **Primeira fatia é tudo por dentro.** Modelos, aplicação a qualquer
+    registro, itens com responsável e prazo, anexo, o ciclo
+    cumprir/conferir/recusar e a declaração. O link externo do fornecedor fica
+    para a segunda: é superfície pública, e superfície pública não nasce junto
+    com o resto ainda não rodado.
+
+### Anexo: vínculo próprio
+
+A tabela `anexo` exige `processo_id`, e checklist avulso não tem processo. O
+anexo do item ganha tabela própria (`checklist_item_anexo`), com o mesmo
+armazenamento MinIO e o mesmo streaming pela API que os anexos de processo já
+usam. Afrouxar `anexo.processo_id` para nullable seria mais barato hoje e
+tiraria do banco a garantia de que todo anexo de processo pertence a um.
+
+
+### A vigência do cumprimento
+
+Cumprir um item nem sempre encerra o assunto. A certidão negativa entregue hoje
+vale por um tempo e depois precisa ser entregue de novo — e é isso que "data
+inicial de cumprimento e data final que precisa ser cumprida novamente"
+significa. Não é um campo no item: é um **ciclo**.
+
+Isso muda o modelo. O cumprimento deixa de ser três colunas no item
+(`cumprido_em`, `cumprido_por`, `anexo`) e passa a ser uma tabela própria,
+`checklist_item_cumprimento`, com uma linha por ciclo. O item guarda a regra; a
+tabela guarda a história.
+
+- **A data final é calculada**: o item recorrente traz a periodicidade em dias,
+  e marcar como cumprido soma esse prazo à data do cumprimento. Não depende de
+  quem digita — e erra quando o documento real vence antes, o que é a troca
+  aceita aqui.
+- **Vencer devolve o item a pendente, sem apagar nada.** O ciclo anterior fica
+  no histórico com seu anexo e suas datas: a prestação de contas do ano passado
+  precisa poder mostrar a certidão que valia *naquele* momento, e não a atual.
+  Sobrescrever o cumprimento economizaria uma tabela e perderia exatamente o
+  que dá valor ao registro.
+- **Só item marcado como recorrente vence.** "Entregar o projeto assinado" se
+  cumpre uma vez; "certidão negativa" volta. Sem essa distinção, todo item
+  carregaria uma data final que, na maioria, não existe — e "sem data" se
+  confundiria com "esqueceram de preencher".
+- **O aviso é na tela**, como a fila do setor já faz com prazo de etapa: o que
+  venceu e o que vence nos próximos dias. Sem e-mail — o produto não envia
+  e-mail em lugar nenhum, e criar essa infraestrutura para um aviso seria uma
+  dependência nova no caminho de uma tela.
+
+**Consequência para a conclusão.** Um checklist com item recorrente nunca fica
+"concluído para sempre": ele está completo *enquanto* todos os cumprimentos
+estiverem vigentes. A declaração emitida continua valendo como registro do dia
+em que saiu — é o mesmo princípio do documento emitido, que congela os dados —,
+mas a tela precisa dizer "completo hoje", e não "completo".

@@ -21,6 +21,7 @@ export const ESCOPOS = [
   "ENTRADA_ESTOQUE",
   "DEVOLUCAO_ESTOQUE",
   "RELATORIO_CONSUMO",
+  "CHECKLIST",
 ] as const;
 
 export type EscopoDeDocumento = (typeof ESCOPOS)[number];
@@ -41,6 +42,7 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   ENTRADA_ESTOQUE: "ALMOXARIFADO",
   DEVOLUCAO_ESTOQUE: "ALMOXARIFADO",
   RELATORIO_CONSUMO: "ALMOXARIFADO",
+  CHECKLIST: "CHECKLIST",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -58,6 +60,7 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   ENTRADA_ESTOQUE: "Entrada no almoxarifado, com os lotes",
   DEVOLUCAO_ESTOQUE: "Devolução de material da unidade ao almoxarifado",
   RELATORIO_CONSUMO: "Consumo por unidade e por produto, num período",
+  CHECKLIST: "Checklist, com o cumprimento de cada item",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -79,6 +82,7 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   ENTRADA_ESTOQUE: "entrada de estoque",
   DEVOLUCAO_ESTOQUE: "devolução",
   RELATORIO_CONSUMO: "relatório de consumo",
+  CHECKLIST: "checklist",
 };
 
 export type CatalogoDeMarcadores = {
@@ -269,6 +273,25 @@ const DEVOLUCAO_ESTOQUE = [
  * alimentação escolar. O percentual de agricultura familiar é por número de
  * remessas, pelo mesmo motivo — e o modelo diz isso na própria peça.
  */
+/**
+ * Declaração de conclusão do checklist.
+ *
+ * `completoEm` é a data da emissão, e não do último cumprimento: item
+ * recorrente faz um checklist completo voltar a incompleto sozinho, e a peça
+ * precisa dizer de **quando** ela fala. O documento emitido congela seus
+ * dados; a tela é que mostra o hoje.
+ */
+const CHECKLIST = [
+  "checklist.titulo", "checklist.descricao", "checklist.alvo",
+  "checklist.responsavel", "checklist.criadoPor", "checklist.criadoEm",
+  "checklist.totalItens", "checklist.completoEm",
+];
+
+const ITENS_DO_CHECKLIST = [
+  "titulo", "descricao", "situacao", "prazo",
+  "cumpridoEm", "cumpridoPor", "conferidoPor", "vigenciaAte", "observacao",
+];
+
 const RELATORIO = [
   "relatorio.almoxarifado", "relatorio.tipoEstoque",
   "relatorio.periodoInicio", "relatorio.periodoFim",
@@ -350,6 +373,10 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   RELATORIO_CONSUMO: {
     valores: [...COMUNS, ...RELATORIO],
     listas: { unidades: UNIDADES_DO_RELATORIO, produtos: PRODUTOS_DO_RELATORIO },
+  },
+  CHECKLIST: {
+    valores: [...COMUNS, ...CHECKLIST],
+    listas: { itens: ITENS_DO_CHECKLIST },
   },
 };
 

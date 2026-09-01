@@ -177,6 +177,7 @@ describe("isolamento por órgão na fonte de contexto", () => {
     LOTES_DO_PEDIDO: "lotes entregues no pedido já conferido",
     LOTES_DA_ENTRADA: "lotes da remessa de estoque já conferida",
     VEICULO_DA_VIAGEM: "veículo alcançado pela viagem ou manutenção já conferida",
+    ITENS_DO_CHECKLIST: "itens do checklist já conferido",
   };
 
   const daFonte = consultas().filter((c) => c.arquivo === "PostgresFonteDeContexto.ts");

@@ -37,7 +37,8 @@ export type ModuleName =
   | "FROTAS"
   | "PATRIMONIO"
   | "ALMOXARIFADO"
-  | "PROTOCOLO";
+  | "PROTOCOLO"
+  | "CHECKLIST";
 
 export type LoginResponse = {
   token: string;

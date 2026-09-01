@@ -1,6 +1,11 @@
 /** Espelha TipoEvento da API. Só eventos de negócio entram na trilha. */
 export const AUDIT_EVENTS = [
   "CONTRATO_CRIADO",
+  "CHECKLIST_CRIADO",
+  "CHECKLIST_ITEM_CUMPRIDO",
+  "CHECKLIST_ITEM_ACEITO",
+  "CHECKLIST_ITEM_RECUSADO",
+  "CHECKLIST_ITEM_DISPENSADO",
   "ITEM_CONTRATO_EDITADO",
   "ITEM_CONTRATO_EXCLUIDO",
   "SOLICITACAO_ENVIADA",
@@ -77,6 +82,15 @@ export type AuditRecord = {
 /** Agrupa os eventos por origem, para o filtro não virar uma lista de 30 itens. */
 export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   {
+    // Grupo próprio: o checklist atravessa os módulos — acompanha processo,
+    // contrato, fornecedor —, e enfiá-lo em "Processos" esconderia o resto.
+    group: "Checklist",
+    events: [
+      "CHECKLIST_CRIADO", "CHECKLIST_ITEM_CUMPRIDO", "CHECKLIST_ITEM_ACEITO",
+      "CHECKLIST_ITEM_RECUSADO", "CHECKLIST_ITEM_DISPENSADO",
+    ],
+  },
+  {
     group: "Processos",
     events: [
       "CONTRATO_CRIADO", "ITEM_CONTRATO_EDITADO", "ITEM_CONTRATO_EXCLUIDO",
@@ -150,6 +164,11 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
 /** Frase no lugar do enum cru: a trilha é lida por gestor, não por dev. */
 export const EVENT_LABELS: Record<AuditEvent, string> = {
   CONTRATO_CRIADO: "Contrato cadastrado",
+  CHECKLIST_CRIADO: "Checklist criado",
+  CHECKLIST_ITEM_CUMPRIDO: "Item do checklist cumprido",
+  CHECKLIST_ITEM_ACEITO: "Item do checklist aceito",
+  CHECKLIST_ITEM_RECUSADO: "Item do checklist recusado",
+  CHECKLIST_ITEM_DISPENSADO: "Item do checklist dispensado",
   ITEM_CONTRATO_EDITADO: "Item do contrato corrigido",
   ITEM_CONTRATO_EXCLUIDO: "Item do contrato excluído",
   SOLICITACAO_ENVIADA: "Solicitação enviada",

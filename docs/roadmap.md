@@ -1030,3 +1030,48 @@ editável: um aviso sem conserto possível seria só um incômodo.
 Verificado contra a API no ar, com banco de verdade, e quebrando cada guarda:
 teto virando "menor que", teto sem centavos, piso do item virando o saldo, e
 exclusão ignorando o consumo — os quatro acusam.
+
+## Checklist — 1ª fatia pronta
+
+Módulo contratável para acompanhar o cumprimento de exigências, por dentro. O
+link externo do fornecedor fica para a 2ª fatia.
+
+- **0033** — modelos, checklist com alvo polimórfico (processo, contrato,
+  fornecedor… ou nenhum), itens com responsável e prazo, cumprimento como
+  **tabela de ciclos**, anexo próprio e o módulo `CHECKLIST`.
+- **0034** — escopo `CHECKLIST` no motor de documentos, com a declaração de
+  conclusão como modelo global.
+- **O item não tem coluna de status.** A situação é derivada do último ciclo, e
+  a regra existe em três lugares que precisam concordar: domínio (TypeScript),
+  repositório (SQL, para contar "em aberto" sem trazer tudo) e web (para pintar
+  a tela). Guardá-la exigiria alguém para expirá-la, e uma coluna dizendo
+  "cumprido" sobre certidão vencida mente.
+- **Ciclos, não campos.** Cumprir de novo não apaga o anterior: a prestação de
+  contas do ano passado precisa mostrar a certidão que valia naquele momento.
+- **Quem cumpre marca, quem cobra confere** — permissões separadas
+  (`checklists:fulfill` e `checklists:verify`). O anexo é cobrado na
+  **conferência**, não no cumprimento: ele pende do ciclo, que precisa existir
+  antes de o arquivo poder subir.
+- **Completo hoje**, e não completo: item recorrente faz a lista voltar a
+  incompleta sozinha. A emissão da declaração fica bloqueada com item em aberto.
+
+**Erros que a verificação pegou**, e que valem registro:
+
+1. O CHECK de recorrência aceitava item recorrente **sem** periodicidade:
+   `TRUE AND NULL > 0` é `NULL`, e CHECK com `NULL` passa. Só apareceu no
+   Postgres de verdade.
+2. Comentários `/** */` no SQL: o Postgres aceita, e o parser do `sql.test.ts`
+   morre neles.
+3. `DELETE ... USING` e `UPDATE ... FROM`: válidos no Postgres, desconhecidos
+   do parser. Reescritos com subconsulta.
+4. **Dois testes apontavam migrations pelo nome** (`0019` e `0014`) e mediam
+   CHECKs que outra migration já havia substituído — continuariam verdes
+   enquanto o banco recusava o módulo novo. Passaram a procurar a última.
+
+**624 testes**, 90 invariantes, 410 consultas com `PREPARE`. Verificado com a
+API no ar contra Postgres real: ciclo completo, vencimento devolvendo o item a
+pendente, isolamento entre prefeituras (404 dos dois lados) e a matriz de
+permissões. Três guardas quebradas de propósito — as três acusam.
+
+**Pendente:** ligar `CHECKLIST` para a prefeitura no `/admin` — módulo novo não
+se liga sozinho, e foi assim que o almoxarifado "não apareceu".

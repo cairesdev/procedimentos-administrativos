@@ -26,6 +26,12 @@ export type Permission =
   // Informar o número da nota fiscal na ordem já emitida. Separado de
   // `processes:order` porque conferir a nota não é emitir a ordem.
   | "orders:invoice"
+  // Checklist: ver, montar, cumprir e conferir. Cumprir e conferir são
+  // separadas porque ninguém fecha o próprio item.
+  | "checklists:read"
+  | "checklists:manage"
+  | "checklists:fulfill"
+  | "checklists:verify"
   // Trilha de conduta dos servidores: só o ADMIN da prefeitura.
   | "audit:read"
   | "assets:read"
@@ -63,6 +69,10 @@ export type Permission =
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
+    "checklists:read",
+    "checklists:manage",
+    "checklists:fulfill",
+    "checklists:verify",
     "assets:read",
     "assets:write",
     "audit:read",
@@ -102,6 +112,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "workflows:write",
   ],
   GESTOR: [
+    "checklists:read",
+    "checklists:manage",
+    "checklists:fulfill",
+    "checklists:verify",
     "assets:read",
     "assets:write",
     "bids:read",
@@ -139,6 +153,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "workflows:write",
   ],
   COMPRAS: [
+    "checklists:read",
+    "checklists:manage",
+    "checklists:fulfill",
+    "checklists:verify",
     "bids:read",
     "bids:write",
     "contracts:read",
@@ -156,6 +174,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   CONTROLADORIA: [
+    "checklists:read",
+    "checklists:verify",
     "assets:read",
     "audit:read",
     "bids:read",
@@ -173,6 +193,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "workflows:read",
   ],
   SERVIDOR: [
+    "checklists:read",
+    "checklists:fulfill",
     "bids:read",
     "contracts:read",
     "documents:read",
@@ -184,6 +206,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   PROTOCOLO: [
+    "checklists:read",
+    "checklists:fulfill",
     "documents:issue",
     "documents:read",
     "protocol:read",
@@ -192,6 +216,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   NUTRICIONISTA: [
+    "checklists:read",
+    "checklists:fulfill",
     "documents:issue",
     "documents:read",
     "sectors:read",
@@ -202,6 +228,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   UNIDADE: [
+    "checklists:read",
+    "checklists:fulfill",
     "documents:issue",
     "documents:read",
     "sectors:read",
@@ -211,6 +239,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   PATRIMONIO: [
+    "checklists:read",
+    "checklists:fulfill",
     "assets:read",
     "assets:write",
     "documents:issue",
@@ -220,6 +250,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "units:read",
   ],
   FROTAS: [
+    "checklists:read",
+    "checklists:fulfill",
     "documents:issue",
     "documents:read",
     "fleet:read",

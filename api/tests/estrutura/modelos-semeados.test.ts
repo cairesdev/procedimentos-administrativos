@@ -227,7 +227,11 @@ describe("escopos: código e banco", () => {
   });
 
   it("os módulos dos escopos cabem no CHECK de documento_modelo", () => {
-    const criacao = ler("0014_documentos.sql");
+    // Procurada, não nomeada — mesma razão do CHECK de escopo: apontar para a
+    // migration de criação mede um CHECK que outra já substituiu.
+    const comCheck = readdirSync(MIGRATIONS).sort().filter((arquivo) =>
+      /documento_modelo[\s\S]*?CHECK \(modulo IN \(/.test(ler(arquivo)));
+    const criacao = ler(comCheck[comCheck.length - 1]!);
     const check = /CHECK \(modulo IN \(([\s\S]*?)\)\)/.exec(criacao)![1]!;
     const permitidos = [...check.matchAll(/'(\w+)'/g)].map((achado) => achado[1]!);
 

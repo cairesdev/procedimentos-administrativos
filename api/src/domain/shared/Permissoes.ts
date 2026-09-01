@@ -47,6 +47,9 @@ export const PERMISSOES = [
   // Almoxarifado: pedir é da unidade; liberar e dar entrada é de quem
   // administra o estoque.
   "stock:read", "stock:request", "stock:receive", "stock:manage",
+  // Checklist: ver, montar a lista, cumprir um item e conferir o que veio.
+  // Cumprir e conferir são separadas porque ninguém fecha o próprio item.
+  "checklists:read", "checklists:manage", "checklists:fulfill", "checklists:verify",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
@@ -101,6 +104,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   // Secretário ou chefe de gabinete: conduz a contratação e administra os
   // cadastros, mas não mexe na trilha de auditoria dos próprios servidores.
   GESTOR: [
+    "checklists:read", "checklists:manage", "checklists:fulfill", "checklists:verify",
     ...ADMINISTRA_A_PREFEITURA.filter((p) => p !== "audit:read"),
     ...CONDUZ_CONTRATACAO,
     "processes:order", "orders:invoice",
@@ -112,6 +116,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Setor de compras: emite a ordem e cuida de fornecedor e contrato.
   COMPRAS: [
+    "checklists:read", "checklists:manage", "checklists:fulfill", "checklists:verify",
     ...LE_O_ORGANOGRAMA,
     "suppliers:read", "suppliers:write",
     "bids:read", "bids:write",
@@ -124,6 +129,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Controladoria: lê para dar parecer, e não escreve cadastro nenhum.
   CONTROLADORIA: [
+    "checklists:read", "checklists:verify",
     ...LE_O_ORGANOGRAMA,
     "suppliers:read", "bids:read", "contracts:read", "requests:read",
     "workflows:read",
@@ -144,6 +150,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
 
   // Servidor de setor administrativo: abre solicitação e acompanha o trâmite.
   SERVIDOR: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "suppliers:read", "bids:read", "contracts:read",
     "requests:read", "requests:create",
@@ -155,6 +162,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   // atende o cidadão não precisa deles para fazer o trabalho.
   // O balcão encaminha para setores: precisa saber os nomes deles.
   PROTOCOLO: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "protocol:read", "protocol:serve", "documents:read", "documents:issue",
   ],
@@ -162,6 +170,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   // Alimentação escolar. Dá entrada, libera para as escolas e presta contas —
   // e não tem nada que fazer em frotas, patrimônio ou licitação.
   NUTRICIONISTA: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "stock:read", "stock:request", "stock:receive", "stock:manage",
     "documents:read", "documents:issue",
@@ -177,6 +186,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
    * O papel abre a porta; a lotação diz de qual armário se está falando.
    */
   UNIDADE: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "stock:read", "stock:request", "stock:receive",
     "documents:read", "documents:issue",
@@ -186,6 +196,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   // cadastro não é o mesmo que conduzir a contratação: `suppliers:write`,
   // licitação e contrato continuam de fora.
   PATRIMONIO: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "assets:read", "assets:write",
     "suppliers:read",
@@ -193,6 +204,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   ],
 
   FROTAS: [
+    "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "fleet:read", "fleet:write", "trips:create", "documents:read", "documents:issue",
   ],

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { findContract } from "@/features/contracts/queries";
 import { Apresentacao } from "@/features/contracts/components/Apresentacao";
+import { ChecklistCard } from "@/features/checklists/components/ChecklistCard";
 import { ContractItemActions } from "@/features/contracts/components/ContractItemActions";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
@@ -192,6 +193,8 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
             ))}
           </Table>
         </Card>
+
+        <ChecklistCard alvoTipo="CONTRATO" alvoId={contrato.id} />
 
         {contrato.unidades.length === 0 ? (
           <Alert tone="error">

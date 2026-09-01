@@ -385,6 +385,57 @@ const DEVOLUCAO_ESTOQUE = `
     LEFT JOIN usuario ua ON ua.id = d.aceito_por_usuario_id
    WHERE l.orgao_id = $1 AND d.id = $2`;
 
+/**
+ * A declaração de conclusão do checklist.
+ *
+ * A situação de cada item é derivada do último ciclo, com a mesma regra do
+ * domínio e do repositório — três cópias da mesma verdade, e um teste que as
+ * amarra. Aqui ela precisa existir porque o documento congela o texto: o que
+ * for escrito na peça é o que ela dirá para sempre.
+ */
+const CHECKLIST = `
+  SELECT ck.titulo, coalesce(ck.descricao, '—') AS descricao,
+         coalesce(ck.alvo_tipo, 'avulso') AS alvo,
+         coalesce(s.nome, d.nome, '—') AS responsavel,
+         coalesce(u.nome, '—') AS "criadoPor",
+         to_char(ck.criado_em, 'DD/MM/YYYY') AS "criadoEm",
+         (SELECT count(*) FROM checklist_item i WHERE i.checklist_id = ck.id)
+           AS "totalItens",
+         to_char(current_date, 'DD/MM/YYYY') AS "completoEm"
+    FROM checklist ck
+    LEFT JOIN setor s ON s.id = ck.setor_id
+    LEFT JOIN departamento d ON d.id = ck.departamento_id
+    LEFT JOIN usuario u ON u.id = ck.criado_por
+   WHERE ck.orgao_id = $1 AND ck.id = $2`;
+
+const ITENS_DO_CHECKLIST = `
+  SELECT i.titulo, coalesce(i.descricao, '—') AS descricao,
+         CASE
+           WHEN i.dispensado_em IS NOT NULL THEN 'dispensado'
+           WHEN c.id IS NULL THEN 'pendente'
+           WHEN c.situacao = 'AGUARDANDO' THEN 'aguardando conferência'
+           WHEN c.situacao = 'RECUSADO' THEN 'pendente'
+           WHEN c.vigencia_ate IS NULL THEN 'cumprido'
+           WHEN c.vigencia_ate >= current_date THEN 'cumprido'
+           ELSE 'vencido'
+         END AS situacao,
+         coalesce(to_char(i.prazo_limite, 'DD/MM/YYYY'), '—') AS prazo,
+         coalesce(to_char(c.cumprido_em, 'DD/MM/YYYY'), '—') AS "cumpridoEm",
+         coalesce(uc.nome, CASE WHEN c.cumprido_por_externo THEN 'fornecedor' END, '—')
+           AS "cumpridoPor",
+         coalesce(uv.nome, '—') AS "conferidoPor",
+         coalesce(to_char(c.vigencia_ate, 'DD/MM/YYYY'), 'sem prazo') AS "vigenciaAte",
+         coalesce(c.observacao, '—') AS observacao
+    FROM checklist_item i
+    LEFT JOIN LATERAL (
+      SELECT cc.* FROM checklist_item_cumprimento cc
+       WHERE cc.item_id = i.id ORDER BY cc.ciclo DESC LIMIT 1
+    ) c ON TRUE
+    LEFT JOIN usuario uc ON uc.id = c.cumprido_por
+    LEFT JOIN usuario uv ON uv.id = c.conferido_por
+   WHERE i.checklist_id = $1
+   ORDER BY i.ordem`;
+
 const MANUTENCAO = `
   SELECT mn.tipo, coalesce(mn.descricao, '—') AS descricao,
          coalesce(mn.oficina, '—') AS oficina,
@@ -483,6 +534,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       return this.daDevolucao(orgaoId, referenciaId, orgao);
     }
     if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
+    if (escopo === "CHECKLIST") return this.doChecklist(orgaoId, referenciaId, orgao);
     return null;
   };
 
@@ -845,6 +897,39 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
         unidadeMedida: String(linha.unidadeMedida),
         quantidade: numero(linha.quantidade),
         validade: linha.validade ? formatarDataSimples(linha.validade) : "sem validade",
+      })),
+    };
+  };
+
+  /**
+   * A declaração do checklist.
+   *
+   * Congela a situação de cada item no dia da emissão. Item recorrente faz um
+   * checklist completo voltar a incompleto sozinho — e é por isso que a peça
+   * diz "completo em", com data, em vez de "completo".
+   */
+  private doChecklist = async (
+    orgaoId: string,
+    checklistId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const checklist = (await pool.query(CHECKLIST, [orgaoId, checklistId])).rows[0];
+    if (!checklist) return null;
+
+    const itens = await pool.query(ITENS_DO_CHECKLIST, [checklistId]);
+
+    return {
+      orgao,
+      checklist: {
+        ...Object.fromEntries(
+          Object.entries(checklist).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+        ),
+        totalItens: String(checklist.totalItens),
+      },
+      itens: itens.rows.map((linha) => ({
+        ...Object.fromEntries(
+          Object.entries(linha).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+        ),
       })),
     };
   };

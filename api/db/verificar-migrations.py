@@ -110,6 +110,18 @@ INSERT INTO item (id, orgao_id, contrato_id, produto, unidade_medida, quantidade
 VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','11111111-1111-1111-1111-111111111111',
         'eeee3333-eeee-3333-eeee-333333333333','ARROZ TIPO 1','KG', 1000, 700,
         'UNIDADE', 5, 5000);
+INSERT INTO checklist_modelo (id, orgao_id, nome)
+VALUES ('c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1','11111111-1111-1111-1111-111111111111',
+        'Habilitacao de fornecedor');
+INSERT INTO checklist (id, orgao_id, titulo, alvo_tipo, alvo_id)
+VALUES ('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2','11111111-1111-1111-1111-111111111111',
+        'Habilitacao da C-001','CONTRATO','eeee3333-eeee-3333-eeee-333333333333');
+INSERT INTO checklist_item (id, checklist_id, ordem, titulo, recorrente, periodicidade_dias)
+VALUES ('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3','c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2',
+        1,'Certidao negativa de debitos', TRUE, 90);
+INSERT INTO checklist_item_cumprimento (id, item_id, ciclo, vigencia_ate)
+VALUES ('c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4','c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3',
+        1, current_date + 90);
 INSERT INTO tipo_estoque (id, orgao_id, nome)
 VALUES ('44444444-4444-4444-4444-444444444444','11111111-1111-1111-1111-111111111111','Alimentacao');
 INSERT INTO produto (id, nome, unidade_medida)
@@ -519,6 +531,84 @@ CASOS: list[tuple[str, str, bool]] = [
      "UPDATE item SET saldo_disponivel = saldo_disponivel + (100 - quantidade_total), "
      "quantidade_total = 100 WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'",
      False),
+    # ---- 0033: checklist ---------------------------------------------------
+    ("modulo CHECKLIST e aceito",
+     "INSERT INTO orgao_modulo (orgao_id, modulo, ativo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','CHECKLIST',TRUE)",
+     True),
+    ("modulo inventado continua recusado",
+     "INSERT INTO orgao_modulo (orgao_id, modulo, ativo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','CONTABILIDADE',TRUE)",
+     False),
+    ("item recorrente exige periodicidade",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo, recorrente) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 90,'Sem periodicidade', TRUE)",
+     False),
+    ("recorrente com periodicidade zero e recusado",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo, recorrente, "
+     "periodicidade_dias) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 94,'Zero dias', TRUE, 0)",
+     False),
+    ("periodicidade sem recorrencia e recusada",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo, periodicidade_dias) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 91,'Nao recorrente', 30)",
+     False),
+    ("item com dois destinos e recusado",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo, setor_id, para_fornecedor) "
+     "SELECT 'c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 92,'Dois donos', s.id, TRUE "
+     "FROM setor s LIMIT 1",
+     False),
+    ("item sem destino e aceito (ainda nao direcionado)",
+     "INSERT INTO checklist_item (checklist_id, ordem, titulo) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', 93,'Sem dono ainda')",
+     True),
+    ("alvo pela metade e recusado",
+     "INSERT INTO checklist (orgao_id, titulo, alvo_tipo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','So o tipo','PROCESSO')",
+     False),
+    ("checklist avulso, sem alvo nenhum, e aceito",
+     "INSERT INTO checklist (orgao_id, titulo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Lista solta')",
+     True),
+    ("tipo de alvo inventado e recusado",
+     "INSERT INTO checklist (orgao_id, titulo, alvo_tipo, alvo_id) VALUES "
+     "('11111111-1111-1111-1111-111111111111','X','EMPENHO',"
+     "'11111111-1111-1111-1111-111111111111')",
+     False),
+    ("dispensa sem motivo e recusada",
+     "UPDATE checklist_item SET dispensado_em = now() "
+     "WHERE id = 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3'",
+     False),
+    ("aceitar sem data de conferencia e recusado",
+     "UPDATE checklist_item_cumprimento SET situacao = 'ACEITO' "
+     "WHERE id = 'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4'",
+     False),
+    ("recusar sem motivo e recusado",
+     "UPDATE checklist_item_cumprimento SET situacao = 'RECUSADO', conferido_em = now() "
+     "WHERE id = 'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4'",
+     False),
+    ("aceitar com data e aceito",
+     "UPDATE checklist_item_cumprimento SET situacao = 'ACEITO', conferido_em = now() "
+     "WHERE id = 'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4'",
+     True),
+    ("o mesmo ciclo nao entra duas vezes no item",
+     "INSERT INTO checklist_item_cumprimento (item_id, ciclo) VALUES "
+     "('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3', 1)",
+     False),
+    ("o ciclo seguinte entra",
+     "INSERT INTO checklist_item_cumprimento (item_id, ciclo) VALUES "
+     "('c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3', 2)",
+     True),
+    ("anexo de tamanho zero e recusado",
+     "INSERT INTO checklist_anexo (cumprimento_id, arquivo, nome_original, tamanho_bytes) "
+     "VALUES ('c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4','a/b.pdf','certidao.pdf', 0)",
+     False),
+    ("apagar o cumprimento leva o anexo junto",
+     "INSERT INTO checklist_anexo (cumprimento_id, arquivo, nome_original, tamanho_bytes) "
+     "VALUES ('c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4','a/b.pdf','certidao.pdf', 1024); "
+     "DELETE FROM checklist_item_cumprimento "
+     "WHERE id = 'c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4'",
+     True),
     ("o mesmo hash nao entra duas vezes",
      "INSERT INTO fornecedor_convite (fornecedor_id, orgao_id, token_hash, expira_em) "
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "

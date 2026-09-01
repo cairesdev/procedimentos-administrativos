@@ -9,6 +9,10 @@ import { PostgresFornecedorRepository } from "./infrastructure/db/PostgresFornec
 import { PostgresFluxoConfiguracaoRepository } from "./infrastructure/db/PostgresFluxoConfiguracaoRepository";
 import { PostgresTramitacaoRepository } from "./infrastructure/db/PostgresTramitacaoRepository";
 import { ResolverAlcance } from "./application/almoxarifado/ResolverAlcance";
+import { AnexosDoChecklist } from "./application/checklist/AnexosDoChecklist";
+import { CumprirItem } from "./application/checklist/CumprirItem";
+import { GerenciarChecklist } from "./application/checklist/GerenciarChecklist";
+import { PostgresChecklistRepository } from "./infrastructure/db/PostgresChecklistRepository";
 import { RegistrarQualidade } from "./application/almoxarifado/RegistrarQualidade";
 import { PostgresQualidadeRepository } from "./infrastructure/db/PostgresQualidadeRepository";
 import { ConvidarFornecedor } from "./application/fornecedor/ConvidarFornecedor";
@@ -77,6 +81,7 @@ const numeracao = new GeradorNumeroProcesso(processos);
 const documentos = new PostgresDocumentoRepository();
 const protocolo = new PostgresProtocoloRepository();
 const almoxarifado = new PostgresAlmoxarifadoRepository();
+const checklists = new PostgresChecklistRepository();
 
 export const container = {
   almoxarifado,
@@ -123,6 +128,10 @@ export const container = {
   ),
 
   resolverAlcance: new ResolverAlcance(usuarios, almoxarifado),
+
+  gerenciarChecklist: new GerenciarChecklist(checklists, auditoria, executarEmTransacao),
+  cumprirItem: new CumprirItem(checklists, auditoria, executarEmTransacao),
+  anexosDoChecklist: new AnexosDoChecklist(checklists, new MinioArmazenamento()),
 
   registrarQualidade: new RegistrarQualidade(
     new PostgresQualidadeRepository(), auditoria,

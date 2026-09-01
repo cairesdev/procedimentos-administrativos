@@ -12,7 +12,8 @@ export type NavIcon =
   | "truck"
   | "route"
   | "wrench"
-  | "boxes";
+  | "boxes"
+  | "listChecks";
 
 export type NavLink = {
   href: string;
@@ -31,6 +32,7 @@ export type WorkspaceId =
   | "protocolo"
   | "patrimonio"
   | "almoxarifado"
+  | "checklist"
   | "frotas"
   | "administracao";
 
@@ -231,6 +233,37 @@ export const workspaces: Workspace[] = [
           },
           { href: "/almoxarifado/tipos", label: "Tipos de estoque", permission: "stock:manage" },
           { href: "/almoxarifado/locais", label: "Locais atendidos", permission: "stock:manage" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "checklist",
+    name: "Checklist",
+    description: "Exigências a cumprir, com prazo, anexo e conferência",
+    basePath: "/checklists",
+    icon: "listChecks",
+    accent: "#0f6d8a",
+    accentSoft: "#e7f3f7",
+    module: "CHECKLIST",
+    permission: "checklists:read",
+    sections: [
+      {
+        group: "Acompanhamento",
+        icon: "listChecks",
+        links: [
+          { href: "/checklists", label: "Checklists", permission: "checklists:read" },
+        ],
+      },
+      {
+        group: "Cadastros",
+        icon: "clipboardCheck",
+        links: [
+          {
+            href: "/checklists/modelos",
+            label: "Modelos",
+            permission: "checklists:manage",
+          },
         ],
       },
     ],

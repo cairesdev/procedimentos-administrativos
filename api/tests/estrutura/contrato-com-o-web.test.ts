@@ -54,7 +54,22 @@ describe("módulos contratáveis", () => {
   it("banco, API, tipo do web e painel do produto concordam", () => {
     // O painel tinha lista própria e não acompanhou o CHECK do banco: nenhuma
     // prefeitura conseguia contratar o módulo novo.
-    const migration = ler(raizApi, "db", "migrations", "0019_modulo_protocolo.sql");
+    // A migration é procurada, e não nomeada: apontar para um arquivo fixo
+    // fazia o teste medir um CHECK que outra migration já tinha substituído —
+    // ele continuaria verde enquanto o banco recusava o módulo novo.
+    const pasta = path.join(raizApi, "db", "migrations");
+    //
+    // `documento_modelo` tem um CHECK de módulo com a mesma cara, e casar por
+    // "CHECK (modulo IN" pegava o dela — que lista os módulos com peça, e não
+    // os contratáveis. O nome da tabela precisa entrar no filtro.
+    const comCheck = readdirSync(pasta).sort().filter((arquivo) => {
+      const conteudo = readFileSync(path.join(pasta, arquivo), "utf8");
+      return /ALTER TABLE orgao_modulo[\s\S]*?CHECK \(modulo IN \(/.test(conteudo)
+        || /CREATE TABLE orgao_modulo[\s\S]*?CHECK \(modulo IN \(/.test(conteudo);
+    });
+    const migration = readFileSync(
+      path.join(pasta, comCheck[comCheck.length - 1]!), "utf8",
+    );
     const noBanco = new Set(
       [...(/CHECK \(modulo IN \((.*?)\)\)/s.exec(migration)![1]!)
         .matchAll(/'(\w+)'/g)].map((achado) => achado[1]!),

@@ -1,5 +1,6 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
+import { comFiltros } from "@/shared/api/filtros";
 import { withPage, type Page } from "@/shared/api/pagination";
 import type {
   Adjustment, Availability, Consumption, Intake, IntakeDetail, LocalStock, Product,
@@ -86,14 +87,6 @@ export const getReleasePlan = (id: string) =>
 
 export const getReceiptPlan = (id: string) =>
   apiRequest<ReceiptPlan>(endpoints.stockRequestAction(id, "recebimento"));
-
-const comFiltros = (base: string, filtros: Record<string, string | undefined>) => {
-  const query = new URLSearchParams();
-  for (const [chave, valor] of Object.entries(filtros)) {
-    if (valor) query.set(chave, valor);
-  }
-  return `${base}${query.size > 0 ? `?${query}` : ""}`;
-};
 
 export const listConsumption = (
   filtros: { local?: string; produto?: string; de?: string; ate?: string; pagina?: string } = {},

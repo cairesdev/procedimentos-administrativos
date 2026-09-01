@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { listAllContracts } from "@/features/contracts/queries";
+import { ChecklistCard } from "@/features/checklists/components/ChecklistCard";
 import { findProcess, listSupplyOrders } from "@/features/processes/queries";
 import { ProcessActions } from "@/features/processes/components/ProcessActions";
 import { ProcessTimeline } from "@/features/processes/components/ProcessTimeline";
@@ -189,6 +190,8 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
               />
             </Card>
           ) : null}
+
+          <ChecklistCard alvoTipo="PROCESSO" alvoId={process.id} />
 
           {podeVerOrdens ? (
             <Card title="Ordens de fornecimento">

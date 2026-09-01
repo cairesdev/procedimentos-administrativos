@@ -65,6 +65,14 @@ export type TipoEvento =
   | "FORNECEDOR_CONVIDADO"
   | "FORNECEDOR_ATUALIZADO_POR_LINK"
   | "FORNECEDOR_CONVITE_REVOGADO"
+  // Checklist: a lista criada, o item cumprido, conferido, recusado e
+  // dispensado. Conferência e recusa entram porque são resposta de alguém a
+  // algo que outro entregou.
+  | "CHECKLIST_CRIADO"
+  | "CHECKLIST_ITEM_CUMPRIDO"
+  | "CHECKLIST_ITEM_ACEITO"
+  | "CHECKLIST_ITEM_RECUSADO"
+  | "CHECKLIST_ITEM_DISPENSADO"
   | "ADMIN_ENTIDADE_CRIADO"
   | "ADMIN_ENTIDADE_PROMOVIDO"
   | "ADMIN_ENTIDADE_SENHA_REDEFINIDA"
