@@ -1554,3 +1554,43 @@ produto passou a ser um textarea de duas linhas que cresce. Nas listagens, a
 célula ganhou teto de largura e `overflow-wrap: anywhere` — código de norma
 técnica é uma "palavra" de oitenta caracteres sem espaço onde quebrar, e sem
 isso a tabela estica até sair da tela.
+
+### A capa do processo
+
+Decalcada da folha de Monção/MA, no escopo `PROCESSO_CONTRATO` — o único que
+reúne, de uma vez, o processo, o contrato que ele gerou e o fornecedor
+contratado. Processo sem contrato não tem capa a emitir: não há fornecedor nem
+valor a imprimir.
+
+Três coisas da folha original ficaram de fora:
+
+- **O cabeçalho da entidade** (brasão, "ESTADO DO MARANHÃO", CNPJ, endereço). O
+  timbre do sistema já imprime isso em toda peça; repetir daria dois cabeçalhos
+  na mesma folha.
+- **O código de barras.** O sistema autentica por QR code, que o rodapé já traz
+  com o código de conferência. Duas marcas de leitura óptica na mesma página,
+  apontando para coisas diferentes, é convite a bipar a errada.
+- **Banco, agência e conta do fornecedor.** Não existem no cadastro, e criar
+  três colunas para preencher uma linha da capa seria mais um campo que ninguém
+  mantém — o problema que este projeto já teve quatro vezes.
+
+O quadro de movimentação financeira ficou, com o valor bruto vindo do contrato.
+Dedução e líquido saem em branco: variam por pagamento, e o documento nasce como
+rascunho editável. Melhor um campo que quem emite completa do que um número que
+o sistema chutou.
+
+**Limitação conhecida:** o valor impresso é o do contrato inteiro, não o da
+despesa daquele processo — o escopo não alcança o valor da solicitação. Quem
+emite corrige no rascunho quando diferem.
+
+### CNPJ e CPF saem mascarados nas peças
+
+O documento é gravado só com dígitos, e as peças emitidas imprimiam
+"08882902000100" onde deveria estar "08.882.902/0001-00". Ninguém confere um
+CNPJ sem os pontos, e a capa é lida por quem vai comparar com a nota fiscal.
+
+A máscara já existia, aplicada num lugar só — o relatório de consumo. Passou a
+valer para fornecedor, órgão e contratante, o que corrige também a ordem de
+serviço e a ordem de fornecimento, que saíam com o número cru desde sempre.
+Valor que não tem 11 nem 14 dígitos volta como veio: melhor um texto estranho do
+que uma máscara aplicada sobre o que não é documento.

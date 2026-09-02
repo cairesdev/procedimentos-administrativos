@@ -1316,3 +1316,22 @@ Contra Postgres com a API no ar: item com especificação de mil caracteres grav
 e volta idêntico, e 2500 é recusado com o motivo no campo certo.
 
 671 testes na API, 22 no web, 104 invariantes, 420 consultas com `PREPARE`.
+
+## Capa do processo administrativo
+
+Migration 0043: capa decalcada da folha de Monção como modelo global, escopo
+`PROCESSO_CONTRATO`. Sem código de barras (o QR de conferência já vai no rodapé)
+e sem dados bancários.
+
+`processo.descricaoPedido` virou marcador — o campo era gravado desde o balcão e
+nenhum código o lia, quinto caso de configuração sem efeito no projeto.
+
+**Defeito antigo corrigido no caminho:** CNPJ e CPF saíam sem máscara em toda
+peça emitida. A ordem de serviço e a de fornecimento imprimiam o número cru
+desde que existem.
+
+Verificado com Postgres e API no ar: capa emitida sobre um processo com
+contrato, fornecedor e solicitação — nenhum `{{marcador}}` sobrou no corpo
+gravado, valor por extenso e modalidade corretos, CNPJ mascarado.
+
+677 testes na API, 104 invariantes, 420 consultas com `PREPARE`.

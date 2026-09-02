@@ -25,7 +25,8 @@ const PROCESSO = `
          p.tipo_processo AS "tipo", p.status,
          to_char(p.data_abertura AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS "dataAbertura",
          coalesce(s.nome, '—') AS "setorAtual",
-         coalesce(u.nome, '—') AS "unidadeSolicitante"
+         coalesce(u.nome, '—') AS "unidadeSolicitante",
+         coalesce(nullif(btrim(p.descricao_pedido), ''), '—') AS "descricaoPedido"
     FROM processo p
     LEFT JOIN setor s ON s.id = p.setor_atual_id
     LEFT JOIN solicitacao sol ON sol.processo_id = p.id
@@ -481,7 +482,7 @@ const contratoParaContexto = (linha: Record<string, unknown>) => ({
   },
   fornecedor: {
     razaoSocial: String(linha.fornecedorRazaoSocial ?? ""),
-    documento: String(linha.fornecedorDocumento ?? ""),
+    documento: mascararDocumento(String(linha.fornecedorDocumento ?? "")),
     endereco: String(linha.fornecedorEndereco ?? ""),
     email: String(linha.fornecedorEmail ?? ""),
     telefone: String(linha.fornecedorTelefone ?? ""),
@@ -504,8 +505,15 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     escopo: string,
     referenciaId: string,
   ): Promise<ContextoDeDocumento | null> => {
-    const orgao = (await pool.query(ORGAO, [orgaoId])).rows[0];
-    if (!orgao) return null;
+    const linhaDoOrgao = (await pool.query(ORGAO, [orgaoId])).rows[0];
+    if (!linhaDoOrgao) return null;
+
+    // O CNPJ é gravado só com dígitos. Na peça impressa ele é lido por quem vai
+    // comparar com a nota fiscal, e ninguém confere "06190243000116".
+    const orgao = {
+      ...linhaDoOrgao,
+      cnpj: mascararDocumento(String(linhaDoOrgao.cnpj ?? "")),
+    };
 
     if (escopo === "PROCESSO" || escopo === "PROCESSO_CONTRATO") {
       return this.doProcesso(orgaoId, escopo, referenciaId, orgao);
@@ -622,6 +630,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       processo: processo ?? {
         numeroProtocolo: "—", numeroProcessoAdm: "—", tipo: "—", status: "RASCUNHO",
         dataAbertura: "—", setorAtual: "—", unidadeSolicitante: "—",
+        descricaoPedido: "—",
       },
       solicitacao: {
         situacao: String(solicitacao.situacao),
@@ -993,7 +1002,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       },
       unidades: apuracao.unidades.map((unidade) => ({
         nome: unidade.nome,
-        cnpj: unidade.cnpj ? mascararCnpj(unidade.cnpj) : "—",
+        cnpj: unidade.cnpj ? mascararDocumento(unidade.cnpj) : "—",
         recebido: numero(unidade.recebido),
         consumido: numero(unidade.consumido),
         perdido: numero(unidade.perdido),
@@ -1031,7 +1040,7 @@ const contratanteParaContexto = (
 
   return {
     nome: ou("nome", orgao.nome),
-    cnpj: ou("cnpj", orgao.cnpj),
+    cnpj: mascararDocumento(ou("cnpj", orgao.cnpj)),
     endereco: ou("endereco", orgao.endereco),
     cidade: ou("cidade", `${orgao.municipio ?? ""} - ${orgao.uf ?? ""}`),
     inscricaoEstadual: ou("inscricaoEstadual", null),
@@ -1052,9 +1061,25 @@ const MOTIVO_DA_PERDA: Record<string, string> = {
  * Data do banco no formato do documento. O `to_char` resolve nas consultas que
  * o usam direto; aqui a validade vem como `Date` dentro da lista.
  */
-/** CNPJ do jeito que a escola o vê no papel. */
-const mascararCnpj = (valor: string): string =>
-  valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+/**
+ * CNPJ ou CPF do jeito que se lê no papel.
+ *
+ * O documento é gravado só com dígitos, e saía assim na peça emitida:
+ * "08882902000100" onde deveria estar "08.882.902/0001-00". Ninguém confere um
+ * CNPJ sem os pontos, e a capa do processo é lida por quem vai comparar com a
+ * nota fiscal. Valor que não tem 11 nem 14 dígitos volta como veio — melhor um
+ * texto estranho do que uma máscara aplicada sobre o que não é documento.
+ */
+const mascararDocumento = (valor: string): string => {
+  const digitos = valor.replace(/\D/g, "");
+  if (digitos.length === 14) {
+    return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  }
+  if (digitos.length === 11) {
+    return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  }
+  return valor;
+};
 
 const formatarDataSimples = (valor: unknown): string =>
   new Intl.DateTimeFormat("pt-BR", {

@@ -102,6 +102,15 @@ const PROCESSO = [
   "processo.numeroProtocolo", "processo.numeroProcessoAdm", "processo.tipo",
   "processo.status", "processo.dataAbertura", "processo.setorAtual",
   "processo.unidadeSolicitante",
+  /**
+   * O resumo do processo em uma linha — "Fornecimento de combustível".
+   *
+   * Vinha sendo gravado em `processo.descricao_pedido` desde o balcão e não era
+   * lido por código nenhum: mais um caso de configuração sem efeito. A capa do
+   * processo o imprime como "descriminação do processo administrativo", que é o
+   * nome que ele tem no papel.
+   */
+  "processo.descricaoPedido",
 ];
 
 /** Último despacho e parecer do processo — servem a qualquer peça de trâmite. */
