@@ -17,7 +17,10 @@ export const criarLicitacaoSchema = z.object({
 });
 
 const itemContratoSchema = z.object({
-  produto: z.string().min(1).max(150),
+  // Sem teto de tabela: a coluna é TEXT desde a 0042. O limite aqui é o da
+  // fronteira com o mundo — generoso para uma especificação de edital,
+  // apertado para um abuso.
+  produto: z.string().min(1).max(2000),
   descricao: z.string().optional(),
   // Agrupador dentro do contrato — "Saúde", "Educação". Opcional: a maior parte
   // dos contratos tem uma frente só.
@@ -86,7 +89,10 @@ export const editarContratoSchema = z.object({
  * `undefined` não distinguiria "não mexi" de "quero em branco".
  */
 export const editarItemContratoSchema = z.object({
-  produto: z.string().min(1).max(150),
+  // Sem teto de tabela: a coluna é TEXT desde a 0042. O limite aqui é o da
+  // fronteira com o mundo — generoso para uma especificação de edital,
+  // apertado para um abuso.
+  produto: z.string().min(1).max(2000),
   descricao: z.string().nullable().optional(),
   categoria: z.string().max(60).nullable().optional(),
   unidadeMedida: z.string().min(1).max(20),

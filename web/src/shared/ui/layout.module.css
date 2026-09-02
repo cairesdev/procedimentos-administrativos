@@ -264,3 +264,17 @@
 .summary_wide {
   grid-column: 1 / -1;
 }
+
+/**
+ * Célula de texto longo — a especificação do item, que virou TEXT na 0042.
+ *
+ * O teto de largura existe para a tabela não esticar até sair da tela quando
+ * um item traz a descrição completa do edital. `overflow-wrap: anywhere` cuida
+ * do caso que a quebra normal não resolve: código de norma técnica ou URL, uma
+ * "palavra" de oitenta caracteres sem espaço onde quebrar.
+ */
+.celula_longa {
+  max-width: 420px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert, Badge, Card, Stack, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
+import { Alert, Badge, Card, Stack, SummaryGrid, Table, celulaLonga, numericCell } from "@/shared/ui/layout";
 import { toCurrency, toDate, toDateTime, toDocument, humanize } from "@/shared/ui/labels";
 import { MEASUREMENT_LABELS, type RequestDetail } from "../types";
 import { LinhasPorCategoria } from "@/shared/ui/LinhasPorCategoria";
@@ -68,7 +68,7 @@ export const RequestDetailView = ({ request }: { request: RequestDetail }) => {
           <LinhasPorCategoria itens={request.itens} colunas={7}>
             {(item) => (
             <tr key={item.itemId}>
-              <td>
+              <td className={celulaLonga}>
                 <strong>{item.produto}</strong>
                 {item.descricao ? (
                   <>

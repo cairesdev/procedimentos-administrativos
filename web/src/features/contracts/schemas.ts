@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MEASUREMENT_MODES } from "./types";
 
 const itemSchema = z.object({
-  produto: z.string().min(1, "Informe o produto").max(150),
+  produto: z.string().min(1, "Informe o produto").max(2000),
   descricao: z.string().optional(),
   unidadeMedida: z.string().min(1, "Informe a unidade").max(20),
   categoria: z.string().max(60).optional(),
@@ -62,7 +62,7 @@ export const contractEditSchema = z
  * API, porque este formulário fala direto com ela.
  */
 export const contractItemEditSchema = z.object({
-  produto: z.string().min(1, "Informe o produto").max(150),
+  produto: z.string().min(1, "Informe o produto").max(2000),
   descricao: z.string().optional(),
   unidadeMedida: z.string().min(1, "Informe a unidade").max(20),
   categoria: z.string().max(60).optional(),

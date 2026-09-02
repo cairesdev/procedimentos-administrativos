@@ -167,3 +167,13 @@
 .cell_texto {
   min-width: 170px;
 }
+
+/** O produto passou a ser textarea: altura de duas linhas, e cresce se preciso. */
+.cell_area {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 7px;
+  line-height: 1.35;
+  resize: vertical;
+  font-family: inherit;
+}

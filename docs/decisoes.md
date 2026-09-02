@@ -1521,3 +1521,36 @@ alinhadas de ponta a ponta, e quem compara saldo entre duas frentes não mede
 duas grades com o olho. Contrato sem categorias não ganha faixa nenhuma — uma
 linha "Sem categoria" acima de tudo seria ruído sobre um recurso que aquele
 contrato não usa.
+
+### O produto do item vira TEXT
+
+`VARCHAR(150)` era um palpite, e o palpite era baixo. A especificação de um item
+de licitação não é um nome curto: vem com marca, gramatura, embalagem, norma
+técnica e faixa de tolerância na mesma célula da planilha, porque é assim que o
+edital descreve o que está sendo comprado. Passando de 150, a importação
+recusava a linha ou o servidor abreviava à mão — e o que fica no sistema deixa
+de ser o que está no edital.
+
+**TEXT, e não VARCHAR(600).** No Postgres os dois têm o mesmo armazenamento e o
+mesmo desempenho; `VARCHAR(n)` só acrescenta uma checagem de comprimento. Um
+teto de 600 seria outro palpite, atingido no dia em que alguém colasse a
+especificação completa de um equipamento, e mudá-lo pediria mais uma migration.
+O limite que faz sentido é o da camada que recebe dado de fora: a validação
+recusa acima de 2000 — generoso para uma descrição, apertado para um abuso.
+
+Vale para o item do contrato e para o da ata: são o mesmo campo, preenchidos
+pelo mesmo editor. Deixar um curto criaria o caso "colei na ata e funcionou,
+colei no contrato e cortou".
+
+Um teste estrutural impede a volta do teto: `max(150)` é o padrão copiado de
+todos os outros campos de nome do projeto, e um `produto` novo nasceria com ele
+por hábito — para falhar só na hora de colar uma planilha de verdade.
+
+### O produto no editor virou textarea
+
+Campo de uma linha com mil caracteres mostra o começo e esconde o resto. Aquela
+tabela existe justamente para conferir o que a importação trouxe, então o
+produto passou a ser um textarea de duas linhas que cresce. Nas listagens, a
+célula ganhou teto de largura e `overflow-wrap: anywhere` — código de norma
+técnica é uma "palavra" de oitenta caracteres sem espaço onde quebrar, e sem
+isso a tabela estica até sair da tela.

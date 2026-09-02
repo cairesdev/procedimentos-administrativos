@@ -369,8 +369,15 @@ export const ItemsEditor = <T extends FieldValues>({
             {items.fields.map((field, index) => (
               <tr key={field.id}>
                 <td>
-                  <input
-                    className={`${styles.cell_input} ${styles.cell_texto}`}
+                  {/* Textarea, e não input de uma linha.
+                      A especificação do item deixou de ter teto de caracteres
+                      (migration 0042) e vem colada da planilha com marca,
+                      gramatura e norma na mesma célula. Num campo de uma linha
+                      só dá para ler o começo — e esta tabela existe justamente
+                      para conferir o que a importação trouxe. */}
+                  <textarea
+                    rows={2}
+                    className={`${styles.cell_input} ${styles.cell_texto} ${styles.cell_area}`}
                     placeholder="Copo descartável"
                     {...register(`${name}.${index}.produto` as Path<T>)}
                   />

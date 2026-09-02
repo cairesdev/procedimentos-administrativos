@@ -9,7 +9,7 @@ import { ContractItemActions } from "@/features/contracts/components/ContractIte
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { humanize, toCurrency, toDate, toDocument } from "@/shared/ui/labels";
-import { Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
+import { Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, celulaLonga, numericCell } from "@/shared/ui/layout";
 
 type ContractPageProps = { params: Promise<{ id: string }> };
 
@@ -166,7 +166,7 @@ export default async function ContractDetailPage({ params }: ContractPageProps) 
             >
               {(item) => (
               <tr key={item.id}>
-                <td>
+                <td className={celulaLonga}>
                   <strong>{item.produto}</strong>
                   {item.descricao ? (
                     <>

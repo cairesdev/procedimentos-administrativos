@@ -35,6 +35,10 @@
 
 .product {
   display: block;
+  /* A especificação do item pode trazer o edital inteiro numa linha; sem isto
+     a tabela estica até sair da tela. */
+  max-width: 380px;
+  overflow-wrap: anywhere;
 }
 
 .mode {

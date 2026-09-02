@@ -126,6 +126,9 @@ export const Alert = ({
 
 export const numericCell = styles.numeric;
 
+/** Para a célula que recebe a especificação do item: quebra em vez de esticar. */
+export const celulaLonga = styles.celula_longa;
+
 export const Toolbar = ({ children }: { children: ReactNode }) => (
   <div className={styles.toolbar}>{children}</div>
 );

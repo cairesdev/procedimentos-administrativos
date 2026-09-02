@@ -5,7 +5,10 @@ import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const itemSchema = z.object({
-  produto: z.string().min(1).max(150),
+  // Sem teto de tabela: a coluna é TEXT desde a 0042. O limite aqui é o da
+  // fronteira com o mundo — generoso para uma especificação de edital,
+  // apertado para um abuso.
+  produto: z.string().min(1).max(2000),
   descricao: z.string().optional(),
   unidadeMedida: z.string().min(1).max(20),
   marca: z.string().max(100).optional(),

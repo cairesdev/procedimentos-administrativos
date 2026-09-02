@@ -1302,3 +1302,17 @@ a categoria da API — uma coluna a mais no `SELECT` que já lê a tabela de ite
 atributo apontando para um elemento inexistente, e a coluna de produto, que
 ficava espremida porque nenhuma largura era declarada — agora tem a mesma de
 descrição.
+
+## Produto sem teto de caracteres
+
+Migration 0042: `item.produto` e `ata_item.produto` viraram TEXT; os cinco
+schemas Zod passaram de 150 para 2000. Teste estrutural trava a volta do teto e
+a perda da migration — quebrei os dois de propósito e os dois acusam.
+
+No editor, o produto virou textarea de duas linhas; nas listagens, a célula
+quebra em vez de esticar a tabela.
+
+Contra Postgres com a API no ar: item com especificação de mil caracteres grava
+e volta idêntico, e 2500 é recusado com o motivo no campo certo.
+
+671 testes na API, 22 no web, 104 invariantes, 420 consultas com `PREPARE`.

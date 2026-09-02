@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const itemSchema = z.object({
-  produto: z.string().min(1, "Informe o produto").max(150),
+  produto: z.string().min(1, "Informe o produto").max(2000),
   descricao: z.string().optional(),
   unidadeMedida: z.string().min(1, "Informe a unidade").max(20),
   marca: z.string().max(100).optional(),
