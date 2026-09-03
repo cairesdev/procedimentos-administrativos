@@ -60,21 +60,41 @@ export const ChecklistWizard = ({
   const [vinculo, setVinculo] = useState<Vinculo | "">(alvo ? "REGISTRO" : "");
   const [erroDoPasso, setErroDoPasso] = useState("");
 
+  /**
+   * O alvo mora aqui, e não no formulário.
+   *
+   * Antes o seletor lia `form.watch("alvoTipo")` e escrevia com
+   * `form.setValue("alvoTipo", …)` — sobre um campo que **nunca foi
+   * registrado**, porque o JSX que o desenharia é o `TargetPicker`, e ele é
+   * controlado por props. A biblioteca guarda o valor nesse caso, mas avisar
+   * quem observa é comportamento que ela mesma pede para não depender: sem o
+   * aviso, o componente não torna a desenhar, o `value` volta ao que estava, e
+   * o campo parece não aceitar clique — preso em "— lista avulsa —".
+   *
+   * Estado do React resolve na origem: escolher é `setState`, e `setState`
+   * sempre redesenha. É o mesmo arranjo dos itens, e pela mesma razão.
+   */
+  const [alvoTipo, setAlvoTipo] = useState(alvo?.tipo ?? "");
+  const [alvoId, setAlvoId] = useState(alvo?.id ?? "");
+
   const { form, onSubmit, isSubmitting } = useResourceForm<ChecklistInput>({
     schema: checklistSchema,
     defaultValues: {
       titulo: "",
       descricao: "",
       modeloId: "",
-      alvoTipo: alvo?.tipo as ChecklistInput["alvoTipo"],
-      alvoId: alvo?.id ?? "",
       responsavel: "",
     },
     action: (values) => createChecklist({
       ...values,
-      // Sem vínculo é sem vínculo: o que ficou digitado numa escolha desfeita
-      // não pode viajar junto.
-      ...(vinculo === "AVULSO" ? { alvoTipo: undefined, alvoId: "" } : {}),
+      /**
+       * O vínculo entra aqui, vindo do estado — e some quando a lista é
+       * avulsa: o que ficou escolhido numa decisão desfeita não pode viajar
+       * junto.
+       */
+      ...(vinculo === "REGISTRO" && alvoTipo
+        ? { alvoTipo: alvoTipo as ChecklistInput["alvoTipo"], alvoId }
+        : { alvoTipo: undefined, alvoId: "" }),
       // Com modelo, os itens vêm de lá; sem ele, do formulário.
       itens: values.modeloId ? undefined : itens,
     }),
@@ -83,8 +103,6 @@ export const ChecklistWizard = ({
 
   const { errors } = form.formState;
   const modeloEscolhido = form.watch("modeloId");
-  const alvoTipo = form.watch("alvoTipo") ?? "";
-  const alvoId = form.watch("alvoId") ?? "";
   const titulo = form.watch("titulo") ?? "";
 
   const destinos = [
@@ -158,8 +176,8 @@ export const ChecklistWizard = ({
               setVinculo(escolhido);
               setErroDoPasso("");
               if (escolhido === "AVULSO") {
-                form.setValue("alvoTipo", undefined);
-                form.setValue("alvoId", "");
+                setAlvoTipo("");
+                setAlvoId("");
               }
             }}
             escolhas={[
@@ -181,12 +199,10 @@ export const ChecklistWizard = ({
           {vinculo === "REGISTRO" ? (
             <TargetPicker
               tipo={alvoTipo}
-              onTipo={(tipo) => form.setValue(
-                "alvoTipo", (tipo || undefined) as ChecklistInput["alvoTipo"],
-              )}
+              onTipo={setAlvoTipo}
               alvoId={alvoId}
               onAlvo={(id) => {
-                form.setValue("alvoId", id);
+                setAlvoId(id);
                 if (id) setErroDoPasso("");
               }}
             />

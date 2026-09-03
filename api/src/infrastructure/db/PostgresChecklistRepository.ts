@@ -65,6 +65,12 @@ const ALVO_NUMERO = `
                              WHERE c.id = ck.alvo_id AND c.orgao_id = ck.orgao_id)
       WHEN 'LICITACAO' THEN (SELECT l.numero FROM licitacao l
                               WHERE l.id = ck.alvo_id AND l.orgao_id = ck.orgao_id)
+      WHEN 'ATA' THEN (SELECT a.numero FROM ata_registro_precos a
+                        WHERE a.id = ck.alvo_id AND a.orgao_id = ck.orgao_id)
+      WHEN 'BEM' THEN (SELECT b.codigo_tombamento FROM bem b
+                        WHERE b.id = ck.alvo_id AND b.orgao_id = ck.orgao_id)
+      WHEN 'VEICULO' THEN (SELECT v.placa FROM veiculo v
+                            WHERE v.id = ck.alvo_id AND v.orgao_id = ck.orgao_id)
       WHEN 'FORNECEDOR' THEN (SELECT f.documento FROM fornecedor f WHERE f.id = ck.alvo_id)
     END`;
 
@@ -79,6 +85,12 @@ const ALVO_ROTULO = `
                              WHERE c.id = ck.alvo_id AND c.orgao_id = ck.orgao_id)
       WHEN 'LICITACAO' THEN (SELECT l.objeto FROM licitacao l
                              WHERE l.id = ck.alvo_id AND l.orgao_id = ck.orgao_id)
+      WHEN 'ATA' THEN (SELECT a.objeto FROM ata_registro_precos a
+                        WHERE a.id = ck.alvo_id AND a.orgao_id = ck.orgao_id)
+      WHEN 'BEM' THEN (SELECT b.nome FROM bem b
+                        WHERE b.id = ck.alvo_id AND b.orgao_id = ck.orgao_id)
+      WHEN 'VEICULO' THEN (SELECT v.modelo FROM veiculo v
+                            WHERE v.id = ck.alvo_id AND v.orgao_id = ck.orgao_id)
       WHEN 'FORNECEDOR' THEN (SELECT f.razao_social FROM fornecedor f WHERE f.id = ck.alvo_id)
     END`;
 
@@ -186,7 +198,13 @@ const SQL = {
    * servidor digita o número do processo ou do contrato, como ele o conhece.
    *
    * Uma consulta por tipo, unidas: cada tabela tem seu número e seu rótulo, e
-   * uma view genérica sobre todas custaria mais que as quatro linhas de UNION.
+   * uma view genérica sobre todas custaria mais que as linhas de UNION.
+   *
+   * **Um ramo por tipo que a tela oferece.** Ata, bem e veículo ficaram de
+   * fora na primeira versão, e a lista continuou mostrando os sete: quem
+   * escolhia um dos três via o campo de busca aparecer, digitava, e não achava
+   * nada — nunca. Selecionar um tipo que a consulta não atende é o mesmo que
+   * oferecer um botão que não faz nada.
    */
   buscarAlvos: `
     SELECT 'PROCESSO' AS tipo, p.id, p.numero_processo_adm AS numero,
@@ -206,6 +224,23 @@ const SQL = {
       FROM licitacao l
      WHERE l.orgao_id = $1 AND $2 = 'LICITACAO'
        AND (l.numero ILIKE $3 OR l.objeto ILIKE $3)
+    UNION ALL
+    SELECT 'ATA', a.id, a.numero, a.objeto
+      FROM ata_registro_precos a
+     WHERE a.orgao_id = $1 AND $2 = 'ATA'
+       AND (a.numero ILIKE $3 OR a.objeto ILIKE $3)
+    UNION ALL
+    -- O bem se procura pelo tombamento, que é o número escrito na plaqueta.
+    SELECT 'BEM', b.id, b.codigo_tombamento, b.nome
+      FROM bem b
+     WHERE b.orgao_id = $1 AND $2 = 'BEM'
+       AND (b.codigo_tombamento ILIKE $3 OR b.nome ILIKE $3)
+    UNION ALL
+    -- A placa faz as vezes de número: é como o veículo é chamado na garagem.
+    SELECT 'VEICULO', v.id, v.placa, v.modelo
+      FROM veiculo v
+     WHERE v.orgao_id = $1 AND $2 = 'VEICULO'
+       AND (v.placa ILIKE $3 OR v.modelo ILIKE $3)
     UNION ALL
     SELECT 'FORNECEDOR', f.id, f.documento, f.razao_social
       FROM fornecedor f

@@ -1471,3 +1471,29 @@ três dígitos. As três boas entraram; o CNPJ chegou sem máscara; rodar a mesm
 planilha de novo não duplicou nada; almoxarifado de outra prefeitura deu 404.
 
 747 testes na API, 32 no web, 107 invariantes, 430 consultas com `PREPARE`.
+
+## O seletor de referência do checklist
+
+**O que estava errado.** O vínculo do checklist era escrito com `setValue` num
+campo que nenhum `register` alcançava — o `TargetPicker` é controlado por props.
+Funciona por acidente: a biblioteca guarda o valor, mas avisar quem observa é
+comportamento que ela mesma pede para não se depender. Sem o aviso, o `<select>`
+volta sozinho e parece não aceitar clique.
+
+O vínculo passou a ser estado do React, entrando no formulário no envio — como
+os itens já eram. E a regra geral virou teste: `setValue` só em campo que o
+arquivo registra, contando `useController` como registro.
+
+**Achado no caminho:** a busca de alvos atendia 4 dos 7 tipos que a tela
+oferece. Ata, bem e veículo devolviam vazio sempre.
+
+**Verificação.** Um palco de render — o componente de verdade no jsdom, dentro
+do modal de verdade — com sete movimentos: escolher o tipo, buscar, escolher o
+registro, desfazer e refazer a escolha, trocar de tipo, sobreviver a um novo
+render e chegar ao envio com o vínculo dentro. E, com Postgres e a API no ar, os
+sete tipos achando pelo número e pelo nome.
+
+749 testes na API, 32 no web, 107 invariantes.
+
+**Se o campo continuar preso aí**, o palco diz que o código publicado não é este
+— vale conferir a imagem do web que está rodando na VPS.

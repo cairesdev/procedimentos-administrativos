@@ -1810,3 +1810,30 @@ ninguém revisa.
 
 **Um evento de auditoria para o lote**, não um por escola: o que se precisa
 responder é quem trouxe o cadastro, quando, e quanto entrou.
+
+### O alvo do checklist mora no estado do React, não no formulário
+
+O seletor de referência lia `form.watch("alvoTipo")` e escrevia com
+`form.setValue("alvoTipo", …)` — sobre um campo que **nunca foi registrado**,
+porque quem o desenha é o `TargetPicker`, controlado por props. A biblioteca
+guarda o valor nesse caso e a documentação dela pede que não se dependa disso:
+sem o aviso a quem observa, o componente não torna a desenhar, e um `<select>`
+controlado volta sozinho ao valor anterior. Para quem usa, "o campo não aceita
+clique" — preso em "— lista avulsa —".
+
+Agora o vínculo é `useState`, e entra no formulário na hora de enviar. É o
+mesmo arranjo dos itens, pela mesma razão: `setState` sempre redesenha.
+
+A regra virou teste sobre o projeto inteiro: **`setValue` só escreve em campo
+que o próprio arquivo registra** — por `register` ou por `useController`, que é
+o caminho dos campos com máscara. Era o único caso fora da regra.
+
+### A busca de alvos atende os sete tipos, e não quatro
+
+A tela monta o seletor a partir de `ALVOS`; a consulta tinha ramo para processo,
+contrato, licitação e fornecedor. Escolher "ata", "bem" ou "veículo" mostrava o
+campo de busca, aceitava o texto e não achava nada — nunca. Ata entra por número
+ou objeto, bem pelo tombamento (o número da plaqueta) ou nome, veículo pela
+placa ou modelo. Um teste estrutural cruza a lista de tipos do domínio com os
+ramos da consulta: oferecer um tipo que a busca não atende é oferecer um botão
+que não faz nada.
