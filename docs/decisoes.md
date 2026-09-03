@@ -1766,3 +1766,47 @@ Agora o retorno vale por si: operação que resolve para `{ id }` tem o id no
 resultado. Só texto não vazio conta — id numérico ou nulo viraria uma rota como
 `/relatorios/undefined`, e é melhor dizer que não recebeu o id do que navegar
 para o nada. As 160 chamadas existentes não mudam.
+
+## Importar o cadastro de escolas do sistema antigo
+
+A decisão 9 do levantamento do almoxarifado — "base nova, sem migração de
+movimento; só cadastros são trazidos" — nunca virou código. Trazer é o que
+faltava.
+
+**Só escolas e postos.** Produto já entra sozinho pela planilha de entrada, e
+saldo continua fora por decisão: histórico do legado tem `qnt_entrada` contando
+linhas e saldo que vai a negativo, e carregá-lo importaria o problema junto.
+Quem precisa do saldo inicial lança como ajuste de contagem, com motivo — que é
+a verdade do que aconteceu.
+
+**Planilha colada, colunas declaradas.** O mesmo caminho da entrada de estoque e
+dos itens de contrato: cola do Excel, diz o que é cada coluna, confere a prévia.
+Arquivo enviado pediria upload e leitura para um caminho que roda uma vez por
+prefeitura; script no banco do legado pediria credencial do sistema antigo na
+VPS.
+
+**CNPJ e CEP fazem as vezes de coluna numérica** no reconhecimento de cabeçalho.
+O critério de `pareceCabecalho` é "nenhum campo numérico tem dígito", e planilha
+de escola não tem quantidade nem valor — sem essas duas colunas nesse papel, a
+linha de título entraria como uma escola chamada "ESCOLA".
+
+**Pula o que já existe, e relata.** Nada existente é tocado. A primeira planilha
+sempre tem uma linha para corrigir, então a operação é feita para ser repetida:
+rodar duas vezes não duplica nem sobrescreve o que já foi ajustado à mão aqui
+dentro. O relatório fica na tela, linha a linha, com o motivo.
+
+**Sem transação em volta, de propósito.** Uma linha ruim não pode desfazer as
+cinquenta boas — envolver tudo numa transação transformaria "pular e relatar" em
+"tudo ou nada", que é a outra decisão. O código repetido dentro da própria
+planilha cai na mesma regra: a conferência é linha a linha, e a segunda
+ocorrência encontra a primeira já gravada.
+
+**A linha só é recusada quando não dá para identificar o que ela é.** Sem código
+ou sem nome não há escola; código e nome longos demais também são recusados,
+porque são a identidade — código cortado casaria com outra escola. O resto
+degrada com aviso: CNPJ ilegível entra vazio e aparece no relatório, endereço
+longo é cortado **com aviso**, nunca em silêncio. Errar o dado calado é o que
+ninguém revisa.
+
+**Um evento de auditoria para o lote**, não um por escola: o que se precisa
+responder é quem trouxe o cadastro, quando, e quanto entrou.

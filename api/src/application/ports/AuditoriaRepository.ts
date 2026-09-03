@@ -45,6 +45,8 @@ export type TipoEvento =
   | "DOCUMENTO_CANCELADO"
   // Almoxarifado: entrada, o ciclo do pedido e a perda no recebimento.
   | "ENTRADA_ESTOQUE_REGISTRADA"
+  // Implantação: o cadastro de escolas do sistema antigo, colado de uma vez.
+  | "LOCAIS_IMPORTADOS"
   | "LOTE_ESTOQUE_EXCLUIDO"
   | "SOLICITACAO_ESTOQUE_ENVIADA"
   | "SOLICITACAO_ESTOQUE_LIBERADA"

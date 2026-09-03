@@ -2,6 +2,7 @@ import { listStockLocations, listWarehouses } from "@/features/stock/queries";
 import { StockLocationTable } from "@/features/stock/components/StockLocationTable";
 import { requirePermission } from "@/shared/auth/guards";
 import { StockPlaceForm } from "@/features/stock/components/StockPlaceForm";
+import { ImportPlaces } from "@/features/stock/components/ImportPlaces";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { Alert, Card, PageHeader } from "@/shared/ui/layout";
 
@@ -20,13 +21,25 @@ export default async function StockLocationsPage() {
         title="Locais atendidos"
         subtitle="Escolas e postos que recebem material"
         action={
-          <ModalTrigger
-            label="Cadastrar local"
-            title="Novo local atendido"
-            description="Nome, código e de qual almoxarifado ele recebe."
-          >
-            <StockPlaceForm warehouses={warehouses} />
-          </ModalTrigger>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {/* A importação vem primeiro na implantação, e some da vista
+                depois — por isso é a ação secundária, ao lado do cadastro. */}
+            <ModalTrigger
+              label="Importar planilha"
+              title="Importar escolas do sistema antigo"
+              description="Cole a planilha, diga o que é cada coluna e confira antes de gravar."
+              variant="secondary"
+            >
+              <ImportPlaces warehouses={warehouses} />
+            </ModalTrigger>
+            <ModalTrigger
+              label="Cadastrar local"
+              title="Novo local atendido"
+              description="Nome, código e de qual almoxarifado ele recebe."
+            >
+              <StockPlaceForm warehouses={warehouses} />
+            </ModalTrigger>
+          </div>
         }
       />
 

@@ -39,6 +39,7 @@ export const AUDIT_EVENTS = [
   "EXIGENCIA_REGISTRADA",
   "EXIGENCIA_RESPONDIDA",
   "EXIGENCIA_CANCELADA",
+  "LOCAIS_IMPORTADOS",
   "ENTRADA_ESTOQUE_REGISTRADA",
   "LOTE_ESTOQUE_EXCLUIDO",
   "SOLICITACAO_ESTOQUE_ENVIADA",
@@ -141,6 +142,7 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   {
     group: "Almoxarifado",
     events: [
+      "LOCAIS_IMPORTADOS",
       "ENTRADA_ESTOQUE_REGISTRADA", "LOTE_ESTOQUE_EXCLUIDO",
       "SOLICITACAO_ESTOQUE_ENVIADA", "SOLICITACAO_ESTOQUE_LIBERADA",
       "SOLICITACAO_ESTOQUE_RECEBIDA", "SOLICITACAO_ESTOQUE_RECUSADA",
@@ -205,6 +207,7 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   EXIGENCIA_REGISTRADA: "Exigência registrada",
   EXIGENCIA_RESPONDIDA: "Exigência respondida pelo requerente",
   EXIGENCIA_CANCELADA: "Exigência cancelada",
+  LOCAIS_IMPORTADOS: "Escolas importadas de planilha",
   ENTRADA_ESTOQUE_REGISTRADA: "Entrada de estoque registrada",
   LOTE_ESTOQUE_EXCLUIDO: "Lote de estoque excluído",
   SOLICITACAO_ESTOQUE_ENVIADA: "Pedido de material enviado",

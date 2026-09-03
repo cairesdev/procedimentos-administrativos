@@ -1,5 +1,6 @@
 import { Conflito, ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { arredondar } from "../../domain/almoxarifado/Fefo";
+import { normalizarLinhaDeLocal, type LinhaCrua } from "../../domain/almoxarifado/LinhaDeLocal";
 import type {
   AlcanceDeConsulta, AlmoxarifadoRepository,
 } from "../ports/AlmoxarifadoRepository";
@@ -111,6 +112,117 @@ export class GerenciarAlmoxarifado {
 
   definirSituacaoDoLocal = (orgaoId: string, localId: string, ativo: boolean) =>
     this.almoxarifado.definirSituacaoDoLocal(orgaoId, localId, ativo);
+
+  /**
+   * O cadastro de escolas do sistema antigo, colado de uma vez.
+   *
+   * Trocar de sistema com sessenta escolas para redigitar é onde a implantação
+   * empaca: ninguém digita sessenta CNPJs sem errar, e o CNPJ do local é
+   * exigido na prestação de contas do PNAE.
+   *
+   * **Importa o que é novo e relata o resto.** Nada existente é tocado: quem
+   * roda a planilha duas vezes — e vai rodar, porque a primeira sempre tem uma
+   * linha para corrigir — não duplica nem sobrescreve o que já foi ajustado à
+   * mão aqui dentro.
+   *
+   * Sem transação em volta, de propósito. Uma linha ruim não pode desfazer as
+   * cinquenta boas: a operação é feita para ser repetida, e o relatório diz o
+   * que falta. Envolver tudo numa transação transformaria "pular e relatar" em
+   * "tudo ou nada", que é a outra decisão.
+   */
+  importarLocais = async (entrada: {
+    orgaoId: string;
+    usuarioId: string;
+    almoxarifadoId: string | null;
+    linhas: LinhaCrua[];
+  }): Promise<{
+    importados: { codigo: string; nome: string; avisos: string[] }[];
+    ignorados: { linha: number; motivo: string }[];
+  }> => {
+    if (entrada.linhas.length === 0) {
+      throw new ErroDeNegocio("Cole a planilha das escolas antes de importar");
+    }
+
+    if (entrada.almoxarifadoId) {
+      /**
+       * Almoxarifado de outra prefeitura penduraria a escola no vizinho — o
+       * `criarLocal` grava o `orgao_id` da sessão e não confere o destino.
+       * A listagem já filtra por órgão, então achar aqui é o bastante.
+       */
+      const almoxarifados = await this.almoxarifado.listarAlmoxarifados(entrada.orgaoId);
+      if (!almoxarifados.some((item) => item.id === entrada.almoxarifadoId)) {
+        throw new NaoEncontrado("Almoxarifado não encontrado");
+      }
+    }
+
+    const importados: { codigo: string; nome: string; avisos: string[] }[] = [];
+    const ignorados: { linha: number; motivo: string }[] = [];
+
+    for (const [indice, crua] of entrada.linhas.entries()) {
+      const linha = indice + 1;
+      const conferida = normalizarLinhaDeLocal(crua);
+
+      if (!conferida.aproveitavel) {
+        ignorados.push({ linha, motivo: conferida.motivo });
+        continue;
+      }
+
+      const { local } = conferida;
+
+      /**
+       * A conferência é por código, um a um — e não uma consulta só no começo.
+       * Duas linhas da mesma planilha com o código repetido são o caso comum
+       * (a escola aparece duas vezes na exportação), e a segunda precisa
+       * encontrar a primeira já gravada.
+       */
+      if (await this.almoxarifado.codigoDeLocalEmUso(entrada.orgaoId, local.codigo)) {
+        ignorados.push({
+          linha,
+          motivo: `já existe um local com o código ${local.codigo}`,
+        });
+        continue;
+      }
+
+      const id = await this.almoxarifado.criarLocal(entrada.orgaoId, {
+        nome: local.nome,
+        codigo: local.codigo,
+        almoxarifadoId: entrada.almoxarifadoId,
+      });
+
+      await this.almoxarifado.salvarDadosDoLocal(entrada.orgaoId, id, {
+        almoxarifadoId: entrada.almoxarifadoId,
+        cnpj: local.cnpj,
+        endereco: local.endereco,
+        bairro: local.bairro,
+        municipio: local.municipio,
+        uf: local.uf,
+        cep: local.cep,
+        telefone: local.telefone,
+        email: local.email,
+        responsavel: local.responsavel,
+      });
+
+      importados.push({ codigo: local.codigo, nome: local.nome, avisos: conferida.avisos });
+    }
+
+    /**
+     * Um evento para o lote, e não um por escola: o que a auditoria precisa
+     * responder é "quem trouxe o cadastro, quando, e quanto entrou".
+     */
+    await this.auditoria.registrar({
+      orgaoId: entrada.orgaoId,
+      usuarioId: entrada.usuarioId,
+      tipoEvento: "LOCAIS_IMPORTADOS",
+      detalhes: {
+        linhas: entrada.linhas.length,
+        importados: importados.length,
+        ignorados: ignorados.length,
+        almoxarifadoId: entrada.almoxarifadoId,
+      },
+    });
+
+    return { importados, ignorados };
+  };
 
   /**
    * O código identifica a escola nos papéis, e o banco já o exige único por

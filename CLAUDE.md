@@ -1,9 +1,17 @@
 # Procedimentos Administrativos — contexto do projeto
 
 Sistema multi-tenant de gestão de processos administrativos para prefeituras municipais.
-Uma base de dados atende várias prefeituras. Módulos implementados: **Processos** (licitação →
-contrato → solicitação → tramitação), **Patrimônio** e **Frotas** (1ª fatia de cada um).
-**Almoxarifado/Alimentação Escolar** está levantado e modelado, mas não implementado.
+Uma base de dados atende várias prefeituras. Módulos implementados:
+
+- **Processos** — licitação → contrato → solicitação → tramitação, com relatórios e dossiê.
+- **Protocolo Externo** — balcão, portal do cidadão e exigência (sistema próprio).
+- **Almoxarifado/Alimentação Escolar** — duas fatias entregues: entrada com lote e validade,
+  solicitação com reserva, liberação FEFO, recebimento com perda, consumo, devolução com aceite,
+  transferência entre almoxarifados, ajuste, qualidade do lote, relatório de consumo (PNAE) e
+  acesso por escola.
+- **Checklist** — modelos (inclusive o roteiro global do PNTP), ciclo com prazo e anexo,
+  conferência e link externo para o fornecedor.
+- **Patrimônio** e **Frotas** — 1ª fatia de cada um.
 
 ## Leitura obrigatória antes de codar
 

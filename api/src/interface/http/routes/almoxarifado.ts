@@ -301,6 +301,47 @@ almoxarifadoRouter.put("/locais/:id", administraEstoque, async (req, res, next) 
   }
 });
 
+/**
+ * A planilha do sistema antigo, colada de uma vez.
+ *
+ * Os campos chegam como texto cru, do jeito que saíram da célula — com máscara
+ * de CNPJ, CEP com hífen, UF em minúscula. Limpar é trabalho do domínio, e é
+ * ele quem decide o que é erro de linha e o que é aviso. Aqui o schema só
+ * impede o absurdo: teto de linhas e teto de tamanho por célula.
+ */
+const importacaoDeLocaisSchema = z.object({
+  almoxarifadoId: z.string().uuid().nullable(),
+  linhas: z.array(z.object({
+    codigo: z.string().max(200).optional(),
+    nome: z.string().max(500).optional(),
+    cnpj: z.string().max(50).optional(),
+    endereco: z.string().max(500).optional(),
+    bairro: z.string().max(300).optional(),
+    municipio: z.string().max(300).optional(),
+    uf: z.string().max(50).optional(),
+    cep: z.string().max(50).optional(),
+    telefone: z.string().max(100).optional(),
+    email: z.string().max(300).optional(),
+    responsavel: z.string().max(300).optional(),
+  })).min(1, "Cole a planilha das escolas antes de importar")
+    // Município grande tem centenas de escolas; mil é folga com teto.
+    .max(1000, "Importe no máximo 1000 linhas por vez"),
+});
+
+almoxarifadoRouter.post("/locais/importar", administraEstoque, async (req, res, next) => {
+  try {
+    const dados = importacaoDeLocaisSchema.parse(req.body);
+    res.json(await container.gerenciarAlmoxarifado.importarLocais({
+      orgaoId: req.sessao!.orgaoId,
+      usuarioId: req.sessao!.usuarioId,
+      almoxarifadoId: dados.almoxarifadoId,
+      linhas: dados.linhas,
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Cadastrar escola é ato de quem administra o estoque — e passa a existir
 // aqui porque o patrimônio pode não ter sido contratado.
 almoxarifadoRouter.post("/locais", administraEstoque, async (req, res, next) => {

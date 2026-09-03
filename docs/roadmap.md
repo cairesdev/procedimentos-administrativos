@@ -1445,3 +1445,29 @@ o recorte gravado, reaberto pelo id e o período invertido recusado com 422. Os
 quatro guardas quebrados de propósito, um a um — o primeiro do layout passou
 verde porque procurava a regra no arquivo inteiro e achava o comentário que a
 explica; agora compara sem comentários.
+
+## Importação do cadastro de escolas
+
+**O CLAUDE.md estava errado.** Dizia que o almoxarifado/alimentação escolar
+estava "levantado e modelado, mas não implementado" — e o módulo tem duas fatias
+entregues, 8 casos de uso, 13 telas e 8 migrations. Repeti a frase no roadmap
+ontem sem conferir; as duas correções estão feitas.
+
+Do levantamento, o que de fato faltava era a decisão 9: trazer os cadastros do
+sistema antigo. Agora existe, na tela de locais atendidos — cola a planilha,
+declara as colunas, confere a prévia, importa e lê o relatório.
+
+| Camada | O que entrou |
+| --- | --- |
+| Domínio | `LinhaDeLocal` — limpa CNPJ, CEP, UF e e-mail; separa recusa de aviso |
+| Aplicação | `importarLocais` — pula o que existe, relata linha a linha, audita o lote |
+| HTTP | `POST /almoxarifado/locais/importar`, teto de 1000 linhas |
+| Web | `ImportPlaces` sobre o `ColumnMapper` que já existia |
+
+**Verificado com Postgres e API no ar**, com uma planilha que tem os problemas
+reais: CNPJ mascarado, UF em minúscula, CEP com ponto, e-mail em caixa alta, uma
+escola repetida dentro da própria planilha, uma linha sem código e um CNPJ de
+três dígitos. As três boas entraram; o CNPJ chegou sem máscara; rodar a mesma
+planilha de novo não duplicou nada; almoxarifado de outra prefeitura deu 404.
+
+747 testes na API, 32 no web, 107 invariantes, 430 consultas com `PREPARE`.

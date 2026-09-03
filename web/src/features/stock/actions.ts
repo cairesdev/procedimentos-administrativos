@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { apiRequest } from "@/shared/api/http-client";
+import { ApiError, apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import {
@@ -98,6 +98,38 @@ export const createStockPlace = async (input: StockPlaceInput) =>
     });
     revalidatePath(LOCATIONS);
   }, "Local cadastrado");
+
+export type ImportedPlaces = {
+  importados: { codigo: string; nome: string; avisos: string[] }[];
+  ignorados: { linha: number; motivo: string }[];
+};
+
+/**
+ * O cadastro de escolas do sistema antigo, colado de uma vez.
+ *
+ * O relatório volta pela ação, e não por `revalidatePath` sozinho: a tela
+ * precisa dizer, linha a linha, o que entrou e o que ficou de fora. Uma
+ * mensagem de "importado com sucesso" sobre uma planilha em que cinco escolas
+ * foram puladas seria pior que erro nenhum.
+ */
+export const importStockPlaces = async (
+  input: { almoxarifadoId: string | null; linhas: Record<string, string>[] },
+): Promise<{ error?: string; relatorio?: ImportedPlaces }> => {
+  try {
+    const relatorio = await apiRequest<ImportedPlaces>(
+      `${endpoints.stockLocations}/importar`,
+      { method: "POST", body: input },
+    );
+    revalidatePath(LOCATIONS);
+    return { relatorio };
+  } catch (error) {
+    return {
+      error: error instanceof ApiError
+        ? error.message
+        : "Não foi possível importar as escolas",
+    };
+  }
+};
 
 export const renameStockPlace = async (id: string, input: StockPlaceInput) =>
   runAction(async () => {
