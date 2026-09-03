@@ -189,6 +189,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  /*
+    Quebra linha em vez de estourar a tela.
+    ------------------------------------------------------------------------
+    Sem isto, seis controles numa barra empurram a página para a direita e
+    aparece a barra de rolagem horizontal — que na prática ninguém procura, e
+    o botão "Aplicar" fica fora do campo de visão. O `wrap` só age quando não
+    cabe; em barra que já cabia, nada muda.
+  */
+  flex-wrap: wrap;
 }
 
 .steps {

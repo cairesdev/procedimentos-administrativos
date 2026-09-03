@@ -1,0 +1,33 @@
+/*
+  A barra de filtros do relatório.
+  ---------------------------------------------------------------------------
+  É a mais carregada do sistema: período, unidade, fornecedor, modalidade e o
+  botão. O que estourava a largura não era a quantidade, e sim o `select` de
+  fornecedor — ele se dimensiona pela opção mais larga, e razão social de
+  empresa é longa. Um cadastro com "COMERCIO E DISTRIBUIDORA DE ALIMENTOS DO
+  MARANHÃO LTDA ME" fazia um único campo passar de 500px, e a página inteira
+  ganhava rolagem horizontal.
+*/
+
+.campo {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+/*
+  Teto de largura nos seletores, sem elemento a mais no meio.
+
+  A regra desce do próprio formulário: assim vale para os filtros que cada
+  relatório passa como filhos, e a próxima tela não precisa lembrar de aplicar
+  classe nenhuma.
+
+  `min-width: 0` é o que permite encolher — em flex, o tamanho mínimo de um
+  item é o do seu conteúdo, e sem isto o `max-width` não é obedecido. O nome
+  cortado continua legível: o seletor abre na largura do conteúdo, não na do
+  campo.
+*/
+.barra select {
+  min-width: 0;
+  max-width: 240px;
+}

@@ -1425,3 +1425,23 @@ seguintes e nunca saíram de lá. O item 3 fala das migrations 0025-0027; hoje s
 segredos do `.env.prod`, revisão do papel dos usuários já cadastrados, remoção
 do `ADMIN_SENHA`, os quatro campos da Ordem de Serviço sem onde morar, e o
 almoxarifado/alimentação escolar, levantado e modelado e não implementado.
+
+## Dois defeitos das telas de relatório
+
+**"O recorte foi salvo, mas a API não devolveu o identificador."** A API
+devolvia; `runAction` é que descartava o retorno da operação. Corrigido na raiz,
+com o id extraído por uma função própria (`idDoCriado`) para poder ser testada
+sem bundler, e um teste estrutural que recusa a volta do `await operation();`
+solitário.
+
+**Filtros estourando a largura.** Duas causas somadas: a `Toolbar` não quebrava
+linha, e o `select` de fornecedor se dimensiona pela opção mais larga — razão
+social de empresa passa de 500px sozinha. `flex-wrap` na barra (vale para as
+outras dezoito telas que a usam) e teto de largura nos seletores do relatório,
+com o `min-width: 0` sem o qual o teto não vale em flex.
+
+**Verificação:** 722 testes na API, 32 no web, e o palco com API no ar mostrando
+o recorte gravado, reaberto pelo id e o período invertido recusado com 422. Os
+quatro guardas quebrados de propósito, um a um — o primeiro do layout passou
+verde porque procurava a regra no arquivo inteiro e achava o comentário que a
+explica; agora compara sem comentários.

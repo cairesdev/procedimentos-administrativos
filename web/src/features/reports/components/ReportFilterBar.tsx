@@ -1,5 +1,6 @@
 import { Button } from "@/shared/ui/button";
 import { Toolbar } from "@/shared/ui/layout";
+import styles from "./ReportFilterBar.module.css";
 
 /** Primeiro e último dia do mês corrente — o recorte que a maioria quer. */
 export const mesCorrente = () => {
@@ -31,13 +32,13 @@ export const ReportFilterBar = ({
   /** Os filtros que variam por relatório — unidade, fornecedor, setor. */
   children?: React.ReactNode;
 }) => (
-  <form method="get">
+  <form method="get" className={styles.barra}>
     <Toolbar>
-      <label style={{ display: "grid", gap: "4px", fontSize: "12px" }}>
+      <label className={styles.campo}>
         De
         <input type="date" name="inicio" defaultValue={inicio} required />
       </label>
-      <label style={{ display: "grid", gap: "4px", fontSize: "12px" }}>
+      <label className={styles.campo}>
         Até
         <input type="date" name="fim" defaultValue={fim} required />
       </label>

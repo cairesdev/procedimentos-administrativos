@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import { ApiError } from "./http-client";
+import { idDoCriado } from "./id-do-criado";
 import type { ActionResult } from "@/shared/ui/use-resource-form";
 
 type ValidationDetail = { campo: string; motivo: string };
@@ -10,8 +11,8 @@ export const runAction = async (
   success: string,
 ): Promise<ActionResult> => {
   try {
-    await operation();
-    return { success };
+    const id = idDoCriado(await operation());
+    return id ? { success, id } : { success };
   } catch (error) {
     if (error instanceof ApiError) {
       const details = Array.isArray(error.details)

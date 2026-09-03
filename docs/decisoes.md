@@ -1752,3 +1752,17 @@ coluna e o valor ficam — o dia em que alguém escrever a consulta, quem já ma
 está lá. O que sai é a oferta: melhor não prometer do que prometer sem efeito.
 Um teste estrutural guarda a regra — **quem oferece, lê** — e recusa a caixa de
 volta enquanto nenhuma consulta filtrar por ela.
+
+### `runAction` devolve o id de quem cria
+
+O invólucro fazia `await operation()` e jogava o retorno fora. Quem precisava do
+id do registro criado guardava-o numa variável fora da closure — padrão que
+funciona e é fácil de esquecer. O esquecimento é mudo: `resultado.id` sai
+`undefined` e a tela acusa a API de não ter devolvido o que devolveu. Foi o que
+derrubou "Emitir relatório", e o palco confirma que a API sempre respondeu 201
+com o id.
+
+Agora o retorno vale por si: operação que resolve para `{ id }` tem o id no
+resultado. Só texto não vazio conta — id numérico ou nulo viraria uma rota como
+`/relatorios/undefined`, e é melhor dizer que não recebeu o id do que navegar
+para o nada. As 160 chamadas existentes não mudam.
