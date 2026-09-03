@@ -1692,3 +1692,63 @@ tem os dois: um pedido de informação aberto no balcão não tem compra nenhuma
 e é justamente nele que um `JOIN` interno devolveria zero linhas, fazendo a tela
 dizer "não encontrado" sobre um processo que existe. O dossiê de um processo sem
 contrato mostra o que ele tem e diz, em uma linha, por que o resto está vazio.
+
+### O checklist mostra o registro pelo número, não pelo uuid
+
+`alvo_tipo` + `alvo_id` é como a tabela guarda o vínculo, e a tela repetia isso:
+"processo · 3f2a1b8c". Um subselect por tipo traz número e rótulo. Cada ramo
+repete o `orgao_id` do próprio checklist — vínculo apontando para registro de
+outra prefeitura devolve nulo, e a tela diz "processo não encontrado" em vez de
+revelar o número alheio ou de fingir que o checklist é avulso.
+
+### A sugestão do TCE sai do texto e vira campo
+
+A 0037 decidiu, com razão, que o modelo global do PNTP não traz setor: os nomes
+da planilha são de uma prefeitura, e o modelo é de todas. O que ficou errado foi
+o efeito colateral — a sugestão do Tribunal ficou dentro da descrição, em prosa,
+e aplicar o modelo custava 53 atribuições à mão numa lista refeita todo mês.
+
+Agora ela vive em `checklist_modelo_item.setor_sugerido`, texto e não referência
+(o modelo global não pode apontar para o organograma de ninguém), e a aplicação
+casa o nome com os setores de quem aplica. A gramática da planilha é respeitada:
+"A COM B" põe A como responsável e B como apoio; "A OU B" é um papel com dois
+nomes possíveis.
+
+**O casamento é tímido de propósito.** Nome igual ou nome contido —
+"ADMINISTRAÇÃO" acha "Secretaria de Administração" —, e um único candidato.
+Dois empatados não escolhem nenhum, porque "SAÚDE" diante de "Secretaria de
+Saúde" e "Fundo Municipal de Saúde" é pergunta que só quem trabalha lá responde.
+Responsável errado é pior que responsável ausente: ausente alguém preenche;
+errado, o item fica cobrado de quem não devia até o prazo vencer. Limitação
+conhecida e aceita: a comparação é literal, então "JURÍDICO" não acha
+"Procuradoria Jurídica" — radicalizar palavra acertaria aqui e erraria adiante.
+
+Setor já gravado no modelo ganha da sugestão, e item do fornecedor fica de fora:
+ele já aponta para um responsável, e dois é ninguém.
+
+### Salvar o modelo devolve o que a tela não desenha
+
+Descoberto no caminho: `substituirItensDoModelo` apaga e reinsere a lista, e o
+formulário só conhece título, prazo e responsável. Duplicar o roteiro do PNTP e
+corrigir um título apagava dimensão, código, classificação, apoios e o arquivo
+de referência dos 53 itens — o mesmo defeito que a aplicação do modelo já teve,
+agora na edição. Os campos invisíveis viajam no estado do formulário e voltam
+como vieram.
+
+### A busca de contrato olha o nome do produto
+
+Quem vai pedir seringa pensa na seringa, não no número do contrato que a tem. O
+`EXISTS` usa alias próprio: filtrar pelo join que agrega deixaria de fora os
+outros itens, e a linha viria com o saldo só do item que casou. Só produto com
+saldo conta — achar o contrato por um item esgotado é levar a pessoa a uma
+seleção que não dá em nada.
+
+### A visibilidade estendida saiu do painel
+
+Gravada em `fluxo_estagio`, oferecida na tela e lida por consulta nenhuma: a
+terceira da família no projeto, depois de `dados_contratante` e
+`usuario_permissao`, e cada uma custou um bug de "configurei e não funciona". A
+coluna e o valor ficam — o dia em que alguém escrever a consulta, quem já marcou
+está lá. O que sai é a oferta: melhor não prometer do que prometer sem efeito.
+Um teste estrutural guarda a regra — **quem oferece, lê** — e recusa a caixa de
+volta enquanto nenhuma consulta filtrar por ela.

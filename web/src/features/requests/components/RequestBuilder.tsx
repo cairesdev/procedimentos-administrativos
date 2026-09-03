@@ -70,6 +70,9 @@ export const RequestBuilder = ({
    * servidor sabe o número ou o fornecedor do contrato que procura, não a
    * posição dele numa lista. Dois caracteres é o piso: uma letra casaria com
    * metade da prefeitura.
+   *
+   * A busca também olha o nome do produto: quem vai pedir seringa pensa na
+   * seringa, e não no número do contrato que a tem.
    */
   const termo = busca.trim();
   const chave = `${unitId}|${termo}`;
@@ -213,7 +216,7 @@ export const RequestBuilder = ({
           <InputField
             label="Procurar contrato"
             name="buscaContrato"
-            placeholder="Número, objeto ou fornecedor"
+            placeholder="Número, objeto, fornecedor ou produto"
             hint={
               !unitId
                 ? "Escolha a unidade primeiro."

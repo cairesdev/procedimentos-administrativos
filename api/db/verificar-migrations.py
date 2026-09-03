@@ -674,6 +674,28 @@ CASOS: list[tuple[str, str, bool]] = [
      "SELECT f.id,'11111111-1111-1111-1111-111111111111', repeat('c',64), "
      "now() + interval '10 days' FROM fornecedor f LIMIT 1",
      False),
+    # ---- 0045: o setor sugerido, extraido do texto -------------------------
+    ("setor sugerido em branco e recusado",
+     "UPDATE checklist_modelo_item SET setor_sugerido = '   ' "
+     "WHERE modelo_id IN (SELECT id FROM checklist_modelo WHERE orgao_id IS NULL) "
+     "AND ordem = 1",
+     False),
+    ("a extracao preencheu a coluna nos 53 criterios do PNTP",
+     # Um `UPDATE` que nao casa nao falha: nao acusaria a extracao vazia. O
+     # jeito de exigir e transformar o silencio em erro.
+     "DO $$ DECLARE n INT; BEGIN "
+     "SELECT count(*) INTO n FROM checklist_modelo_item i "
+     "JOIN checklist_modelo m ON m.id = i.modelo_id "
+     "WHERE m.orgao_id IS NULL AND m.nome LIKE 'Relat%PNTP%' "
+     "AND i.setor_sugerido IS NOT NULL; "
+     "IF n < 40 THEN RAISE EXCEPTION 'so % criterios com setor sugerido', n; END IF; END $$",
+     True),
+    ("a sugestao saiu da descricao, para nao aparecer duas vezes",
+     "DO $$ DECLARE n INT; BEGIN "
+     "SELECT count(*) INTO n FROM checklist_modelo_item "
+     "WHERE descricao LIKE '%Setor sugerido pelo TCE%'; "
+     "IF n > 0 THEN RAISE EXCEPTION '% descricoes ainda repetem a sugestao', n; END IF; END $$",
+     True),
 ]
 
 

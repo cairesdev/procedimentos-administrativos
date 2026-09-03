@@ -1,9 +1,11 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { vigenciaAte } from "../../domain/checklist/SituacaoDoItem";
+import { responsavelSugerido } from "../../domain/checklist/SetorSugerido";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import type {
   ChecklistRepository, NovoItemDeChecklist, NovoItemDeModelo,
 } from "../ports/ChecklistRepository";
+import type { SetorRepository } from "../ports/OrganizacaoRepository";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 
 /** Alvos que um checklist pode acompanhar — espelha o CHECK da 0033. */
@@ -28,6 +30,13 @@ export class GerenciarChecklist {
     private readonly checklists: ChecklistRepository,
     private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
+    /**
+     * O organograma da prefeitura, para resolver o setor que o modelo sugere.
+     *
+     * Só o modelo global precisa disso — ele nomeia "CONTABILIDADE" sem poder
+     * apontar para a contabilidade de ninguém. Modelo próprio já grava o id.
+     */
+    private readonly setores: SetorRepository,
   ) {}
 
   // ---- Modelos -------------------------------------------------------------
@@ -219,18 +228,47 @@ export class GerenciarChecklist {
      * checklist nascia com os 53 títulos e nenhuma dimensão: a tela agrupava
      * tudo em "sem seção" e a contagem por classificação vinha zerada. Só o
      * prazo se converte, de dias para data; o resto é o mesmo item.
+     *
+     * O organograma só é consultado quando há sugestão para resolver — e o
+     * modelo próprio, que grava o id do setor, nunca tem.
      */
+    const organograma = doModelo?.itens.some((item) => item.setorSugerido)
+      ? (await this.setores.listarSetores(entrada.orgaoId)).filter((setor) => setor.ativo)
+      : [];
+
     const itens = doModelo
-      ? doModelo.itens.map(({ id: _id, prazoDias, apoios, ...item }) => ({
-        ...item,
-        prazoLimite: emDias(prazoDias),
+      ? doModelo.itens.map(({ id: _id, prazoDias, apoios, setorSugerido, ...item }) => {
+        /**
+         * A sugestão do Tribunal vira responsável — quando dá.
+         *
+         * Vale só como preenchimento inicial, e perde para o que o modelo já
+         * disse: um modelo próprio que nomeia o setor está falando do
+         * organograma real, e adivinhar por cima seria trocar certeza por
+         * palpite. Casar sozinha poupa 53 atribuições à mão todo mês; não
+         * casar deixa em branco, que é onde a lista estava antes.
+         *
+         * Item do fornecedor fica de fora: o item aponta para **um**
+         * responsável, e dar setor a quem já é do fornecedor derrubaria a
+         * criação inteira em `exigirItemCoerente`.
+         */
+        const sugerido = item.setorId || item.paraFornecedor
+          ? { setorId: item.setorId, apoios: [] }
+          : responsavelSugerido(setorSugerido, organograma);
+
         // `?? []`: o repositório sempre traz a lista, mas item de modelo sem
         // apoio é caso normal — e um `.map` sobre indefinido derruba a criação
         // inteira do checklist por causa de um campo opcional.
-        apoios: (apoios ?? []).map(({ setorId, departamentoId }) => ({
+        const declarados = (apoios ?? []).map(({ setorId, departamentoId }) => ({
           setorId, departamentoId,
-        })),
-      }))
+        }));
+
+        return {
+          ...item,
+          setorId: sugerido.setorId,
+          prazoLimite: emDias(prazoDias),
+          apoios: declarados.length > 0 ? declarados : sugerido.apoios,
+        };
+      })
       : (entrada.itens ?? []);
 
     if (itens.length === 0) {

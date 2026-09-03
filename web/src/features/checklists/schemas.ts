@@ -16,8 +16,30 @@ const itemBase = {
   responsavel: z.string().optional(),
 };
 
+/**
+ * O que o formulário não desenha, mas o item carrega.
+ *
+ * Salvar o modelo substitui a lista inteira no banco: o que não for reenviado
+ * some. O roteiro do PNTP chega com dimensão, código, classificação, setor
+ * sugerido, apoios e um arquivo de referência — nada disso tem campo na tela,
+ * e sem este resgate uma correção de título apagaria os seis de 53 itens.
+ */
+const camposPreservados = {
+  secao: z.string().nullable().optional(),
+  codigo: z.string().nullable().optional(),
+  classificacao: z.enum(["OBRIGATORIA", "ESSENCIAL", "RECOMENDADA"]).nullable().optional(),
+  setorSugerido: z.string().nullable().optional(),
+  modeloArquivo: z.string().nullable().optional(),
+  modeloNomeOriginal: z.string().nullable().optional(),
+  apoios: z.array(z.object({
+    setorId: z.string().nullable().optional(),
+    departamentoId: z.string().nullable().optional(),
+  })).optional(),
+};
+
 export const templateItemSchema = z.object({
   ...itemBase,
+  ...camposPreservados,
   prazoDias: z.coerce.number<number>().int().positive().nullable().optional(),
 });
 

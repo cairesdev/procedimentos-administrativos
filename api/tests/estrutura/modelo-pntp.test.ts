@@ -75,6 +75,32 @@ describe("o modelo global do PNTP", () => {
     assert.match(sql, /CREATE UNIQUE INDEX[\s\S]*?WHERE orgao_id IS NULL/);
   });
 
+  it("a sugestão de setor sai do texto e vira coluna", () => {
+    /**
+     * A 0037 escreveu "Setor sugerido pelo TCE: CONTABILIDADE" dentro da
+     * descrição, onde só serve a quem lê item por item — e aplicar o modelo
+     * custava 53 atribuições à mão. A 0045 extrai para `setor_sugerido`, que o
+     * sistema casa com o organograma de quem aplica.
+     *
+     * Este teste segura as duas pontas: a extração precisa continuar existindo,
+     * e o texto de origem precisa continuar no formato que ela reconhece.
+     */
+    const extracao = readdirSync(migrations).find((nome) => nome.includes("setor_sugerido"));
+    assert.ok(extracao, "a migration que extrai o setor sugerido sumiu");
+
+    const sqlDaExtracao = readFileSync(path.join(migrations, extracao!), "utf8");
+    assert.match(sqlDaExtracao, /ADD COLUMN setor_sugerido/);
+    assert.match(sqlDaExtracao, /Setor sugerido pelo TCE:/);
+
+    // Se a 0037 mudar a frase, a 0045 extrai nada — calada.
+    const sugestoes = [...sql.matchAll(/Setor sugerido pelo TCE: ([^.]+)\./g)];
+    assert.ok(sugestoes.length >= 40, `só ${sugestoes.length} critérios trazem sugestão`);
+    for (const [, nome] of sugestoes) {
+      assert.ok(nome!.trim().length > 0, "sugestão vazia");
+      assert.ok(nome!.length <= 120, `sugestão com ${nome!.length} caracteres não cabe na coluna`);
+    }
+  });
+
   it("o título cabe no campo", () => {
     // 200 caracteres foi a medida pensada para "Certidão negativa"; o critério
     // do PNTP é uma pergunta inteira, e o maior tem 247.

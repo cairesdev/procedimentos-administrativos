@@ -33,6 +33,13 @@ const itemBase = {
 export const itemDeModeloSchema = z.object({
   ...itemBase,
   prazoDias: z.number().int().positive().nullable().optional(),
+  /**
+   * Só no modelo: o nome do setor que deveria responder, quando o id não pode
+   * ser dito. É o caso do roteiro global do PNTP, que nomeia "CONTABILIDADE"
+   * sem saber qual é a contabilidade de quem vai aplicá-lo. No checklist já
+   * existe o `setorId`, resolvido na aplicação.
+   */
+  setorSugerido: z.string().max(120).nullable().optional(),
 });
 
 export const itemDeChecklistSchema = z.object({

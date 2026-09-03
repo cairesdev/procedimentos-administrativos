@@ -201,7 +201,8 @@ describe("dispensar", () => {
 });
 
 describe("montar a lista", () => {
-  const montarGerenciar = (existe = true) => {
+  const montarGerenciar = (existe = true, doModelo: Record<string, unknown> = {},
+    organograma: { id: string; nome: string; ativo: boolean }[] = []) => {
     const gravado = { criados: [] as unknown[], itens: [] as unknown[] };
     const caso = new GerenciarChecklist(
       {
@@ -211,6 +212,7 @@ describe("montar a lista", () => {
               id: "mi-1", ordem: 1, titulo: "Certidão", descricao: null, exigeAnexo: true,
               prazoDias: 30, recorrente: true, periodicidadeDias: 90,
               setorId: null, departamentoId: null, paraFornecedor: true,
+              setorSugerido: null, ...doModelo,
             }] }
           : null),
         criar: async (dados: unknown, itens: unknown[]) => {
@@ -222,6 +224,7 @@ describe("montar a lista", () => {
       } as never,
       { registrar: async () => undefined } as never,
       (async (fn: (tx: unknown) => unknown) => fn({})) as never,
+      { listarSetores: async () => organograma } as never,
     );
     return { caso, gravado };
   };
@@ -237,6 +240,64 @@ describe("montar a lista", () => {
     // No modelo o prazo é em dias; no checklist vira data, congelada.
     assert.match(item.prazoLimite, /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(item.periodicidadeDias, 90);
+  });
+
+  it("a sugestão do modelo global vira o responsável desta prefeitura", async () => {
+    // "CONTABILIDADE COM JURÍDICO": o primeiro responde, o segundo apoia.
+    const { caso, gravado } = montarGerenciar(
+      true,
+      { setorSugerido: "CONTABILIDADE COM JURÍDICO", paraFornecedor: false },
+      [
+        { id: "s-cont", nome: "Setor de Contabilidade", ativo: true },
+        { id: "s-jur", nome: "Jurídico", ativo: true },
+        { id: "s-rh", nome: "Recursos Humanos", ativo: true },
+      ],
+    );
+    await caso.criar({ ...base, modeloId: "m-1" });
+
+    const item = gravado.itens[0] as {
+      setorId: string | null; apoios: { setorId: string }[];
+    };
+    assert.equal(item.setorId, "s-cont");
+    assert.deepEqual(item.apoios.map((apoio) => apoio.setorId), ["s-jur"]);
+  });
+
+  it("sugestão sem correspondente deixa o responsável em branco", async () => {
+    // Prefeitura sem contabilidade cadastrada: em branco alguém preenche;
+    // chutar o setor mais parecido cobraria o item de quem não devia.
+    const { caso, gravado } = montarGerenciar(
+      true,
+      { setorSugerido: "CONTABILIDADE", paraFornecedor: false },
+      [{ id: "s-rh", nome: "Recursos Humanos", ativo: true }],
+    );
+    await caso.criar({ ...base, modeloId: "m-1" });
+
+    const item = gravado.itens[0] as { setorId: string | null; apoios: unknown[] };
+    assert.equal(item.setorId, null);
+    assert.deepEqual(item.apoios, []);
+  });
+
+  it("setor gravado no modelo ganha da sugestão", async () => {
+    // Modelo próprio nomeia o setor real; a sugestão é palpite sobre nome.
+    const { caso, gravado } = montarGerenciar(
+      true,
+      { setorId: "s-escolhido", setorSugerido: "CONTABILIDADE", paraFornecedor: false },
+      [{ id: "s-cont", nome: "Contabilidade", ativo: true }],
+    );
+    await caso.criar({ ...base, modeloId: "m-1" });
+
+    assert.equal((gravado.itens[0] as { setorId: string }).setorId, "s-escolhido");
+  });
+
+  it("setor inativo não recebe item novo", async () => {
+    const { caso, gravado } = montarGerenciar(
+      true,
+      { setorSugerido: "CONTABILIDADE", paraFornecedor: false },
+      [{ id: "s-cont", nome: "Contabilidade", ativo: false }],
+    );
+    await caso.criar({ ...base, modeloId: "m-1" });
+
+    assert.equal((gravado.itens[0] as { setorId: string | null }).setorId, null);
   });
 
   it("sem modelo e sem itens, não há checklist", async () => {

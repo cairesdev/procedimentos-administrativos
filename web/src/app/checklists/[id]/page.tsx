@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { alvoNaTela } from "@/features/checklists/alvo";
 import { findChecklist, findChecklistInvite } from "@/features/checklists/queries";
 import { InviteButton } from "@/features/checklists/components/InviteButton";
 import styles from "@/features/checklists/components/Checklist.module.css";
@@ -89,9 +91,13 @@ export default async function ChecklistPage({ params }: PageProps) {
             items={[
               {
                 label: "Referente a",
-                value: checklist.alvoTipo
-                  ? `${checklist.alvoTipo.toLowerCase()} · ${checklist.alvoId?.slice(0, 8)}`
-                  : "lista avulsa",
+                value: (() => {
+                  const alvo = alvoNaTela(checklist);
+                  const texto = alvo.detalhe ? `${alvo.texto} · ${alvo.detalhe}` : alvo.texto;
+                  return alvo.href
+                    ? <Link href={alvo.href} style={{ color: "var(--acao)" }}>{texto}</Link>
+                    : texto;
+                })(),
               },
               { label: "Modelo", value: checklist.modeloNome ?? "escrito na hora" },
               {

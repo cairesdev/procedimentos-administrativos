@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { alvoNaTela } from "@/features/checklists/alvo";
 import { listChecklists, listChecklistTemplates } from "@/features/checklists/queries";
 import { ChecklistWizard } from "@/features/checklists/components/ChecklistWizard";
 import { listSectors } from "@/features/sectors/queries";
@@ -73,7 +74,9 @@ export default async function ChecklistsPage({ searchParams }: PageProps) {
             ? "Nenhum checklist com pendência — tudo em dia."
             : "Nenhum checklist ainda."}
         >
-          {checklists.itens.map((checklist) => (
+          {checklists.itens.map((checklist) => {
+            const alvo = alvoNaTela(checklist);
+            return (
             <tr key={checklist.id}>
               <td>
                 <Link href={`/checklists/${checklist.id}`}>
@@ -81,9 +84,23 @@ export default async function ChecklistsPage({ searchParams }: PageProps) {
                 </Link>
               </td>
               <td>
-                {checklist.alvoTipo
-                  ? <Badge tone="neutral">{checklist.alvoTipo.toLowerCase()}</Badge>
-                  : <span style={{ color: "var(--texto_apagado)" }}>lista avulsa</span>}
+                {alvo.tipo === null ? (
+                  <span style={{ color: "var(--texto_apagado)" }}>{alvo.texto}</span>
+                ) : (
+                  <>
+                    {alvo.href ? (
+                      <Link href={alvo.href} style={{ color: "var(--acao)" }}>{alvo.texto}</Link>
+                    ) : (
+                      <Badge tone="neutral">{alvo.texto}</Badge>
+                    )}
+                    {alvo.detalhe ? (
+                      <>
+                        <br />
+                        <small style={{ color: "var(--texto_apagado)" }}>{alvo.detalhe}</small>
+                      </>
+                    ) : null}
+                  </>
+                )}
               </td>
               <td>{checklist.totalItens}</td>
               <td>
@@ -93,7 +110,8 @@ export default async function ChecklistsPage({ searchParams }: PageProps) {
               </td>
               <td>{toDate(checklist.criadoEm)}</td>
             </tr>
-          ))}
+            );
+          })}
         </Table>
         <Pagination
           info={checklists}

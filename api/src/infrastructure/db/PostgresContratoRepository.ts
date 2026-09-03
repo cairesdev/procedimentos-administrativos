@@ -127,14 +127,22 @@ const SQL = {
        AND ($2::uuid IS NULL OR EXISTS (
              SELECT 1 FROM contrato_unidade cu
               WHERE cu.contrato_id = c.id AND cu.unidade_id = $2))
-       -- A busca é por número, objeto ou fornecedor: são os três jeitos de o
-       -- servidor se referir ao contrato. Sem texto, $3 é nulo e a cláusula
-       -- some — a lista completa continua servindo a quem tem poucos contratos.
+       -- A busca é por número, objeto, fornecedor ou **produto**: são os jeitos
+       -- de o servidor se referir ao contrato, e quem vai pedir seringa pensa
+       -- na seringa, não no número do contrato que a tem. Sem texto, $3 é nulo
+       -- e a cláusula some — a lista completa serve a quem tem poucos contratos.
        AND ($3::text IS NULL OR
             c.numero ILIKE $3 OR
             f.razao_social ILIKE $3 OR
             coalesce(a.objeto, l.objeto, '') ILIKE $3 OR
-            coalesce(a.numero, l.numero, '') ILIKE $3)
+            coalesce(a.numero, l.numero, '') ILIKE $3 OR
+            -- EXISTS com alias próprio, e não i.produto ILIKE $3: filtrar pelo
+            -- join que agrega deixaria de fora os outros itens, e a linha viria
+            -- com o saldo só do item que casou.
+            EXISTS (SELECT 1 FROM item ip
+                     WHERE ip.contrato_id = c.id
+                       AND ip.saldo_disponivel > 0
+                       AND ip.produto ILIKE $3))
      GROUP BY c.id, c.numero, a.objeto, l.objeto, f.razao_social,
               c.data_inicio, c.data_fim, c.valor_total, a.numero, l.numero
     HAVING count(i.id) FILTER (WHERE i.saldo_disponivel > 0) > 0

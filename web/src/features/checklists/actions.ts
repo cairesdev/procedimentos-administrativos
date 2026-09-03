@@ -29,7 +29,24 @@ const destinoDe = (valor?: string) => {
 const itemParaApi = (item: {
   titulo: string; descricao?: string; exigeAnexo?: boolean; recorrente?: boolean;
   periodicidadeDias?: number | null; responsavel?: string;
+  secao?: string | null; codigo?: string | null;
+  classificacao?: "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null;
+  setorSugerido?: string | null;
+  modeloArquivo?: string | null; modeloNomeOriginal?: string | null;
+  apoios?: { setorId?: string | null; departamentoId?: string | null }[];
 }) => ({
+  /**
+   * Devolvidos como vieram: salvar substitui a lista inteira, e o que não for
+   * reenviado some. São os campos que a tela não desenha — dimensão, código,
+   * classificação, setor sugerido, apoios e o arquivo de referência.
+   */
+  secao: item.secao ?? null,
+  codigo: item.codigo ?? null,
+  classificacao: item.classificacao ?? null,
+  setorSugerido: item.setorSugerido ?? null,
+  modeloArquivo: item.modeloArquivo ?? null,
+  modeloNomeOriginal: item.modeloNomeOriginal ?? null,
+  apoios: item.apoios ?? [],
   titulo: item.titulo,
   descricao: semVazio(item.descricao) ?? null,
   exigeAnexo: item.exigeAnexo ?? false,

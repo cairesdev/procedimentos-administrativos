@@ -13,6 +13,14 @@ export type ItemDeModelo = {
   setorId: string | null;
   departamentoId: string | null;
   paraFornecedor: boolean;
+  /**
+   * O setor que o modelo sugere, por nome — "CONTABILIDADE COM JURÍDICO".
+   *
+   * Texto, e não referência: o modelo global não pertence a prefeitura nenhuma
+   * e não pode apontar para o organograma de uma delas. Ao aplicar, o nome é
+   * casado com os setores de quem aplica; o que não casa fica em branco.
+   */
+  setorSugerido: string | null;
   /** Agrupador da tela — "Receita", "Licitações". Vem da coluna DIMENSÃO. */
   secao: string | null;
   /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */
@@ -112,6 +120,16 @@ export type ChecklistResumo = {
   titulo: string;
   alvoTipo: string | null;
   alvoId: string | null;
+  /**
+   * O número do registro a que o checklist se prende — `2026/0001`, `010/2026`.
+   *
+   * Nulo quando o alvo não existe mais, ou é de outra prefeitura: a consulta
+   * repete o `orgao_id`, e um vínculo órfão aparece como tal em vez de sumir
+   * junto com a linha.
+   */
+  alvoNumero: string | null;
+  /** Quem ou o quê, em uma linha: requerente, fornecedor, objeto. */
+  alvoRotulo: string | null;
   criadoEm: string;
   totalItens: number;
   /** Contados no banco: em aberto é o que ainda deve alguma coisa. */

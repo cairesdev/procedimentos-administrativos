@@ -70,6 +70,10 @@ export type ChecklistSummary = {
   titulo: string;
   alvoTipo: string | null;
   alvoId: string | null;
+  /** Número do registro vinculado. Nulo se o alvo sumiu. */
+  alvoNumero: string | null;
+  /** Requerente, fornecedor ou objeto — o que identifica o registro. */
+  alvoRotulo: string | null;
   criadoEm: string;
   totalItens: number;
   emAberto: number;
@@ -99,6 +103,13 @@ export type ChecklistTemplateItem = {
   setorId: string | null;
   departamentoId: string | null;
   paraFornecedor: boolean;
+  /**
+   * O setor sugerido pelo modelo, por nome — "CONTABILIDADE COM JURÍDICO".
+   *
+   * O modelo global não pode apontar para o organograma de uma prefeitura.
+   * Ao aplicar, o nome é casado com os setores de quem aplica.
+   */
+  setorSugerido: string | null;
   /** Agrupador da tela — a DIMENSÃO da planilha do PNTP. */
   secao: string | null;
   /** Código oficial do critério (`2.2`, `8.5`). Não é a ordem. */

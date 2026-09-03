@@ -135,7 +135,9 @@ export const container = {
 
   resolverAlcance: new ResolverAlcance(usuarios, almoxarifado),
 
-  gerenciarChecklist: new GerenciarChecklist(checklists, auditoria, executarEmTransacao),
+  gerenciarChecklist: new GerenciarChecklist(
+    checklists, auditoria, executarEmTransacao, organizacao,
+  ),
   convidarParaChecklist: new ConvidarParaChecklist(
     new PostgresChecklistConviteRepository(), checklists, auditoria, executarEmTransacao,
   ),

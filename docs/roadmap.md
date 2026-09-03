@@ -1385,3 +1385,43 @@ e a ordem com o empenho; o processo **sem** contrato responde 200 com contrato e
 origem nulos, em vez de quebrar; e processo de outra prefeitura dá 404.
 
 Os três relatórios pedidos estão entregues.
+
+## Quatro pontas soltas
+
+**O checklist mostra o registro pelo número** — "contrato 010/2026 · ALFA
+COMERCIO LTDA" no lugar de "contrato · 3f2a1b8c", com link para o registro
+quando ele tem tela de detalhe. Sete testes no web cobrem o rótulo: vínculo
+órfão, tipo desconhecido, fornecedor sem detalhe próprio, rótulo em branco.
+
+**Migration 0045: o setor sugerido pelo TCE** saiu da descrição e virou coluna,
+e a aplicação do modelo casa o nome com o organograma da prefeitura. No palco,
+com cinco setores cadastrados, **35 dos 53 critérios já nascem atribuídos** —
+15 na contabilidade, 8 com apoio —, e os 18 que não casaram ficam em branco, que
+é onde a lista inteira estava antes.
+
+**Defeito antigo achado no caminho:** salvar um modelo copiado apagava dimensão,
+código, classificação, apoios e o arquivo de referência dos itens, porque o
+formulário não desenha esses campos e a gravação substitui a lista inteira.
+
+**A busca de contrato acha pelo produto**, com o saldo continuando o do contrato
+inteiro e produto esgotado não abrindo a porta dos fundos.
+
+**A visibilidade estendida saiu do painel de fluxos** — configuração sem efeito,
+a terceira da família. Um teste estrutural recusa a caixa de volta enquanto
+ninguém a ler; quebrei-o de propósito e ele acusa.
+
+**Verificação:** 718 testes na API, 29 no web, 107 invariantes, 430 consultas com
+`PREPARE`, e o palco com Postgres e API no ar exercitando os quatro cenários.
+
+**Erro meu, registrado:** uma crase dentro do template literal do SQL derrubou a
+API ao subir — o `npm run typecheck` teria pego, e eu tinha rodado só o do web.
+
+### A lista "Pendente" acima está velha
+
+Revisada agora: os itens **6 (relatório de consumo do PNAE), 7 (importação de
+planilha) e 8 (link externo do fornecedor)** foram entregues nas fatias
+seguintes e nunca saíram de lá. O item 3 fala das migrations 0025-0027; hoje são
+0033 a 0045. O que continua de pé: repositório privado e chaves rotacionadas,
+segredos do `.env.prod`, revisão do papel dos usuários já cadastrados, remoção
+do `ADMIN_SENHA`, os quatro campos da Ordem de Serviço sem onde morar, e o
+almoxarifado/alimentação escolar, levantado e modelado e não implementado.

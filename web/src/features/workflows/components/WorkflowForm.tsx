@@ -97,13 +97,21 @@ export const WorkflowForm = ({
                   <input type="checkbox" {...form.register(`etapas.${index}.prazoAtivo`)} />
                   Cobrar prazo
                 </label>
-                <label className={styles.checkbox}>
-                  <input
-                    type="checkbox"
-                    {...form.register(`etapas.${index}.visibilidadeEstendida`)}
-                  />
-                  Ver processos fora da etapa
-                </label>
+                {/*
+                  "Ver processos fora da etapa" saiu daqui.
+                  ------------------------------------------------------------
+                  A opção existia, era gravada em `fluxo_estagio` e **nenhuma
+                  consulta a lia**: marcar ou desmarcar não mudava o que
+                  ninguém enxergava. É a terceira da família no projeto —
+                  `dados_contratante` e `usuario_permissao` foram as outras
+                  duas, e cada uma custou um bug de "configurei e não
+                  funciona".
+
+                  O valor continua no formulário e volta ao banco como veio: o
+                  dia em que alguém escrever a consulta, a configuração de quem
+                  já marcou está lá. Enquanto ninguém a lê, não se oferece —
+                  melhor não prometer do que prometer sem efeito.
+                */}
                 {steps.fields.length > 1 ? (
                   <button type="button" className={styles.remove} onClick={() => steps.remove(index)}>
                     Remover

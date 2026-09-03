@@ -12,6 +12,24 @@ import { createTemplate, updateTemplate } from "../actions";
 import { templateFormSchema, type TemplateFormInput } from "../schemas";
 import type { ChecklistTemplateDetail } from "../types";
 
+/**
+ * O que a tela não desenha, e mesmo assim precisa voltar.
+ *
+ * Salvar substitui a lista inteira no banco. Item novo nasce sem nada disso;
+ * item vindo de um modelo copiado — o roteiro do PNTP — chega com dimensão,
+ * código, classificação, setor sugerido, apoios e arquivo de referência, e
+ * perdê-los numa correção de título é o que este resgate evita.
+ */
+const PRESERVADO = {
+  secao: null as string | null,
+  codigo: null as string | null,
+  classificacao: null as "OBRIGATORIA" | "ESSENCIAL" | "RECOMENDADA" | null,
+  setorSugerido: null as string | null,
+  modeloArquivo: null as string | null,
+  modeloNomeOriginal: null as string | null,
+  apoios: [] as { setorId: string | null; departamentoId: string | null }[],
+};
+
 const ITEM_VAZIO = {
   titulo: "",
   descricao: "",
@@ -20,6 +38,7 @@ const ITEM_VAZIO = {
   periodicidadeDias: null as number | null,
   prazoDias: null as number | null,
   responsavel: "",
+  ...PRESERVADO,
 };
 
 const destinoDoItem = (item: {
@@ -54,6 +73,15 @@ export const TemplateForm = ({
       periodicidadeDias: item.periodicidadeDias,
       prazoDias: item.prazoDias,
       responsavel: destinoDoItem(item),
+      secao: item.secao,
+      codigo: item.codigo,
+      classificacao: item.classificacao,
+      setorSugerido: item.setorSugerido,
+      modeloArquivo: item.modeloArquivo,
+      modeloNomeOriginal: item.modeloNomeOriginal,
+      apoios: (item.apoios ?? []).map(({ setorId, departamentoId }) => ({
+        setorId, departamentoId,
+      })),
     })) ?? [{ ...ITEM_VAZIO }],
   );
 

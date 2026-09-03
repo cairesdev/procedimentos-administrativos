@@ -41,6 +41,52 @@ const ULTIMO_CICLO = `
      LIMIT 1
   ) c ON TRUE`;
 
+/**
+ * O alvo como quem trabalha o chama.
+ *
+ * A tabela guarda `alvo_tipo` + `alvo_id`, e um uuid não diz nada a ninguém:
+ * "processo · 3f2a1b8c" obriga a abrir o registro para descobrir de que
+ * processo se trata. O número e o rótulo estão a um subselect de distância.
+ *
+ * Cada ramo repete o `orgao_id` do próprio checklist — não é redundância: um
+ * `alvo_id` apontando para registro de outra prefeitura devolve nulo em vez de
+ * mostrar o número dela. O fornecedor é a exceção conhecida, cadastro global
+ * sem `orgao_id`.
+ *
+ * Dois `const` soltos, e não um objeto: o verificador de migrations recolhe
+ * toda chave de dois espaços com corpo em crase e a manda para o `PREPARE` —
+ * e um fragmento de `CASE` não é consulta que se prepare sozinha.
+ */
+const ALVO_NUMERO = `
+    CASE ck.alvo_tipo
+      WHEN 'PROCESSO' THEN (SELECT p.numero_processo_adm FROM processo p
+                             WHERE p.id = ck.alvo_id AND p.orgao_id = ck.orgao_id)
+      WHEN 'CONTRATO' THEN (SELECT c.numero FROM contrato c
+                             WHERE c.id = ck.alvo_id AND c.orgao_id = ck.orgao_id)
+      WHEN 'LICITACAO' THEN (SELECT l.numero FROM licitacao l
+                              WHERE l.id = ck.alvo_id AND l.orgao_id = ck.orgao_id)
+      WHEN 'FORNECEDOR' THEN (SELECT f.documento FROM fornecedor f WHERE f.id = ck.alvo_id)
+    END`;
+
+const ALVO_ROTULO = `
+    CASE ck.alvo_tipo
+      WHEN 'PROCESSO' THEN (SELECT coalesce(r.nome, p.descricao_pedido)
+                              FROM processo p
+                              LEFT JOIN requerente r ON r.id = p.requerente_id
+                             WHERE p.id = ck.alvo_id AND p.orgao_id = ck.orgao_id)
+      WHEN 'CONTRATO' THEN (SELECT f.razao_social FROM contrato c
+                              JOIN fornecedor f ON f.id = c.fornecedor_id
+                             WHERE c.id = ck.alvo_id AND c.orgao_id = ck.orgao_id)
+      WHEN 'LICITACAO' THEN (SELECT l.objeto FROM licitacao l
+                             WHERE l.id = ck.alvo_id AND l.orgao_id = ck.orgao_id)
+      WHEN 'FORNECEDOR' THEN (SELECT f.razao_social FROM fornecedor f WHERE f.id = ck.alvo_id)
+    END`;
+
+const COLUNAS_ALVO = `
+  ck.alvo_tipo AS "alvoTipo", ck.alvo_id AS "alvoId",
+  ${ALVO_NUMERO} AS "alvoNumero",
+  ${ALVO_ROTULO} AS "alvoRotulo"`;
+
 const COLUNAS_CICLO = `
   cu.id, cu.ciclo, cu.situacao, cu.vigencia_ate AS "vigenciaAte",
   cu.cumprido_em AS "cumpridoEm", cu.observacao,
@@ -82,6 +128,7 @@ const SQL = {
            periodicidade_dias AS "periodicidadeDias",
            setor_id AS "setorId", departamento_id AS "departamentoId",
            para_fornecedor AS "paraFornecedor",
+           setor_sugerido AS "setorSugerido",
            secao, codigo, classificacao,
            modelo_arquivo AS "modeloArquivo",
            modelo_nome_original AS "modeloNomeOriginal"
@@ -119,8 +166,9 @@ const SQL = {
     INSERT INTO checklist_modelo_item
       (modelo_id, ordem, titulo, descricao, exige_anexo, prazo_dias,
        recorrente, periodicidade_dias, setor_id, departamento_id, para_fornecedor,
-       secao, codigo, classificacao, modelo_arquivo, modelo_nome_original)
-    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+       setor_sugerido, secao, codigo, classificacao,
+       modelo_arquivo, modelo_nome_original)
+    SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       FROM checklist_modelo m WHERE m.orgao_id = $1 AND m.id = $2
     RETURNING id`,
 
@@ -171,7 +219,7 @@ const SQL = {
 
   // ---- Checklists ----------------------------------------------------------
   listar: `
-    SELECT ck.id, ck.titulo, ck.alvo_tipo AS "alvoTipo", ck.alvo_id AS "alvoId",
+    SELECT ck.id, ck.titulo, ${COLUNAS_ALVO},
            ck.criado_em AS "criadoEm",
            contagem.total AS "totalItens", contagem.em_aberto AS "emAberto",
            ${TOTAL_DA_JANELA}
@@ -194,7 +242,7 @@ const SQL = {
      LIMIT $2 OFFSET $3`,
 
   listarDoAlvo: `
-    SELECT ck.id, ck.titulo, ck.alvo_tipo AS "alvoTipo", ck.alvo_id AS "alvoId",
+    SELECT ck.id, ck.titulo, ${COLUNAS_ALVO},
            ck.criado_em AS "criadoEm",
            contagem.total AS "totalItens", contagem.em_aberto AS "emAberto"
       FROM checklist ck
@@ -214,7 +262,7 @@ const SQL = {
   buscar: `
     SELECT ck.id, ck.titulo, ck.descricao, ck.modelo_id AS "modeloId",
            m.nome AS "modeloNome",
-           ck.alvo_tipo AS "alvoTipo", ck.alvo_id AS "alvoId",
+           ${COLUNAS_ALVO},
            ck.setor_id AS "setorId", s.nome AS "setorNome",
            ck.departamento_id AS "departamentoId", d.nome AS "departamentoNome",
            u.nome AS "criadoPorNome", ck.criado_em AS "criadoEm"
@@ -421,7 +469,8 @@ export class PostgresChecklistRepository implements ChecklistRepository {
         item.exigeAnexo, item.prazoDias ?? null, item.recorrente,
         item.periodicidadeDias ?? null, item.setorId ?? null,
         item.departamentoId ?? null, item.paraFornecedor,
-        item.secao ?? null, item.codigo ?? null, item.classificacao ?? null,
+        item.setorSugerido ?? null, item.secao ?? null,
+        item.codigo ?? null, item.classificacao ?? null,
         item.modeloArquivo ?? null, item.modeloNomeOriginal ?? null,
       ]);
       // Sem linha inserida, o modelo é de outra prefeitura: o `SELECT ... FROM
