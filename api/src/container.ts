@@ -21,6 +21,10 @@ import { ConvidarFornecedor } from "./application/fornecedor/ConvidarFornecedor"
 import { PostgresFornecedorConviteRepository } from "./infrastructure/db/PostgresFornecedorConviteRepository";
 import { ApurarConsumo } from "./application/almoxarifado/ApurarConsumo";
 import { PostgresRelatorioConsumoRepository } from "./infrastructure/db/PostgresRelatorioConsumoRepository";
+import {
+  PostgresRecorteRepository, PostgresRelatorioProcessoRepository,
+} from "./infrastructure/db/PostgresRelatorioProcessoRepository";
+import { ApurarRelatorioDeProcessos } from "./application/relatorio/ApurarRelatorioDeProcessos";
 import { DespacharProcesso } from "./application/tramitacao/DespacharProcesso";
 import { EmitirParecer } from "./application/tramitacao/EmitirParecer";
 import { EmitirOrdemFornecimento } from "./application/tramitacao/EmitirOrdemFornecimento";
@@ -144,6 +148,11 @@ export const container = {
 
   apurarConsumo: new ApurarConsumo(
     new PostgresRelatorioConsumoRepository(), almoxarifado,
+  ),
+
+  relatoriosDeProcessos: new ApurarRelatorioDeProcessos(
+    new PostgresRelatorioProcessoRepository(),
+    new PostgresRecorteRepository(),
   ),
 
   /**

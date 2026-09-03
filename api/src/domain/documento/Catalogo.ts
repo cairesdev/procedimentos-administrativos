@@ -22,6 +22,8 @@ export const ESCOPOS = [
   "DEVOLUCAO_ESTOQUE",
   "RELATORIO_CONSUMO",
   "CHECKLIST",
+  "RELATORIO_PANORAMA",
+  "RELATORIO_SETOR",
 ] as const;
 
 export type EscopoDeDocumento = (typeof ESCOPOS)[number];
@@ -43,6 +45,8 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   DEVOLUCAO_ESTOQUE: "ALMOXARIFADO",
   RELATORIO_CONSUMO: "ALMOXARIFADO",
   CHECKLIST: "CHECKLIST",
+  RELATORIO_PANORAMA: "PROCESSOS",
+  RELATORIO_SETOR: "PROCESSOS",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -61,6 +65,8 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   DEVOLUCAO_ESTOQUE: "Devolução de material da unidade ao almoxarifado",
   RELATORIO_CONSUMO: "Consumo por unidade e por produto, num período",
   CHECKLIST: "Checklist, com o cumprimento de cada item",
+  RELATORIO_PANORAMA: "Panorama de contratos, licitações, fornecedores e unidades",
+  RELATORIO_SETOR: "Tramitação por setor, com tempo e volume",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -83,6 +89,8 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   DEVOLUCAO_ESTOQUE: "devolução",
   RELATORIO_CONSUMO: "relatório de consumo",
   CHECKLIST: "checklist",
+  RELATORIO_PANORAMA: "relatório",
+  RELATORIO_SETOR: "relatório",
 };
 
 export type CatalogoDeMarcadores = {
@@ -319,6 +327,28 @@ const PRODUTOS_DO_RELATORIO = [
   "nome", "unidadeMedida", "recebido", "consumido", "perdido", "devolvido",
 ];
 
+/**
+ * O relatório fala do período, e não de um registro.
+ *
+ * `relatorio.filtros` sai como frase pronta — ", unidade X, fornecedor Y" ou
+ * vazio. Um marcador por filtro daria uma linha de "—" para cada filtro não
+ * usado, que é ruído numa peça que vai para a prestação de contas.
+ */
+const RELATORIO_DE_PROCESSOS = ["relatorio.periodo", "relatorio.filtros"];
+
+const PANORAMA_CONTRATO = [
+  "numero", "fornecedor", "objeto", "valorContratado", "valorPedido", "saldo",
+];
+const PANORAMA_LICITACAO = ["numero", "modalidade", "objeto", "valorTotal", "contratos"];
+const PANORAMA_FORNECEDOR = [
+  "razaoSocial", "documento", "contratos", "valorContratado", "valorPedido",
+];
+const PANORAMA_UNIDADE = ["nome", "contratos", "processos", "valorPedido"];
+
+const SETOR_LINHA = [
+  "nome", "entraram", "sairam", "parados", "diasMedia", "diasMaisAntigo",
+];
+
 export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
   PROCESSO: {
     valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
@@ -382,6 +412,26 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   RELATORIO_CONSUMO: {
     valores: [...COMUNS, ...RELATORIO],
     listas: { unidades: UNIDADES_DO_RELATORIO, produtos: PRODUTOS_DO_RELATORIO },
+  },
+  RELATORIO_PANORAMA: {
+    valores: [
+      ...COMUNS, ...RELATORIO_DE_PROCESSOS,
+      "relatorio.licitacoes", "relatorio.contratos", "relatorio.fornecedores",
+      "relatorio.valorContratado", "relatorio.valorPedido", "relatorio.saldo",
+    ],
+    listas: {
+      contratos: PANORAMA_CONTRATO,
+      licitacoes: PANORAMA_LICITACAO,
+      fornecedores: PANORAMA_FORNECEDOR,
+      unidades: PANORAMA_UNIDADE,
+    },
+  },
+  RELATORIO_SETOR: {
+    valores: [
+      ...COMUNS, ...RELATORIO_DE_PROCESSOS,
+      "relatorio.entraram", "relatorio.sairam", "relatorio.parados",
+    ],
+    listas: { setores: SETOR_LINHA },
   },
   CHECKLIST: {
     valores: [...COMUNS, ...CHECKLIST],

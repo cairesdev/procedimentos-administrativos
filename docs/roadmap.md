@@ -1335,3 +1335,33 @@ contrato, fornecedor e solicitação — nenhum `{{marcador}}` sobrou no corpo
 gravado, valor por extenso e modalidade corretos, CNPJ mascarado.
 
 677 testes na API, 104 invariantes, 420 consultas com `PREPARE`.
+
+## Relatórios de processos
+
+**Migration 0044** com a tabela de recortes e dois escopos de documento. A
+tabela guarda a pergunta — tipo, período e filtros —, nunca a resposta.
+
+**Panorama** (contratos, licitações, fornecedores, unidades) e **tramitação por
+setor**, ambos com filtros na URL e resultado recalculado a cada abertura, mais
+o botão que congela os números numa peça com timbre e QR.
+
+**Permissão própria**, `reports:read`, para gestor, compras e controladoria.
+
+**Verificado com Postgres e API no ar**, contra dados semeados à mão: o panorama
+bate nos seis totais e nas quatro tabelas; o filtro por fornecedor e o recorte
+de período mudam os totais como esperado; o relatório de setor acerta os cinco
+dias de permanência reconstruídos dos despachos; período invertido é recusado; e
+as duas peças emitem sem marcador cru.
+
+**Dois defeitos achados no caminho.** Um novo: a consulta de unidades ignorava o
+sexto parâmetro e o Postgres recusava a chamada inteira — o `PREPARE` do
+verificador não pega isso, porque o descompasso está na chamada e não na
+consulta. Outro antigo: dia de calendário formatado como instante saía com um
+dia a menos, no período dos relatórios e na validade dos lotes das peças do
+almoxarifado.
+
+698 testes na API, 104 invariantes, 427 consultas com `PREPARE`.
+
+**O que fica para a próxima fatia:** o dossiê do processo — o terceiro relatório
+pedido. O escopo `PROCESSO_CONTRATO` já entrega os dados; falta a tela que
+junta licitação, contrato, itens, tramitação e peças numa folha só.

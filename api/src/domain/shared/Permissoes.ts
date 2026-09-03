@@ -50,6 +50,16 @@ export const PERMISSOES = [
   // Checklist: ver, montar a lista, cumprir um item e conferir o que veio.
   // Cumprir e conferir são separadas porque ninguém fecha o próprio item.
   "checklists:read", "checklists:manage", "checklists:fulfill", "checklists:verify",
+  /**
+   * Relatórios gerenciais.
+   *
+   * Permissão própria porque a pergunta é outra: `contracts:read` autoriza ver
+   * *um* contrato: quem o tem em mãos precisa dele. O relatório mostra o
+   * conjunto — quanto a prefeitura contratou no ano, de quem, e onde o processo
+   * trava. Isso é leitura de gestão, e quem lê um contrato não necessariamente
+   * responde por ela.
+   */
+  "reports:read",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
@@ -112,6 +122,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "fleet:read", "fleet:write", "trips:create",
     "protocol:read", "protocol:serve", "protocol:manage",
     "stock:read", "stock:request", "stock:receive", "stock:manage",
+    "reports:read",
   ],
 
   // Setor de compras: emite a ordem e cuida de fornecedor e contrato.
@@ -125,6 +136,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "processes:read", "processes:dispatch", "processes:order",
     "orders:invoice",
     "documents:read", "documents:issue",
+    "reports:read",
   ],
 
   // Controladoria: lê para dar parecer, e não escreve cadastro nenhum.
@@ -146,6 +158,7 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "documents:issue",
     "audit:read",
     "documents:read",
+    "reports:read",
   ],
 
   // Servidor de setor administrativo: abre solicitação e acompanha o trâmite.

@@ -89,6 +89,7 @@ export const workspaces: Workspace[] = [
         group: "Controle",
         icon: "shieldCheck",
         links: [
+          { href: "/processos/relatorios", label: "Relatórios", permission: "reports:read" },
           { href: "/processos/fluxos", label: "Fluxo de tramitação", permission: "workflows:read" },
           { href: "/processos/auditoria", label: "Auditoria", permission: "audit:read" },
         ],

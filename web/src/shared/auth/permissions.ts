@@ -32,6 +32,9 @@ export type Permission =
   | "checklists:manage"
   | "checklists:fulfill"
   | "checklists:verify"
+  // Relatórios gerenciais. Própria porque `contracts:read` autoriza ver *um*
+  // contrato; o relatório mostra o conjunto, que é leitura de gestão.
+  | "reports:read"
   // Trilha de conduta dos servidores: só o ADMIN da prefeitura.
   | "audit:read"
   | "assets:read"
@@ -93,6 +96,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "protocol:manage",
     "protocol:read",
     "protocol:serve",
+    "reports:read",
     "requests:create",
     "requests:read",
     "sectors:read",
@@ -134,6 +138,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "protocol:manage",
     "protocol:read",
     "protocol:serve",
+    "reports:read",
     "requests:create",
     "requests:read",
     "sectors:read",
@@ -167,6 +172,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:dispatch",
     "processes:order",
     "processes:read",
+    "reports:read",
     "requests:read",
     "sectors:read",
     "suppliers:read",
@@ -186,6 +192,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "processes:dispatch",
     "processes:opinion",
     "processes:read",
+    "reports:read",
     "requests:read",
     "sectors:read",
     "suppliers:read",

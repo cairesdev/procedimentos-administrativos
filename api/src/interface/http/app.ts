@@ -3,6 +3,7 @@ import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
 import { patrimonioRouter } from "./routes/patrimonio";
 import { checklistsRouter } from "./routes/checklists";
+import { relatoriosRouter } from "./routes/relatorios";
 import { almoxarifadoRouter } from "./routes/almoxarifado";
 import { frotasRouter } from "./routes/frotas";
 import { licitacoesRouter } from "./routes/licitacoes";
@@ -82,6 +83,9 @@ export const criarApp = () => {
   // Módulo contratável como os outros: `resolveTenant` é a primeira porta, e
   // a permissão só decide o que fazer depois de o módulo estar ligado.
   app.use("/checklists", ...sessao, resolveTenant("CHECKLIST"), checklistsRouter);
+
+  // Relatórios leem processos, contratos e licitações: o módulo é PROCESSOS.
+  app.use("/relatorios", ...sessao, resolveTenant("PROCESSOS"), relatoriosRouter);
 
   // Protocolo é sistema próprio: quem atende no balcão não precisa do módulo
   // de processos, e o inverso também vale.

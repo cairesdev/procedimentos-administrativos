@@ -2,6 +2,11 @@ import { SEM_TRAVA } from "../../application/almoxarifado/ResolverAlcance";
 import { pool } from "./pool";
 import { valorPorExtenso } from "../../domain/documento/PorExtenso";
 import { nomeDaModalidade } from "../../domain/licitacao/Modalidades";
+import { dataDoDocumento } from "../../domain/documento/Datas";
+import {
+  PostgresRecorteRepository, PostgresRelatorioProcessoRepository,
+} from "./PostgresRelatorioProcessoRepository";
+import type { FiltrosDoRelatorio } from "../../application/ports/RelatorioProcessoRepository";
 import { percentualDeAgriculturaFamiliar } from "../../application/almoxarifado/ApurarConsumo";
 import { PostgresRelatorioConsumoRepository } from "./PostgresRelatorioConsumoRepository";
 import type { FonteDeContexto } from "../../application/documento/EmitirDocumento";
@@ -495,6 +500,8 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
   // A apuração do relatório é a mesma que a tela mostra: se a peça a
   // recalculasse por outro caminho, o papel e a tela poderiam divergir.
   private readonly relatorios = new PostgresRelatorioConsumoRepository();
+  private readonly processos = new PostgresRelatorioProcessoRepository();
+  private readonly recortes = new PostgresRecorteRepository();
 
   /**
    * O escopo do modelo decide o que buscar e o que o `referenciaId` significa.
@@ -533,6 +540,9 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     }
     if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
     if (escopo === "CHECKLIST") return this.doChecklist(orgaoId, referenciaId, orgao);
+    if (escopo === "RELATORIO_PANORAMA" || escopo === "RELATORIO_SETOR") {
+      return this.doRelatorioDeProcessos(escopo, orgaoId, referenciaId, orgao);
+    }
     return null;
   };
 
@@ -864,7 +874,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
         produto: String(linha.produto),
         unidadeMedida: String(linha.unidadeMedida),
         remessa: String(linha.remessa),
-        validade: linha.validade ? formatarDataSimples(linha.validade) : "sem validade",
+        validade: linha.validade ? dataDoDocumento(linha.validade) : "sem validade",
         quantidade: numero(linha.quantidade),
         confirmado: linha.confirmado === null ? "—" : numero(linha.confirmado),
         perdido: Number(linha.perdido) > 0 ? numero(linha.perdido) : "—",
@@ -895,7 +905,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
         produto: String(linha.produto),
         unidadeMedida: String(linha.unidadeMedida),
         quantidade: numero(linha.quantidade),
-        validade: linha.validade ? formatarDataSimples(linha.validade) : "sem validade",
+        validade: linha.validade ? dataDoDocumento(linha.validade) : "sem validade",
       })),
     };
   };
@@ -957,7 +967,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
         // A validade é opcional no lote, e "—" mentiria menos que uma data
         // vazia no meio da frase.
         validade: devolucao.validade
-          ? formatarDataSimples(devolucao.validade) : "sem validade",
+          ? dataDoDocumento(devolucao.validade) : "sem validade",
         situacao: SITUACAO_DA_DEVOLUCAO[String(devolucao.situacao)] ?? String(devolucao.situacao),
       },
     };
@@ -971,6 +981,117 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
    * contas: o relatório aberto acompanha o estoque de hoje, e o documento
    * emitido guarda o que era verdade no dia em que saiu.
    */
+  /**
+   * O relatório de processos, apurado **no momento da emissão**.
+   *
+   * O registro guarda a pergunta — tipo, período e filtros —, e a peça congela
+   * a resposta de hoje. É a diferença entre a tela, que se refaz a cada
+   * abertura, e o documento, que vai para uma prestação de contas dizendo o que
+   * se via naquela data.
+   */
+  private doRelatorioDeProcessos = async (
+    escopo: string,
+    orgaoId: string,
+    relatorioId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const recorte = await this.recortes.buscar(orgaoId, relatorioId);
+    if (!recorte) return null;
+
+    const filtros: FiltrosDoRelatorio = {
+      periodoInicio: recorte.periodoInicio,
+      periodoFim: recorte.periodoFim,
+      unidadeId: recorte.filtros.unidadeId ?? null,
+      fornecedorId: recorte.filtros.fornecedorId ?? null,
+      modalidade: recorte.filtros.modalidade ?? null,
+      setorId: recorte.filtros.setorId ?? null,
+    };
+
+    const periodo = `${dataDoDocumento(recorte.periodoInicio)}`
+      + ` a ${dataDoDocumento(recorte.periodoFim)}`;
+
+    if (escopo === "RELATORIO_SETOR") {
+      const apuracao = await this.processos.porSetor(orgaoId, filtros);
+      return {
+        orgao,
+        relatorio: {
+          periodo,
+          // Sem filtro nomeado neste relatório: o setor, quando escolhido, já
+          // aparece como a única linha da tabela.
+          filtros: "",
+          entraram: apuracao.totais.entraram,
+          sairam: apuracao.totais.sairam,
+          parados: apuracao.totais.parados,
+        },
+        setores: apuracao.setores.map((setor) => ({
+          nome: setor.nome,
+          entraram: setor.entraram,
+          sairam: setor.sairam,
+          parados: setor.parados,
+          diasMedia: setor.diasMedia,
+          diasMaisAntigo: setor.diasMaisAntigo,
+        })),
+      };
+    }
+
+    const apuracao = await this.processos.panorama(orgaoId, filtros);
+
+    /**
+     * Os filtros como frase, e não um marcador por filtro.
+     *
+     * Um campo por filtro daria uma linha de "—" para cada um que não foi
+     * usado, e a maioria não é — ruído numa peça que vai para a prestação de
+     * contas. Vazio quando não há filtro nenhum, e a frase some junto.
+     */
+    const usados = [
+      recorte.filtros.unidadeId ? "unidade específica" : null,
+      recorte.filtros.fornecedorId ? "fornecedor específico" : null,
+      recorte.filtros.modalidade ? `modalidade ${recorte.filtros.modalidade}` : null,
+    ].filter(Boolean);
+
+    return {
+      orgao,
+      relatorio: {
+        periodo,
+        filtros: usados.length > 0 ? ` — filtrado por ${usados.join(", ")}` : "",
+        licitacoes: apuracao.totais.licitacoes,
+        contratos: apuracao.totais.contratos,
+        fornecedores: apuracao.totais.fornecedores,
+        valorContratado: dinheiro(apuracao.totais.valorContratado),
+        valorPedido: dinheiro(apuracao.totais.valorPedido),
+        saldo: dinheiro(apuracao.totais.saldo),
+      },
+      contratos: apuracao.contratos.map((contrato) => ({
+        numero: contrato.numero,
+        fornecedor: contrato.fornecedor,
+        objeto: contrato.objeto,
+        valorContratado: dinheiro(contrato.valorContratado),
+        valorPedido: dinheiro(contrato.valorPedido),
+        saldo: dinheiro(contrato.saldo),
+      })),
+      licitacoes: apuracao.licitacoes.map((licitacao) => ({
+        numero: licitacao.numero,
+        modalidade: nomeDaModalidade(licitacao.modalidade),
+        objeto: licitacao.objeto,
+        valorTotal: dinheiro(licitacao.valorTotal),
+        contratos: licitacao.contratos,
+      })),
+      fornecedores: apuracao.fornecedores.map((fornecedor) => ({
+        razaoSocial: fornecedor.razaoSocial,
+        documento: mascararDocumento(fornecedor.documento),
+        contratos: fornecedor.contratos,
+        valorContratado: dinheiro(fornecedor.valorContratado),
+        valorPedido: dinheiro(fornecedor.valorPedido),
+      })),
+      unidades: apuracao.unidades.map((unidade) => ({
+        nome: unidade.nome,
+        contratos: unidade.contratos,
+        processos: unidade.processos,
+        valorPedido: dinheiro(unidade.valorPedido),
+      })),
+    };
+  };
+
   private doRelatorio = async (
     orgaoId: string,
     relatorioId: string,
@@ -987,8 +1108,8 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
       relatorio: {
         almoxarifado: apuracao.almoxarifadoNome,
         tipoEstoque: apuracao.tipoEstoqueNome ?? "todos os tipos",
-        periodoInicio: formatarDataSimples(apuracao.periodoInicio),
-        periodoFim: formatarDataSimples(apuracao.periodoFim),
+        periodoInicio: dataDoDocumento(apuracao.periodoInicio),
+        periodoFim: dataDoDocumento(apuracao.periodoFim),
         totalRecebido: numero(somar(apuracao.produtos.map((p) => p.recebido))),
         totalConsumido: numero(somar(apuracao.produtos.map((p) => p.consumido))),
         totalPerdido: numero(somar(apuracao.produtos.map((p) => p.perdido))),
@@ -1081,11 +1202,6 @@ const mascararDocumento = (valor: string): string => {
   return valor;
 };
 
-const formatarDataSimples = (valor: unknown): string =>
-  new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit", month: "2-digit", year: "numeric",
-  }).format(valor instanceof Date ? valor : new Date(String(valor)));
 
 /** Motivo da baixa como se lê num termo, não como está no CHECK. */
 const MOTIVO_DA_BAIXA: Record<string, string> = {

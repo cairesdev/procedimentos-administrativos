@@ -1002,19 +1002,9 @@ livres para divergir bem no dado que o PNAE cobra.
 
 ### Alterações e ajustes
 
-- Página inicial do processo, a apresentação.
-
 Anexo de arquivos nos processos.
 
 Adicionar documento de solicitação de pagamento do fornecedor, com direito a costumização de timbragem.
-
-Relatorios gerais (por unidade, licitações, fornecedores e contratos)
-
-Relatorio de detalhamento geral de processo (licitação e contrato)
-
-Relatório detalhado por setor
-
-Bug no protocolo: o lado publico, erro ao anexar documento ele nao e enviado junto.
 
 ## Contrato, ordem e apresentação — decidido
 
@@ -1594,3 +1584,95 @@ valer para fornecedor, órgão e contratante, o que corrige também a ordem de
 serviço e a ordem de fornecimento, que saíam com o número cru desde sempre.
 Valor que não tem 11 nem 14 dígitos volta como veio: melhor um texto estranho do
 que uma máscara aplicada sobre o que não é documento.
+
+## Relatórios — levantamento consolidado
+
+"Precisamos de relatório sobre tudo" é o começo da conversa, não o fim dela.
+Relatório que responde a tudo não responde a nada: vira uma tela com quarenta
+colunas que ninguém lê. O que se consolidou foram **três perguntas**, cada uma
+com sua tela.
+
+### 1. Panorama — "o que temos e quanto já saiu"
+
+Quatro recortes do mesmo período: **contratos**, **licitações**,
+**fornecedores** e **unidades**. Cada linha traz o que foi contratado, o que já
+virou solicitação e o saldo — porque a pergunta que se faz olhando esta tela não
+é "quantos contratos existem", e sim "onde o dinheiro está e quanto sobrou".
+
+Filtros: período (obrigatório), unidade, fornecedor e modalidade.
+
+**O que ele não mede:** pagamento. O sistema registra a ordem de fornecimento,
+não o empenho liquidado — dizer "executado" sobre o que ainda não foi pago seria
+mentir num relatório que vai para a prestação de contas. O que se soma é o
+**pedido**, e a coluna se chama assim.
+
+### 2. Dossiê do processo — "conte-me tudo sobre este"
+
+Um processo por vez, do protocolo ao último despacho: licitação de origem,
+contrato, itens com saldo, tramitação em ordem e as peças emitidas. É o que hoje
+exige abrir cinco telas e juntar de cabeça.
+
+### 3. Setor — "onde o processo trava"
+
+Quantos processos entraram no setor no período, quantos saíram, quantos ainda
+estão lá, e há quantos dias está o mais antigo. O tempo sai dos despachos: a
+diferença entre a entrada no setor e a saída dele, ou até hoje quando não saiu.
+
+**Só tempo e volume, sem valor.** Valor por setor mistura duas perguntas — quem
+quer saber quanto um setor movimentou está fazendo a pergunta do panorama, com
+outro recorte.
+
+### Como saem
+
+**Tela e papel, e nessa ordem.** Na tela o relatório é recalculado a cada
+abertura, com os filtros na URL — assim ele pode ser recarregado, compartilhado
+por link e refeito amanhã com números de amanhã. O documento emitido é o oposto:
+congela os números do momento, com timbre, assinatura e código de conferência,
+para ser anexado a uma prestação de contas que precisa dizer o que se via
+naquela data.
+
+A tabela guarda os **parâmetros** — tipo, período e filtros —, nunca o
+resultado. Relatório é pergunta salva, não retrato: gravar os números
+significaria que reabrir o relatório de ontem mostraria dados de ontem enquanto
+a tela ao lado mostra os de hoje, e ninguém saberia qual está certo. Quem
+precisa do retrato emite o documento, que é exatamente para isso.
+
+### Onde o processo esteve, reconstruído dos despachos
+
+O despacho grava **de onde** o processo saiu, não para onde foi: o destino vira
+`processo.setor_atual_id` e o registro anterior se perde. Parecia faltar dado
+para o relatório de setor — mas a sequência basta.
+
+Só se despacha de onde o processo está. Então o setor onde ele esteve entre um
+despacho e o seguinte é o setor de quem fez o **seguinte**, e `lag()` sobre os
+despachos recompõe cada chegada; a abertura serve de chegada para o primeiro
+trecho. Quem ainda não saiu entra por outro caminho: processo não encerrado está
+parado no setor atual desde o último despacho.
+
+A alternativa seria gravar o destino numa coluna nova e recalcular o passado a
+partir do nada — dado que não existe não se inventa por migration.
+
+### `reports:read`, e não `contracts:read`
+
+`contracts:read` autoriza ver *um* contrato, e quem o tem em mãos precisa dele.
+O relatório mostra o conjunto: quanto a prefeitura contratou no ano, de quem, e
+onde o processo trava. É leitura de gestão, e quem lê um contrato não
+necessariamente responde por ela. Gestor, compras e controladoria recebem; o
+servidor de setor, não.
+
+### Dia do calendário não é instante
+
+`2026-01-01` é o primeiro de janeiro em qualquer fuso. Passá-lo por `new Date()`
+o transforma em meia-noite **UTC**, que em São Paulo é 21h do dia 31 — e a peça
+sai com o dia anterior.
+
+O relatório imprimia "31/12/2025 a 29/06/2026" onde devia estar 01/01 a 30/06.
+O mesmo defeito estava, desde sempre, na **validade dos lotes** das peças do
+almoxarifado, que saíam um dia a menos — num documento que o conselho de
+alimentação escolar assina.
+
+O driver devolve `DATE` como texto justamente para preservar a distinção; o erro
+era jogá-la fora na formatação. Agora dia de calendário se formata como texto,
+sem fuso no caminho, e só `TIMESTAMPTZ` — que chega como `Date` — passa pela
+conversão para Brasília. Data inválida virou traço em vez de exceção: `Intl`
+lança diante de uma, e isso derrubaria a emissão inteira por causa de um campo.
