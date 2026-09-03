@@ -70,6 +70,27 @@ relatoriosRouter.get("/setor", async (req, res, next) => {
   }
 });
 
+// Achar o processo pelo número — o dossiê é de um por vez.
+relatoriosRouter.get("/processos", async (req, res, next) => {
+  try {
+    res.json(await container.relatoriosDeProcessos.buscarProcessos(
+      req.sessao!.orgaoId, filtroDaQuery(req, "busca") ?? "",
+    ));
+  } catch (error) {
+    next(error);
+  }
+});
+
+relatoriosRouter.get("/dossie/:processoId", async (req, res, next) => {
+  try {
+    res.json(await container.relatoriosDeProcessos.dossie(
+      req.sessao!.orgaoId, req.params.processoId!,
+    ));
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Guarda a pergunta para o documento poder apontar para ela. Nunca a resposta.
 relatoriosRouter.post("/", async (req, res, next) => {
   try {

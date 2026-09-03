@@ -93,4 +93,80 @@ export type PorSetor = {
 export interface RelatorioProcessoRepository {
   panorama(orgaoId: string, filtros: FiltrosDoRelatorio): Promise<Panorama>;
   porSetor(orgaoId: string, filtros: FiltrosDoRelatorio): Promise<PorSetor>;
+  dossie(orgaoId: string, processoId: string): Promise<DossieDoProcesso | null>;
+  buscarProcessos(orgaoId: string, busca: string): Promise<ProcessoEncontrado[]>;
 }
+
+/** O processo como a folha o apresenta: dados próprios e de onde ele nasceu. */
+export type DossieDoProcesso = {
+  processo: {
+    id: string;
+    numeroProtocolo: string;
+    numeroProcessoAdm: string;
+    tipo: string;
+    status: string;
+    dataAbertura: string;
+    dataEncerramento: string | null;
+    descricaoPedido: string | null;
+    setorAtual: string | null;
+    unidadeSolicitante: string | null;
+  };
+  /** A licitação ou ata que originou o contrato. Nulo em processo sem contrato. */
+  origem: {
+    tipo: "LICITACAO" | "ATA";
+    numero: string;
+    modalidade: string | null;
+    objeto: string;
+    valorTotal: number;
+  } | null;
+  contrato: {
+    id: string;
+    numero: string;
+    fornecedor: string;
+    documento: string;
+    objeto: string;
+    dataInicio: string;
+    dataFim: string | null;
+    valorTotal: number;
+  } | null;
+  itens: {
+    produto: string;
+    categoria: string | null;
+    unidadeMedida: string;
+    quantidadeSolicitada: number;
+    valorCalculado: number;
+    saldoDisponivel: number;
+  }[];
+  /** Em ordem cronológica, com quanto tempo o processo ficou em cada setor. */
+  tramitacao: {
+    data: string;
+    setor: string;
+    usuario: string;
+    tipo: string;
+    texto: string | null;
+    diasNoSetor: number;
+  }[];
+  ordens: {
+    numero: string;
+    data: string;
+    valor: number;
+    numeroEmpenho: string | null;
+    numeroNotaFiscal: string | null;
+  }[];
+  documentos: {
+    id: string;
+    codigo: string;
+    titulo: string;
+    data: string;
+    emitidoPor: string;
+  }[];
+};
+
+/** O processo achado pela busca — número, protocolo ou objeto. */
+export type ProcessoEncontrado = {
+  id: string;
+  numeroProcessoAdm: string;
+  numeroProtocolo: string;
+  descricao: string;
+  dataAbertura: string;
+};

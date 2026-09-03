@@ -65,6 +65,7 @@ export default async function PanoramaPage({ searchParams }: Props) {
         tabs={[
           { rotulo: "Panorama", href: "/processos/relatorios", ativa: true },
           { rotulo: "Por setor", href: "/processos/relatorios/setor", ativa: false },
+          { rotulo: "Processo", href: "/processos/relatorios/processo", ativa: false },
         ]}
       />
 

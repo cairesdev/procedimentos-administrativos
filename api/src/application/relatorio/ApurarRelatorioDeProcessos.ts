@@ -1,6 +1,7 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import type {
-  FiltrosDoRelatorio, Panorama, PorSetor, RelatorioProcessoRepository,
+  DossieDoProcesso, FiltrosDoRelatorio, Panorama, PorSetor, ProcessoEncontrado,
+  RelatorioProcessoRepository,
 } from "../ports/RelatorioProcessoRepository";
 
 export const TIPOS_DE_RELATORIO = ["PANORAMA", "DOSSIE", "SETOR"] as const;
@@ -63,6 +64,23 @@ export class ApurarRelatorioDeProcessos {
     this.exigirPeriodoCoerente(filtros);
     return this.relatorios.porSetor(orgaoId, filtros);
   };
+
+  /**
+   * Tudo sobre um processo, numa folha só.
+   *
+   * Hoje isso exige abrir cinco telas — o processo, a licitação, o contrato, os
+   * itens, a tramitação — e juntar de cabeça. É a consulta que o controle
+   * interno faz antes de dar parecer, e a que o Tribunal pede quando questiona
+   * uma despesa.
+   */
+  dossie = async (orgaoId: string, processoId: string): Promise<DossieDoProcesso> => {
+    const dossie = await this.relatorios.dossie(orgaoId, processoId);
+    if (!dossie) throw new NaoEncontrado("Processo não encontrado");
+    return dossie;
+  };
+
+  buscarProcessos = (orgaoId: string, busca: string): Promise<ProcessoEncontrado[]> =>
+    this.relatorios.buscarProcessos(orgaoId, busca);
 
   salvarRecorte = async (entrada: {
     orgaoId: string;

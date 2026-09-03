@@ -87,3 +87,74 @@ export type BySector = {
   totais: { entraram: number; sairam: number; parados: number };
   setores: SectorRow[];
 };
+
+/** O processo como a folha o apresenta. */
+export type ProcessDossier = {
+  processo: {
+    id: string;
+    numeroProtocolo: string;
+    numeroProcessoAdm: string;
+    tipo: string;
+    status: string;
+    dataAbertura: string;
+    dataEncerramento: string | null;
+    descricaoPedido: string | null;
+    setorAtual: string | null;
+    unidadeSolicitante: string | null;
+  };
+  origem: {
+    tipo: "LICITACAO" | "ATA";
+    numero: string;
+    modalidade: string | null;
+    objeto: string;
+    valorTotal: number;
+  } | null;
+  contrato: {
+    id: string;
+    numero: string;
+    fornecedor: string;
+    documento: string;
+    objeto: string;
+    dataInicio: string;
+    dataFim: string | null;
+    valorTotal: number;
+  } | null;
+  itens: {
+    produto: string;
+    categoria: string | null;
+    unidadeMedida: string;
+    quantidadeSolicitada: number;
+    valorCalculado: number;
+    saldoDisponivel: number;
+  }[];
+  tramitacao: {
+    data: string;
+    setor: string;
+    usuario: string;
+    tipo: string;
+    texto: string | null;
+    diasNoSetor: number;
+  }[];
+  ordens: {
+    numero: string;
+    data: string;
+    valor: number;
+    numeroEmpenho: string | null;
+    numeroNotaFiscal: string | null;
+  }[];
+  documentos: {
+    id: string;
+    codigo: string;
+    titulo: string;
+    data: string;
+    emitidoPor: string;
+  }[];
+};
+
+export type FoundProcess = {
+  id: string;
+  numeroProcessoAdm: string;
+  numeroProtocolo: string;
+  descricao: string;
+  dataAbertura: string;
+};

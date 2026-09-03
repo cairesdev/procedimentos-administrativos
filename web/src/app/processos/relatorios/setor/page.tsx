@@ -49,6 +49,7 @@ export default async function RelatorioPorSetorPage({ searchParams }: Props) {
         tabs={[
           { rotulo: "Panorama", href: "/processos/relatorios", ativa: false },
           { rotulo: "Por setor", href: "/processos/relatorios/setor", ativa: true },
+          { rotulo: "Processo", href: "/processos/relatorios/processo", ativa: false },
         ]}
       />
 

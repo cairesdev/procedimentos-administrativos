@@ -1676,3 +1676,19 @@ era jogá-la fora na formatação. Agora dia de calendário se formata como text
 sem fuso no caminho, e só `TIMESTAMPTZ` — que chega como `Date` — passa pela
 conversão para Brasília. Data inválida virou traço em vez de exceção: `Intl`
 lança diante de uma, e isso derrubaria a emissão inteira por causa de um campo.
+
+### O dossiê não ganha escopo de documento próprio
+
+Ele fala de um processo com contrato, que é exatamente o que
+`PROCESSO_CONTRATO` já entrega — e a capa do processo, do mesmo escopo, já é a
+peça que se imprime. Escopo custa código em três lugares (consulta, catálogo de
+marcadores e fonte de contexto); `tipo` não custa nada. Quando alguém quiser uma
+peça diferente da capa, ela nasce como tipo novo no escopo que existe.
+
+### `LEFT JOIN` do começo ao fim no dossiê
+
+O contrato chega pela solicitação, e a origem pelo contrato. Nem todo processo
+tem os dois: um pedido de informação aberto no balcão não tem compra nenhuma —
+e é justamente nele que um `JOIN` interno devolveria zero linhas, fazendo a tela
+dizer "não encontrado" sobre um processo que existe. O dossiê de um processo sem
+contrato mostra o que ele tem e diz, em uma linha, por que o resto está vazio.

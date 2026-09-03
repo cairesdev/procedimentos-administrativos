@@ -1365,3 +1365,23 @@ almoxarifado.
 **O que fica para a próxima fatia:** o dossiê do processo — o terceiro relatório
 pedido. O escopo `PROCESSO_CONTRATO` já entrega os dados; falta a tela que
 junta licitação, contrato, itens, tramitação e peças numa folha só.
+
+## Dossiê do processo
+
+Terceira aba dos relatórios: busca o processo por número, protocolo ou objeto e
+abre a folha completa — dados, licitação de origem, contrato, itens agrupados
+por categoria, tramitação com os dias em cada setor, ordens de fornecimento e
+peças emitidas.
+
+O tempo em cada etapa usa a mesma reconstrução do relatório por setor: `lag()`
+sobre os despachos, com a abertura servindo de chegada no primeiro trecho.
+
+Sem escopo de documento novo — `PROCESSO_CONTRATO` já entrega processo, contrato
+e fornecedor, e a capa do processo é a peça desse escopo.
+
+Verificado com Postgres e API no ar: busca acha os dois processos semeados; o
+dossiê traz contrato, origem, item com categoria, dois despachos com 3 e 2 dias,
+e a ordem com o empenho; o processo **sem** contrato responde 200 com contrato e
+origem nulos, em vez de quebrar; e processo de outra prefeitura dá 404.
+
+Os três relatórios pedidos estão entregues.

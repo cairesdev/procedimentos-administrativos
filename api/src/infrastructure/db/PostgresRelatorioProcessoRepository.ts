@@ -1,7 +1,8 @@
 import { pool } from "./pool";
 import type {
   FiltrosDoRelatorio, LinhaDeContrato, LinhaDeFornecedor, LinhaDeLicitacao,
-  LinhaDeSetor, LinhaDeUnidade, Panorama, PorSetor, RelatorioProcessoRepository,
+  DossieDoProcesso, LinhaDeSetor, LinhaDeUnidade, Panorama, PorSetor,
+  ProcessoEncontrado, RelatorioProcessoRepository,
 } from "../../application/ports/RelatorioProcessoRepository";
 import type {
   RecorteRepository, RecorteSalvo, TipoDeRelatorio,
@@ -143,6 +144,118 @@ const SQL = {
    * parado no setor atual desde o último despacho, ou desde a abertura se nunca
    * houve nenhum.
    */
+
+  /**
+   * O processo e de onde ele nasceu.
+   *
+   * O contrato chega pela solicitação, e a origem pelo contrato — nem todo
+   * processo tem os dois. `LEFT JOIN` do começo ao fim: processo de protocolo,
+   * aberto no balcão e sem compra nenhuma, também tem dossiê, e é justamente
+   * nele que um `JOIN` interno devolveria zero linhas e a tela diria
+   * "não encontrado" sobre um processo que existe.
+   */
+  dossieProcesso: `
+    SELECT p.id, p.numero_protocolo AS "numeroProtocolo",
+           p.numero_processo_adm AS "numeroProcessoAdm",
+           p.tipo_processo AS tipo, p.status,
+           to_char(p.data_abertura AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS "dataAbertura",
+           to_char(p.data_encerramento AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS "dataEncerramento",
+           p.descricao_pedido AS "descricaoPedido",
+           sa.nome AS "setorAtual",
+           u.nome AS "unidadeSolicitante",
+           c.id AS "contratoId", c.numero AS "contratoNumero",
+           to_char(c.data_inicio, 'DD/MM/YYYY') AS "contratoInicio",
+           to_char(c.data_fim, 'DD/MM/YYYY') AS "contratoFim",
+           c.valor_total AS "contratoValor",
+           f.razao_social AS "fornecedorNome", f.documento AS "fornecedorDocumento",
+           coalesce(a.objeto, l.objeto) AS "origemObjeto",
+           coalesce(a.numero, l.numero) AS "origemNumero",
+           CASE WHEN c.ata_id IS NOT NULL THEN 'ATA' ELSE 'LICITACAO' END AS "origemTipo",
+           l.modalidade AS "origemModalidade",
+           coalesce(a.valor_total, l.valor_total) AS "origemValor"
+      FROM processo p
+      LEFT JOIN setor sa ON sa.id = p.setor_atual_id
+      LEFT JOIN solicitacao s ON s.processo_id = p.id
+      LEFT JOIN unidade u ON u.id = s.unidade_solicitante_id
+      LEFT JOIN solicitacao_item si ON si.solicitacao_id = s.id
+      LEFT JOIN item i ON i.id = si.item_id
+      LEFT JOIN contrato c ON c.id = i.contrato_id
+      LEFT JOIN fornecedor f ON f.id = c.fornecedor_id
+      LEFT JOIN ata_registro_precos a ON a.id = c.ata_id
+      LEFT JOIN licitacao l ON l.id = c.licitacao_id
+     WHERE p.orgao_id = $1 AND p.id = $2
+     LIMIT 1`,
+
+  dossieItens: `
+    SELECT i.produto, i.categoria, i.unidade_medida AS "unidadeMedida",
+           si.quantidade_solicitada AS "quantidadeSolicitada",
+           si.valor_calculado AS "valorCalculado",
+           i.saldo_disponivel AS "saldoDisponivel"
+      FROM solicitacao s
+      JOIN solicitacao_item si ON si.solicitacao_id = s.id
+      JOIN item i ON i.id = si.item_id
+     WHERE s.orgao_id = $1 AND s.processo_id = $2
+     ORDER BY i.categoria NULLS LAST, i.produto`,
+
+  /**
+   * A tramitação, com quanto tempo o processo ficou em cada setor.
+   *
+   * Mesma reconstrução do relatório por setor: o despacho diz de onde o
+   * processo saiu, e a chegada é o despacho anterior — ou a abertura, no
+   * primeiro trecho.
+   */
+  dossieTramitacao: `
+    SELECT to_char(d.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS data,
+           s.nome AS setor, us.nome AS usuario, d.tipo, d.texto,
+           floor(EXTRACT(EPOCH FROM (
+             d.data - coalesce(
+               lag(d.data) OVER (PARTITION BY d.processo_id ORDER BY d.data),
+               p.data_abertura
+             )
+           )) / 86400) AS "diasNoSetor"
+      FROM despacho d
+      JOIN processo p ON p.id = d.processo_id
+      JOIN setor s ON s.id = d.setor_id
+      JOIN usuario us ON us.id = d.usuario_id
+     WHERE p.orgao_id = $1 AND d.processo_id = $2
+     ORDER BY d.data`,
+
+  dossieOrdens: `
+    SELECT o.numero,
+           to_char(o.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS data,
+           o.valor, o.numero_empenho AS "numeroEmpenho",
+           o.numero_nota_fiscal AS "numeroNotaFiscal"
+      FROM ordem_fornecimento o
+     WHERE o.orgao_id = $1 AND o.processo_id = $2
+     ORDER BY o.data`,
+
+  dossieDocumentos: `
+    SELECT de.id, de.codigo, de.titulo,
+           to_char(de.data AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS data,
+           de.emitido_por_nome AS "emitidoPor"
+      FROM documento_emitido de
+     WHERE de.orgao_id = $1 AND de.referencia_id = $2
+     ORDER BY de.data`,
+
+  /**
+   * Achar o processo pelo que o servidor conhece: o número.
+   *
+   * Dois caracteres é o piso — uma letra casaria com metade da prefeitura, e
+   * uma lista de vinte resultados aleatórios não ajuda ninguém.
+   */
+  buscarProcessos: `
+    SELECT p.id, p.numero_processo_adm AS "numeroProcessoAdm",
+           p.numero_protocolo AS "numeroProtocolo",
+           coalesce(nullif(btrim(p.descricao_pedido), ''), p.tipo_processo) AS descricao,
+           to_char(p.data_abertura AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS "dataAbertura"
+      FROM processo p
+     WHERE p.orgao_id = $1
+       AND (p.numero_processo_adm ILIKE $2
+         OR p.numero_protocolo ILIKE $2
+         OR coalesce(p.descricao_pedido, '') ILIKE $2)
+     ORDER BY p.data_abertura DESC
+     LIMIT 20`,
+
   passagens: `
     WITH passagem AS (
       SELECT d.setor_id,
@@ -262,6 +375,100 @@ export class PostgresRelatorioProcessoRepository implements RelatorioProcessoRep
         valorPedido: numero(linha.valorPedido),
       })) as LinhaDeUnidade[],
     };
+  };
+
+
+  dossie = async (
+    orgaoId: string, processoId: string,
+  ): Promise<DossieDoProcesso | null> => {
+    const { rows } = await pool.query(SQL.dossieProcesso, [orgaoId, processoId]);
+    const linha = rows[0];
+    if (!linha) return null;
+
+    const [itens, tramitacao, ordens, documentos] = await Promise.all([
+      pool.query(SQL.dossieItens, [orgaoId, processoId]),
+      pool.query(SQL.dossieTramitacao, [orgaoId, processoId]),
+      pool.query(SQL.dossieOrdens, [orgaoId, processoId]),
+      pool.query(SQL.dossieDocumentos, [orgaoId, processoId]),
+    ]);
+
+    return {
+      processo: {
+        id: String(linha.id),
+        numeroProtocolo: String(linha.numeroProtocolo),
+        numeroProcessoAdm: String(linha.numeroProcessoAdm),
+        tipo: String(linha.tipo),
+        status: String(linha.status),
+        dataAbertura: String(linha.dataAbertura),
+        dataEncerramento: linha.dataEncerramento ?? null,
+        descricaoPedido: linha.descricaoPedido ?? null,
+        setorAtual: linha.setorAtual ?? null,
+        unidadeSolicitante: linha.unidadeSolicitante ?? null,
+      },
+      // Processo de balcão não tem contrato, e isso não é erro: é um processo
+      // que ainda não virou compra, ou que nunca vai virar.
+      contrato: linha.contratoId
+        ? {
+          id: String(linha.contratoId),
+          numero: String(linha.contratoNumero),
+          fornecedor: String(linha.fornecedorNome ?? ""),
+          documento: String(linha.fornecedorDocumento ?? ""),
+          objeto: String(linha.origemObjeto ?? ""),
+          dataInicio: String(linha.contratoInicio),
+          dataFim: linha.contratoFim ?? null,
+          valorTotal: numero(linha.contratoValor),
+        }
+        : null,
+      origem: linha.origemNumero
+        ? {
+          tipo: linha.origemTipo === "ATA" ? "ATA" : "LICITACAO",
+          numero: String(linha.origemNumero),
+          modalidade: linha.origemModalidade ?? null,
+          objeto: String(linha.origemObjeto ?? ""),
+          valorTotal: numero(linha.origemValor),
+        }
+        : null,
+      itens: itens.rows.map((item) => ({
+        produto: String(item.produto),
+        categoria: item.categoria ?? null,
+        unidadeMedida: String(item.unidadeMedida),
+        quantidadeSolicitada: numero(item.quantidadeSolicitada),
+        valorCalculado: numero(item.valorCalculado),
+        saldoDisponivel: numero(item.saldoDisponivel),
+      })),
+      tramitacao: tramitacao.rows.map((passo) => ({
+        data: String(passo.data),
+        setor: String(passo.setor),
+        usuario: String(passo.usuario),
+        tipo: String(passo.tipo),
+        texto: passo.texto ?? null,
+        diasNoSetor: numero(passo.diasNoSetor),
+      })),
+      ordens: ordens.rows.map((ordem) => ({
+        numero: String(ordem.numero),
+        data: String(ordem.data),
+        valor: numero(ordem.valor),
+        numeroEmpenho: ordem.numeroEmpenho ?? null,
+        numeroNotaFiscal: ordem.numeroNotaFiscal ?? null,
+      })),
+      documentos: documentos.rows.map((documento) => ({
+        id: String(documento.id),
+        codigo: String(documento.codigo),
+        titulo: String(documento.titulo),
+        data: String(documento.data),
+        emitidoPor: String(documento.emitidoPor ?? ""),
+      })),
+    };
+  };
+
+  buscarProcessos = async (
+    orgaoId: string, busca: string,
+  ): Promise<ProcessoEncontrado[]> => {
+    const texto = busca.trim();
+    if (texto.length < 2) return [];
+
+    const { rows } = await pool.query(SQL.buscarProcessos, [orgaoId, `%${texto}%`]);
+    return rows as ProcessoEncontrado[];
   };
 
   porSetor = async (orgaoId: string, filtros: FiltrosDoRelatorio): Promise<PorSetor> => {

@@ -1,7 +1,9 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { comFiltros } from "@/shared/api/filtros";
 import { lista } from "@/shared/api/colecao";
-import type { BySector, Panorama, ReportFilters, ReportType } from "./types";
+import type {
+  BySector, FoundProcess, Panorama, ProcessDossier, ReportFilters, ReportType,
+} from "./types";
 
 const BASE = "/relatorios";
 
@@ -46,3 +48,29 @@ export type SavedCut = {
 };
 
 export const getReportCut = (id: string) => apiRequest<SavedCut>(`${BASE}/${id}`);
+
+/**
+ * O dossiê de um processo.
+ *
+ * As listas passam pelo mesmo filtro das outras telas: um furo em `tramitacao`
+ * ou `itens` explodiria no `.map` durante o render, e o erro apareceria no
+ * navegador sem nada no log do servidor.
+ */
+export const getProcessDossier = (processoId: string) =>
+  apiRequest<unknown>(`${BASE}/dossie/${processoId}`).then((corpo) => {
+    const dados = (corpo ?? {}) as Partial<ProcessDossier>;
+    if (!dados.processo?.id) return null;
+
+    return {
+      processo: dados.processo,
+      origem: dados.origem ?? null,
+      contrato: dados.contrato ?? null,
+      itens: lista<ProcessDossier["itens"][number]>(dados.itens),
+      tramitacao: lista<ProcessDossier["tramitacao"][number]>(dados.tramitacao),
+      ordens: lista<ProcessDossier["ordens"][number]>(dados.ordens),
+      documentos: lista<ProcessDossier["documentos"][number]>(dados.documentos),
+    } satisfies ProcessDossier;
+  });
+
+export const searchProcesses = (busca: string) =>
+  apiRequest<unknown>(comFiltros(`${BASE}/processos`, { busca })).then(lista<FoundProcess>);
