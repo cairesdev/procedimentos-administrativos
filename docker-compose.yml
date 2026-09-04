@@ -103,6 +103,34 @@ services:
       - "${API_PORT:-8004}:3333"
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # O worker que esvazia a fila de e-mails.
+  #
+  # Mesma imagem da API, outro comando. Separado de propósito: pico de envio não
+  # afeta quem está na tela, e reiniciar um não derruba o outro. Sem porta e sem
+  # healthcheck HTTP — ele não atende ninguém, só lê a fila.
+  #
+  # `RUN_MIGRATIONS: "false"`: quem aplica migration é a API. Dois processos
+  # correndo o migrator ao mesmo tempo é a corrida clássica de deploy.
+  email-worker:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:api-${IMAGE_TAG:-local}
+    build:
+      context: ./api
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-procedimentos}
+      TZ: ${TZ:-America/Sao_Paulo}
+      RUN_MIGRATIONS: "false"
+      # Sem ela o worker não sobe: não teria como decifrar senha de SMTP
+      # nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
+      EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env (openssl rand -base64 32)}
+      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-60000}
+      EMAIL_LOTE: ${EMAIL_LOTE:-20}
+    restart: unless-stopped
+
   web:
     image: ${IMAGE_REPO:-workcenterma/br-consultoria}:web-${IMAGE_TAG:-local}
     build:

@@ -68,6 +68,8 @@ export const AUDIT_EVENTS = [
   "ADMIN_ENTIDADE_SENHA_REDEFINIDA",
   "ADMIN_ENTIDADE_INATIVADO",
   "ADMIN_ENTIDADE_REATIVADO",
+  "EMAIL_CONFIGURADO",
+  "EMAIL_CONFIGURACAO_REMOVIDA",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -162,6 +164,7 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
   "FORNECEDOR_CONVITE_REVOGADO",
   "ADMIN_ENTIDADE_CRIADO", "ADMIN_ENTIDADE_PROMOVIDO", "ADMIN_ENTIDADE_SENHA_REDEFINIDA",
       "ADMIN_ENTIDADE_INATIVADO", "ADMIN_ENTIDADE_REATIVADO",
+      "EMAIL_CONFIGURADO", "EMAIL_CONFIGURACAO_REMOVIDA",
     ],
   },
 ];
@@ -236,4 +239,6 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   ADMIN_ENTIDADE_SENHA_REDEFINIDA: "Senha de administrador redefinida",
   ADMIN_ENTIDADE_INATIVADO: "Administrador inativado",
   ADMIN_ENTIDADE_REATIVADO: "Administrador reativado",
+  EMAIL_CONFIGURADO: "Servidor de e-mail configurado",
+  EMAIL_CONFIGURACAO_REMOVIDA: "Servidor de e-mail removido",
 };

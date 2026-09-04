@@ -119,6 +119,7 @@ protocoloRouter.post(
           orgaoId: req.sessao!.orgaoId,
           usuarioId: req.sessao!.usuarioId,
           origem: "BALCAO",
+          orgaoNome: (await container.adminSistema.buscarOrgao(req.sessao!.orgaoId))?.nome,
         }),
       );
     } catch (error) {
@@ -185,6 +186,9 @@ protocoloRouter.post("/processos/:processoId/exigencias", exigirPermissao("proto
         orgaoId: req.sessao!.orgaoId,
         processoId: req.params.processoId!,
         usuarioId: req.sessao!.usuarioId,
+        // O nome vai no remetente: o cidadão precisa reconhecer de quem veio a
+        // cobrança, senão o e-mail que mais importa é o que mais parece golpe.
+        orgaoNome: (await container.adminSistema.buscarOrgao(req.sessao!.orgaoId))?.nome,
       }),
     );
   } catch (error) {

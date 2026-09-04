@@ -804,6 +804,117 @@ CASOS: list[tuple[str, str, bool]] = [
     ("apagar o termo leva os itens junto",
      "DELETE FROM termo_responsabilidade WHERE id = '7e000000-0000-0000-0000-000000000004'",
      True),
+
+    # ---------------------------------------------------------------- 0047
+    # A configuracao do SMTP: uma global, uma por prefeitura, e credencial
+    # inteira ou nenhuma.
+    ("o SMTP global entra",
+     "INSERT INTO configuracao_email (orgao_id, host, porta, usuario, senha_cifrada, "
+     "remetente) VALUES (NULL,'smtp.provedor.com',587,'produto','cifra==',"
+     "'naoresponda@produto.com.br')",
+     True),
+    ("um segundo SMTP global e recusado",
+     "INSERT INTO configuracao_email (orgao_id, host, porta, remetente) "
+     "VALUES (NULL,'outro.provedor.com',587,'outro@produto.com.br')",
+     False),
+    ("a prefeitura pode ter o dela",
+     "INSERT INTO configuracao_email (orgao_id, host, porta, remetente) VALUES "
+     "('11111111-1111-1111-1111-111111111111','smtp.moncao.ma.gov.br',465,"
+     "'naoresponda@moncao.ma.gov.br')",
+     True),
+    ("mas so uma por prefeitura",
+     "INSERT INTO configuracao_email (orgao_id, host, porta, remetente) VALUES "
+     "('11111111-1111-1111-1111-111111111111','outro.ma.gov.br',587,"
+     "'outro@moncao.ma.gov.br')",
+     False),
+    # SMTP interno de prefeitura costuma aceitar sem autenticar: os dois nulos
+    # continuam valendo, e e por isso que o CHECK compara os dois em vez de
+    # exigir usuario.
+    ("limpar usuario e senha juntos e aceito",
+     "UPDATE configuracao_email SET usuario = NULL, senha_cifrada = NULL "
+     "WHERE orgao_id IS NULL",
+     True),
+    ("apagar so a senha, deixando o usuario, e recusado",
+     "UPDATE configuracao_email SET usuario = 'produto', senha_cifrada = 'cifra==' "
+     "WHERE orgao_id IS NULL; "
+     "UPDATE configuracao_email SET senha_cifrada = NULL WHERE orgao_id IS NULL",
+     False),
+    ("usuario sem senha e meia credencial, e recusado",
+     "INSERT INTO configuracao_email (host, porta, usuario, remetente) VALUES "
+     "('smtp.x.com',587,'alguem','x@y.com')",
+     False),
+    ("porta fora da faixa e recusada",
+     "INSERT INTO configuracao_email (host, porta, remetente) VALUES "
+     "('smtp.x.com',70000,'x@y.com')",
+     False),
+    ("remetente sem arroba e recusado",
+     "INSERT INTO configuracao_email (host, porta, remetente) VALUES "
+     "('smtp.x.com',587,'naoresponda')",
+     False),
+    ("host em branco e recusado",
+     "INSERT INTO configuracao_email (host, porta, remetente) VALUES "
+     "('   ',587,'x@y.com')",
+     False),
+
+    # A fila.
+    ("o e-mail entra na fila",
+     "INSERT INTO email_fila (id, orgao_id, tipo, destinatario, assunto, corpo, "
+     "chave_idempotencia) VALUES ('ef000000-0000-0000-0000-000000000001',"
+     "'11111111-1111-1111-1111-111111111111','EXIGENCIA_AO_REQUERENTE',"
+     "'cidadao@exemplo.com','Exigencia no protocolo 2026/0001','Ola','EXIGENCIA:1')",
+     True),
+    ("o mesmo ato nao entra duas vezes na fila",
+     "INSERT INTO email_fila (orgao_id, tipo, destinatario, assunto, corpo, "
+     "chave_idempotencia) VALUES ('11111111-1111-1111-1111-111111111111',"
+     "'EXIGENCIA_AO_REQUERENTE','cidadao@exemplo.com','De novo','Ola','EXIGENCIA:1')",
+     False),
+    ("tipo que o codigo nao conhece e recusado",
+     "INSERT INTO email_fila (orgao_id, tipo, destinatario, assunto, corpo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','NEWSLETTER','x@y.com','a','b')",
+     False),
+    ("destinatario sem arroba e recusado",
+     "INSERT INTO email_fila (orgao_id, tipo, destinatario, assunto, corpo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','PROTOCOLO_ABERTO','cidadao','a','b')",
+     False),
+    ("marcar ENVIADO sem data e recusado",
+     "UPDATE email_fila SET status = 'ENVIADO' "
+     "WHERE id = 'ef000000-0000-0000-0000-000000000001'",
+     False),
+    ("ENVIADO com data e aceito",
+     "UPDATE email_fila SET status = 'ENVIADO', enviado_em = now() "
+     "WHERE id = 'ef000000-0000-0000-0000-000000000001'",
+     True),
+    ("falhar sem data de envio e aceito",
+     "INSERT INTO email_fila (orgao_id, tipo, destinatario, assunto, corpo, status, "
+     "tentativas, ultimo_erro) VALUES ('11111111-1111-1111-1111-111111111111',"
+     "'CONVITE_FORNECEDOR','forn@exemplo.com','Convite','Ola','FALHOU',5,"
+     "'connect ECONNREFUSED')",
+     True),
+    ("tentativas negativas sao recusadas",
+     "UPDATE email_fila SET tentativas = -1 "
+     "WHERE id = 'ef000000-0000-0000-0000-000000000001'",
+     False),
+
+    # O destinatario do convite de checklist.
+    ("convite de checklist sem e-mail continua valendo",
+     "INSERT INTO checklist_convite (checklist_id, token_hash, destinatario, expira_em) "
+     "VALUES ('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('a',64), "
+     "'Engenheiro da obra', now() + interval '7 days')",
+     True),
+    ("convite com e-mail de verdade entra",
+     "UPDATE checklist_convite SET revogado_em = now() WHERE revogado_em IS NULL; "
+     "INSERT INTO checklist_convite (checklist_id, token_hash, destinatario, "
+     "destinatario_email, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('b',64), 'Cartorio', "
+     "'contato@cartorio.com.br', now() + interval '7 days')",
+     True),
+    ("nome no lugar do e-mail e recusado",
+     "UPDATE checklist_convite SET revogado_em = now() WHERE revogado_em IS NULL; "
+     "INSERT INTO checklist_convite (checklist_id, token_hash, destinatario, "
+     "destinatario_email, expira_em) VALUES "
+     "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('c',64), 'Engenheiro', "
+     "'Engenheiro da obra', now() + interval '7 days')",
+     False),
 ]
 
 

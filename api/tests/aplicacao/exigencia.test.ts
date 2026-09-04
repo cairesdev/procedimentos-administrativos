@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { filaDeEmailFalsa, semTransacao } from "../ajudantes/dobras";
+import { EnfileirarEmail } from "../../src/application/email/EnfileirarEmail";
 import { ExigirDoRequerente } from "../../src/application/protocolo/ExigirDoRequerente";
 import { CPF_VALIDO, auditoriaFalsa, recusa } from "../ajudantes/dobras";
 
@@ -18,6 +20,12 @@ const montar = (opcoes: { status?: string; exigencias?: Exigencia[] } = {}) => {
   const auditoria = auditoriaFalsa();
 
   const protocolo = {
+    // A exigência agora lê o atendimento para saber a quem avisar.
+    buscarAtendimento: async () => ({
+      numeroProtocolo: "PROT-2026-0001",
+      requerenteNome: "José da Silva",
+      requerenteEmail: "jose@exemplo.com",
+    }),
     processoDoRequerente: async (numero: string, documento: string) =>
       (numero === PROTOCOLO && documento === CPF_VALIDO
         ? {
@@ -63,6 +71,8 @@ const montar = (opcoes: { status?: string; exigencias?: Exigencia[] } = {}) => {
     auditados: auditoria.registros,
     caso: new ExigirDoRequerente(
       protocolo as never, anexos as never, armazenamento as never, auditoria.porta as never,
+      semTransacao, new EnfileirarEmail(filaDeEmailFalsa().porta as never),
+      "https://exemplo.gov.br",
     ),
   };
 };

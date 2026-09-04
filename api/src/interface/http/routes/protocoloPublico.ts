@@ -212,6 +212,9 @@ protocoloPublicoRouter.post(
           contatoEmail: dados.contatoEmail,
           contatoTelefone: dados.contatoTelefone,
         },
+        // A prefeitura já foi resolvida pelo CNPJ da URL pública; o nome dela
+        // vai no remetente da confirmação.
+        orgaoNome: prefeitura.nome,
       });
 
       // O id do processo não sai: na rua o que vale é o protocolo, e é ele

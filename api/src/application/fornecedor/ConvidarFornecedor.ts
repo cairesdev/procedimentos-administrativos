@@ -5,6 +5,9 @@ import type {
   ConviteDeFornecedor, FornecedorConviteRepository,
 } from "../ports/FornecedorConviteRepository";
 import type { DadosFornecedor, FornecedorRepository } from "../ports/FornecedorRepository";
+import type { ExecutorDeTransacao } from "../ports/Transacao";
+import { conviteDeFornecedor } from "../../domain/email/Mensagens";
+import type { EnfileirarEmail, ResultadoDoEnfileiramento } from "../email/EnfileirarEmail";
 
 /**
  * Dias de validade do convite.
@@ -34,6 +37,10 @@ export class ConvidarFornecedor {
     private readonly convites: FornecedorConviteRepository,
     private readonly fornecedores: FornecedorRepository,
     private readonly auditoria: AuditoriaRepository,
+    private readonly transacao: ExecutorDeTransacao,
+    private readonly emails: EnfileirarEmail,
+    /** Endereço público do sistema, para montar o link do convite. */
+    private readonly appUrl: string,
   ) {}
 
   /**
@@ -47,7 +54,9 @@ export class ConvidarFornecedor {
     orgaoId: string;
     usuarioId: string;
     fornecedorId: string;
-  }): Promise<{ token: string; expiraEm: string }> => {
+    /** Nome da prefeitura, para o remetente e o corpo do e-mail. */
+    orgaoNome?: string;
+  }): Promise<{ token: string; expiraEm: string; email: ResultadoDoEnfileiramento }> => {
     const fornecedor = await this.fornecedores.buscarPorId(entrada.fornecedorId);
     if (!fornecedor) throw new NaoEncontrado("Fornecedor não encontrado");
 
@@ -58,12 +67,35 @@ export class ConvidarFornecedor {
     const token = randomBytes(32).toString("base64url");
     const expiraEm = new Date(Date.now() + DIAS_DE_VALIDADE * 24 * 60 * 60 * 1000);
 
-    await this.convites.criar({
-      fornecedorId: entrada.fornecedorId,
-      orgaoId: entrada.orgaoId,
-      criadoPor: entrada.usuarioId,
-      tokenHash: hashDoToken(token),
-      expiraEm: expiraEm.toISOString(),
+    /**
+     * O convite e o aviso entram juntos.
+     *
+     * O endereço sai do cadastro do fornecedor — é o dado que ele mesmo
+     * mantém, e o motivo pelo qual o convite existe. Sem e-mail cadastrado, o
+     * link continua na tela para alguém mandar à mão.
+     */
+    const email = await this.transacao(async (tx) => {
+      const conviteId = await this.convites.criar({
+        fornecedorId: entrada.fornecedorId,
+        orgaoId: entrada.orgaoId,
+        criadoPor: entrada.usuarioId,
+        tokenHash: hashDoToken(token),
+        expiraEm: expiraEm.toISOString(),
+      }, tx);
+
+      return this.emails.executar(tx, {
+        orgaoId: entrada.orgaoId,
+        tipo: "CONVITE_FORNECEDOR",
+        destinatario: fornecedor.email,
+        referenciaId: entrada.fornecedorId,
+        chave: `CONVITE_FORNECEDOR:${conviteId}`,
+        mensagem: conviteDeFornecedor({
+          orgao: entrada.orgaoNome ?? "Prefeitura",
+          fornecedor: fornecedor.razaoSocial,
+          link: `${this.appUrl}/fornecedor/${token}`,
+          expiraEm,
+        }),
+      });
     });
 
     await this.auditoria.registrar({
@@ -71,10 +103,14 @@ export class ConvidarFornecedor {
       usuarioId: entrada.usuarioId,
       tipoEvento: "FORNECEDOR_CONVIDADO",
       referenciaId: entrada.fornecedorId,
-      detalhes: { fornecedor: fornecedor.razaoSocial, expiraEm: expiraEm.toISOString() },
+      detalhes: {
+        fornecedor: fornecedor.razaoSocial,
+        expiraEm: expiraEm.toISOString(),
+        email,
+      },
     });
 
-    return { token, expiraEm: expiraEm.toISOString() };
+    return { token, expiraEm: expiraEm.toISOString(), email };
   };
 
   /**

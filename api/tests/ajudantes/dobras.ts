@@ -48,3 +48,25 @@ export const auditoriaFalsa = () => {
 export const CPF_VALIDO = "52998224725";
 export const CNPJ_VALIDO = "11222333000181";
 export const CPF_INVALIDO = "52998224724";
+
+/**
+ * Fila de e-mail falsa, para os casos de uso que agora enfileiram um aviso.
+ *
+ * Acumula o que foi enfileirado e devolve `true` — o caminho feliz. Os testes
+ * que se importam com o e-mail olham a lista; os outros ignoram, e é por isso
+ * que ela existe: convidar continua sendo o assunto do teste do convite.
+ */
+export const filaDeEmailFalsa = (registro: unknown[] = []) => ({
+  registro,
+  porta: {
+    enfileirar: async (_tx: unknown, dados: unknown) => {
+      registro.push(dados);
+      return true;
+    },
+    reservarLote: async () => [],
+    marcarEnviado: async () => {},
+    marcarFalha: async () => {},
+    listar: async () => ({ itens: [], total: 0, pagina: 1, porPagina: 25 }),
+    reenfileirar: async () => false,
+  },
+});

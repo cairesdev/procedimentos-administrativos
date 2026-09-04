@@ -1,3 +1,8 @@
+import { PostgresEmailFilaRepository } from "./infrastructure/db/PostgresEmailFilaRepository";
+import { PostgresConfiguracaoEmailRepository } from "./infrastructure/db/PostgresConfiguracaoEmailRepository";
+import { EnfileirarEmail } from "./application/email/EnfileirarEmail";
+import { SmtpEnviador } from "./infrastructure/email/SmtpEnviador";
+import { GerenciarEmail } from "./application/email/GerenciarEmail";
 import { executarEmTransacao } from "./infrastructure/db/pool";
 import { PostgresLicitacaoRepository } from "./infrastructure/db/PostgresLicitacaoRepository";
 import { PostgresContratoRepository } from "./infrastructure/db/PostgresContratoRepository";
@@ -89,6 +94,19 @@ const documentos = new PostgresDocumentoRepository();
 const protocolo = new PostgresProtocoloRepository();
 const almoxarifado = new PostgresAlmoxarifadoRepository();
 const checklists = new PostgresChecklistRepository();
+const emailFila = new PostgresEmailFilaRepository();
+const configuracaoEmail = new PostgresConfiguracaoEmailRepository();
+const enfileirarEmail = new EnfileirarEmail(emailFila);
+const smtp = new SmtpEnviador();
+
+/**
+ * Endereço público do sistema, para os links dentro dos e-mails.
+ *
+ * Sai da configuração, e nunca do cabeçalho `Host` do pedido: o `Host` vem do
+ * cliente, e um link de convite apontaria para onde o cliente mandasse. Mesma
+ * regra do código de conferência das peças emitidas.
+ */
+const APP_URL = (process.env.APP_URL ?? "").replace(/\/$/, "");
 
 export const container = {
   almoxarifado,
@@ -108,9 +126,11 @@ export const container = {
   protocolo,
   atenderProtocolo: new AtenderProtocolo(
     protocolo, usuarios, numeracao, auditoria, executarEmTransacao,
+    enfileirarEmail, APP_URL,
   ),
   exigirDoRequerente: new ExigirDoRequerente(
     protocolo, new PostgresAnexoRepository(), new MinioArmazenamento(), auditoria,
+    executarEmTransacao, enfileirarEmail, APP_URL,
   ),
   documentos,
   manterModelos: new ManterModelos(documentos),
@@ -132,7 +152,11 @@ export const container = {
 
   convidarFornecedor: new ConvidarFornecedor(
     new PostgresFornecedorConviteRepository(), fornecedores, auditoria,
+    executarEmTransacao, enfileirarEmail, APP_URL,
   ),
+
+  emailFila,
+  gerenciarEmail: new GerenciarEmail(configuracaoEmail, smtp, auditoria),
 
   resolverAlcance: new ResolverAlcance(usuarios, almoxarifado),
 
@@ -141,6 +165,7 @@ export const container = {
   ),
   convidarParaChecklist: new ConvidarParaChecklist(
     new PostgresChecklistConviteRepository(), checklists, auditoria, executarEmTransacao,
+    enfileirarEmail, APP_URL,
   ),
   cumprirItem: new CumprirItem(checklists, auditoria, executarEmTransacao),
   anexosDoChecklist: new AnexosDoChecklist(checklists, new MinioArmazenamento()),

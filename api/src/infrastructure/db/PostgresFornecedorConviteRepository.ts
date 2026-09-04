@@ -1,4 +1,5 @@
 import { pool } from "./pool";
+import type { Tx } from "../../application/ports/Transacao";
 import type {
   ConviteDeFornecedor, FornecedorConviteRepository, NovoConvite,
 } from "../../application/ports/FornecedorConviteRepository";
@@ -37,8 +38,10 @@ const SQL = {
 };
 
 export class PostgresFornecedorConviteRepository implements FornecedorConviteRepository {
-  criar = async (dados: NovoConvite): Promise<string> => {
-    const { rows } = await pool.query(SQL.criar, [
+  criar = async (dados: NovoConvite, tx?: Tx): Promise<string> => {
+    // Recebe a transação porque o e-mail do convite entra junto: e-mail sem
+    // convite avisaria de um link que não existe.
+    const { rows } = await (tx ?? pool).query(SQL.criar, [
       dados.fornecedorId, dados.orgaoId, dados.criadoPor, dados.tokenHash, dados.expiraEm,
     ]);
     return rows[0].id;

@@ -5,7 +5,8 @@ import { describe, it } from "node:test";
 import {
   ConvidarFornecedor, hashDoToken,
 } from "../../src/application/fornecedor/ConvidarFornecedor";
-import { auditoriaFalsa, recusa } from "../ajudantes/dobras";
+import { auditoriaFalsa, filaDeEmailFalsa, recusa, semTransacao } from "../ajudantes/dobras";
+import { EnfileirarEmail } from "../../src/application/email/EnfileirarEmail";
 
 /**
  * Link externo do fornecedor.
@@ -58,6 +59,8 @@ const montar = () => {
     auditados: auditoria.registros,
     caso: new ConvidarFornecedor(
       convites as never, fornecedores as never, auditoria.porta as never,
+      semTransacao, new EnfileirarEmail(filaDeEmailFalsa().porta as never),
+      "https://exemplo.gov.br",
     ),
   };
 };

@@ -6,6 +6,8 @@ import type {
   ChecklistConviteRepository, ConviteDeChecklist,
 } from "../ports/ChecklistConviteRepository";
 import type { ChecklistRepository } from "../ports/ChecklistRepository";
+import { conviteDeChecklist } from "../../domain/email/Mensagens";
+import type { EnfileirarEmail, ResultadoDoEnfileiramento } from "../email/EnfileirarEmail";
 import type { ExecutorDeTransacao } from "../ports/Transacao";
 
 /**
@@ -34,6 +36,9 @@ export class ConvidarParaChecklist {
     private readonly checklists: ChecklistRepository,
     private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
+    private readonly emails: EnfileirarEmail,
+    /** Endereço público do sistema, para montar o link do convite. */
+    private readonly appUrl: string,
   ) {}
 
   /**
@@ -47,7 +52,11 @@ export class ConvidarParaChecklist {
     usuarioId: string;
     checklistId: string;
     destinatario?: string | null;
-  }): Promise<{ token: string; expiraEm: string }> => {
+    /** Em branco, gera só o link — que é como a prefeitura trabalha hoje. */
+    destinatarioEmail?: string | null;
+    /** Nome da prefeitura, para o remetente e o corpo do e-mail. */
+    orgaoNome?: string;
+  }): Promise<{ token: string; expiraEm: string; email: ResultadoDoEnfileiramento }> => {
     const checklist = await this.checklists.buscar(entrada.orgaoId, entrada.checklistId);
     if (!checklist) throw new NaoEncontrado("Checklist não encontrado");
 
@@ -67,12 +76,38 @@ export class ConvidarParaChecklist {
     const token = randomBytes(32).toString("base64url");
     const expiraEm = new Date(Date.now() + DIAS_DE_VALIDADE * 24 * 60 * 60 * 1000);
 
-    await this.convites.criar({
-      checklistId: entrada.checklistId,
-      tokenHash: hashDoToken(token),
-      destinatario: entrada.destinatario?.trim() || null,
-      criadoPor: entrada.usuarioId,
-      expiraEm: expiraEm.toISOString(),
+    /**
+     * O convite e o e-mail dele entram juntos, ou não entram.
+     *
+     * Se o e-mail não puder ser enfileirado, o convite continua — o link fica
+     * na tela e alguém manda à mão, que é como metade das prefeituras
+     * trabalha. O contrário é que não pode: e-mail avisando de um link que a
+     * transação desfez.
+     */
+    const email = await this.transacao(async (tx) => {
+      const conviteId = await this.convites.criar({
+        checklistId: entrada.checklistId,
+        tokenHash: hashDoToken(token),
+        destinatario: entrada.destinatario?.trim() || null,
+        destinatarioEmail: entrada.destinatarioEmail?.trim() || null,
+        criadoPor: entrada.usuarioId,
+        expiraEm: expiraEm.toISOString(),
+      }, tx);
+
+      return this.emails.executar(tx, {
+        orgaoId: entrada.orgaoId,
+        tipo: "CONVITE_CHECKLIST",
+        destinatario: entrada.destinatarioEmail,
+        referenciaId: entrada.checklistId,
+        chave: `CONVITE_CHECKLIST:${conviteId}`,
+        mensagem: conviteDeChecklist({
+          orgao: entrada.orgaoNome ?? "Prefeitura",
+          checklist: checklist.titulo,
+          destinatario: entrada.destinatario?.trim() || "Prezados",
+          link: `${this.appUrl}/checklist/${token}`,
+          expiraEm,
+        }),
+      });
     });
 
     await this.auditoria.registrar({
@@ -82,12 +117,14 @@ export class ConvidarParaChecklist {
       referenciaId: entrada.checklistId,
       detalhes: {
         destinatario: entrada.destinatario ?? null,
+        destinatarioEmail: entrada.destinatarioEmail ?? null,
+        email,
         itens: doFornecedor.length,
         expiraEm: expiraEm.toISOString(),
       },
     });
 
-    return { token, expiraEm: expiraEm.toISOString() };
+    return { token, expiraEm: expiraEm.toISOString(), email };
   };
 
   /**

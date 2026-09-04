@@ -94,7 +94,14 @@ export const dispensarSchema = z.object({
   motivo: z.string().min(3, "Explique por que o item deixou de ser exigível").max(500),
 });
 
-/** Para quem o link foi enviado — texto livre, e só para o registro. */
+/**
+ * Para quem o link foi enviado.
+ *
+ * `destinatario` é o nome, texto livre — o convite vai para engenheiro,
+ * cartório ou consórcio, que não estão em cadastro nenhum. `destinatarioEmail`
+ * é opcional: em branco, gera só o link, que é como a prefeitura trabalha hoje.
+ */
 export const conviteSchema = z.object({
   destinatario: z.string().max(200).nullable().optional(),
+  destinatarioEmail: z.string().max(200).nullable().optional(),
 });

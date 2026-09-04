@@ -1,3 +1,5 @@
+import { protocoloAberto } from "../../domain/email/Mensagens";
+import type { EnfileirarEmail } from "../email/EnfileirarEmail";
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { somenteDigitos, documentoValido } from "../../domain/protocolo/Documento";
 import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
@@ -22,6 +24,8 @@ export type AberturaDeAtendimento = {
   };
   /** Servidor que atendeu; ausente quando o próprio cidadão abriu. */
   usuarioId?: string;
+  /** Nome da prefeitura, para o remetente e o corpo do e-mail. */
+  orgaoNome?: string;
 };
 
 /**
@@ -48,6 +52,9 @@ export class AtenderProtocolo {
     private readonly numeracao: GeradorNumeroProcesso,
     private readonly auditoria: AuditoriaRepository,
     private readonly transacao: ExecutorDeTransacao,
+    private readonly emails: EnfileirarEmail,
+    /** Endereço público do sistema, para o link de acompanhamento. */
+    private readonly appUrl: string,
   ) {}
 
   abrir = async (
@@ -135,7 +142,30 @@ export class AtenderProtocolo {
         departamentoAtualId: destino.departamentoId ?? undefined,
       }, tx);
 
-      return { id, ...numeros };
+      /**
+       * A confirmação sai junto com o protocolo.
+       *
+       * É o e-mail que guarda o número para o cidadão — sem ele, quem abre
+       * pelo portal depende de anotar da tela, e quem esquece volta ao balcão
+       * para perguntar qual era. Vai na mesma transação: número gerado e
+       * confirmação prometida são a mesma coisa.
+       */
+      const email = await this.emails.executar(tx, {
+        orgaoId: dados.orgaoId,
+        tipo: "PROTOCOLO_ABERTO",
+        destinatario: dados.requerente.contatoEmail,
+        referenciaId: id,
+        chave: `PROTOCOLO_ABERTO:${id}`,
+        mensagem: protocoloAberto({
+          orgao: dados.orgaoNome ?? "Prefeitura",
+          requerente: dados.requerente.nome,
+          numeroProtocolo: numeros.protocolo,
+          assuntoDoPedido: assunto.nome,
+          link: `${this.appUrl}/acompanhar`,
+        }),
+      });
+
+      return { id, ...numeros, email };
     });
 
     await this.auditoria.registrar({
@@ -151,6 +181,7 @@ export class AtenderProtocolo {
         origem: dados.origem,
         requerente: dados.requerente.nome,
         documento,
+        email: resultado.email,
       },
     });
 

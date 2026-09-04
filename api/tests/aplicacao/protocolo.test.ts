@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AtenderProtocolo } from "../../src/application/protocolo/AtenderProtocolo";
-import { CPF_VALIDO, auditoriaFalsa, recusa, semTransacao } from "../ajudantes/dobras";
+import { filaDeEmailFalsa, CPF_VALIDO, auditoriaFalsa, recusa, semTransacao } from "../ajudantes/dobras";
+import { EnfileirarEmail } from "../../src/application/email/EnfileirarEmail";
 
 type Opcoes = {
   assunto?: { id: string; nome: string; setorId: string | null; ativo: boolean };
@@ -52,6 +53,7 @@ const montar = (opcoes: Opcoes = {}) => {
     caso: new AtenderProtocolo(
       protocolo as never, fluxos as never, numeracao as never,
       auditoria.porta as never, semTransacao as never,
+      new EnfileirarEmail(filaDeEmailFalsa().porta as never), "https://exemplo.gov.br",
     ),
   };
 };

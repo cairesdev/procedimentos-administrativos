@@ -12,6 +12,7 @@ import { atasRouter } from "./routes/atas";
 import { solicitacoesRouter } from "./routes/solicitacoes";
 import { processosRouter } from "./routes/processos";
 import { auditoriaRouter } from "./routes/auditoria";
+import { emailsRouter } from "./routes/emails";
 import { documentosRouter } from "./routes/documentos";
 import { conferenciaRouter } from "./routes/conferencia";
 import { protocoloRouter } from "./routes/protocolo";
@@ -61,6 +62,7 @@ export const criarApp = () => {
   app.use("/usuarios", ...sessao, resolveTenant(), usuariosRouter);
   app.use("/fluxos", ...sessao, resolveTenant(), fluxosRouter);
   app.use("/auditoria", ...sessao, resolveTenant(), auditoriaRouter);
+  app.use("/emails", ...sessao, resolveTenant(), emailsRouter);
   // Documentos atendem todos os módulos, então não exigem módulo específico.
   app.use("/documentos", ...sessao, resolveTenant(), documentosRouter);
 

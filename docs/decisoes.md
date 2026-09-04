@@ -1960,3 +1960,79 @@ prestação de contas sem os documentos que o justificam.
 - **Compressão no zip** — o conteúdo é PDF, JPEG e PNG, já comprimidos.
 - **Download em fluxo** — o pacote passa pela memória, e o teto é o que segura.
 - **Assinatura ou carimbo de tempo no pacote** não foi pedido.
+
+## Envio de e-mail — levantamento consolidado
+
+Hoje **nenhum e-mail sai do sistema**: não há SMTP, não há dependência de envio,
+não há fila. Todo aviso depende de alguém copiar um link e mandar por fora — e
+o cidadão que responde a uma exigência só descobre que ela existe se voltar ao
+portal por conta própria.
+
+1. **Três momentos nesta fatia**: convite de fornecedor, convite de checklist e
+   exigência ao requerente — mais a confirmação de protocolo aberto. Os quatro
+   já têm destinatário conhecido e já geram, hoje, um link que alguém repassa à
+   mão.
+2. **O SMTP é configurado pelo administrativo geral**, não pelo `.env`. Trocar
+   de provedor, corrigir uma porta ou girar a senha deixa de exigir acesso à
+   VPS e reinício do contêiner — vira uma tela, como o timbre e os modelos
+   globais já são. O painel `/admin` já autentica no nível do produto
+   (`authenticateAdmin`) e já gerencia órgãos, módulos, timbre e modelos: a
+   configuração de e-mail entra ali sem peça nova.
+3. **Um SMTP global, e a prefeitura pode ter o dela.** Exatamente a regra que o
+   sistema já usa para `documento_modelo`: vale o da prefeitura quando existe,
+   senão o global. Quem tem domínio próprio manda do domínio próprio — o
+   cidadão recebe da prefeitura dele e o bloqueio de um não derruba os outros;
+   quem não tem sai pelo remetente do produto e continua funcionando no
+   primeiro dia, sem configurar nada.
+4. **Quando o e-mail sai pelo remetente global, o nome de exibição leva a
+   prefeitura**: `"Prefeitura de Monção" <naoresponda@dominio>`. Sem isso o
+   destinatário recebe de um remetente que ele nunca ouviu falar, e o e-mail
+   que mais importa — a exigência — é o que mais parece golpe.
+5. **A senha do SMTP é cifrada no banco, com chave no `.env`.** Host, porta e
+   remetente ficam em texto, porque são configuração; a senha, não. O backup
+   diário do compose e qualquer dump do banco passariam a carregar uma
+   credencial capaz de mandar e-mail em nome da prefeitura, e este projeto já
+   perdeu segredo por vazamento uma vez. **O que essa cifra protege, e o que
+   não protege**: protege dump e backup vazados; não protege invasão do
+   servidor, onde o atacante tem o banco e a chave. Perder `EMAIL_CHAVE`
+   significa recadastrar as senhas — não há recuperação, e é assim mesmo.
+6. **A tela tem envio de teste.** Configuração de SMTP sem botão de testar é
+   configuração que se descobre errada no dia em que um cidadão precisava do
+   aviso. O teste manda para o próprio administrador, na hora, sem passar pela
+   fila, e mostra o erro do servidor como ele veio.
+7. **Sem SMTP nenhum configurado, a fila acumula e isso aparece.** Nada de
+   engolir a mensagem nem de fingir envio: os e-mails ficam pendentes, a tela
+   de e-mails mostra por quê, e a tela de configuração diz que ainda não há
+   remetente. Fila parada em silêncio é pior que erro na cara.
+8. **Fila no banco, com retentativa.** SMTP fora do ar não pode perder a
+   exigência nem travar quem clicou em despachar. O envio é enfileirado dentro
+   da mesma transação do ato; quem manda é o worker, depois.
+9. **Contêiner separado no compose**, com a mesma imagem da API e outro
+   comando. Pico de envio não afeta quem está na tela, e reiniciar um não
+   derruba o outro. A trava de concorrência fica no banco mesmo assim
+   (`FOR UPDATE SKIP LOCKED`): é barata agora e é o que permite subir uma
+   segunda réplica sem mandar tudo em duplicidade.
+10. **Texto fixo no código.** São mensagens curtas e operacionais, iguais para
+   todas as prefeituras. O motor de documentos não serve aqui: ele foi feito
+   para peça oficial impressa, com timbre e código de conferência.
+11. **`destinatario_email` no convite de checklist.** Hoje a coluna
+   `destinatario` guarda um nome em texto livre — o convite vai para engenheiro,
+   cartório ou consórcio, que não estão em cadastro nenhum. Sem a coluna não há
+   como reenviar nem conferir depois para qual endereço foi.
+12. **Não responda, e o texto avisa.** A tabela `orgao` não tem e-mail, e criar
+   um campo que ninguém mantém é o erro que este projeto já cometeu quatro
+   vezes. O e-mail diz para não responder e aponta o link de acompanhamento,
+   que é onde a conversa de verdade acontece.
+13. **O link continua na tela.** O e-mail soma, não substitui: quem gera o
+   convite continua podendo copiar o link e mandar por WhatsApp, que é como
+   metade das prefeituras trabalha.
+
+### O que fica fora desta fatia
+
+- **Recuperação de senha.** É o único caso sem alternativa manual — hoje quem
+  esquece a senha depende de um administrador. Fica registrado que segue
+  impossível.
+- **Notificação a servidor interno** (processo despachado ao seu setor, prazo
+  vencendo). São muitos e-mails por dia e pedem preferência por usuário, que
+  não foi modelada.
+- **Anexo no e-mail.** Nenhuma das quatro mensagens precisa: todas levam link.

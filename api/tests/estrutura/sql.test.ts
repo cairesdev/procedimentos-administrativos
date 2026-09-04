@@ -135,6 +135,10 @@ describe("consultas dos repositórios", () => {
     bloquearLotePorId: "FOR UPDATE OF <alias>",
     bloquearDevolucao: "FOR UPDATE OF <alias>",
     bloquearDevolucaoSimples: "FOR UPDATE OF <alias>",
+    reservarLote:
+      "UPDATE ... FROM a, b RETURNING colunas das duas — o parser não segue o "
+      + "RETURNING com mais de uma origem. É a reserva da fila de e-mail, e o "
+      + "Postgres de verdade a aceita (verificar-migrations.py a prepara).",
   };
 
   it("tem sintaxe que o Postgres aceita", () => {

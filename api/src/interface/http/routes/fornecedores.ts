@@ -45,6 +45,9 @@ fornecedoresRouter.post(
         orgaoId: req.sessao!.orgaoId,
         usuarioId: req.sessao!.usuarioId,
         fornecedorId: req.params.id!,
+        // O nome vai no remetente e no corpo: o fornecedor precisa saber de
+        // qual prefeitura veio o pedido para conferir o cadastro.
+        orgaoNome: (await container.adminSistema.buscarOrgao(req.sessao!.orgaoId))?.nome,
       }));
     } catch (error) {
       next(error);

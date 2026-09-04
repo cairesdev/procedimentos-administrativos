@@ -5,6 +5,9 @@ import type { AuditoriaRepository } from "../ports/AuditoriaRepository";
 import { sanitizarNomeDeArquivo } from "../shared/NomeDeArquivo";
 import { randomUUID } from "node:crypto";
 import type { Exigencia, ProtocoloRepository } from "../ports/ProtocoloRepository";
+import type { ExecutorDeTransacao } from "../ports/Transacao";
+import { exigenciaAoRequerente } from "../../domain/email/Mensagens";
+import type { EnfileirarEmail, ResultadoDoEnfileiramento } from "../email/EnfileirarEmail";
 
 /** O que o requerente pode juntar. Nada executável, nada de arquivo enorme. */
 const TIPOS_ACEITOS = [
@@ -21,6 +24,8 @@ export type NovaExigenciaEntrada = {
   usuarioId: string;
   texto: string;
   prazoDias?: number;
+  /** Nome da prefeitura, para o remetente e o corpo do e-mail. */
+  orgaoNome?: string;
 };
 
 export type RespostaDoRequerente = {
@@ -53,11 +58,17 @@ export class ExigirDoRequerente {
     private readonly anexos: AnexoRepository,
     private readonly armazenamento: ArmazenamentoArquivos,
     private readonly auditoria: AuditoriaRepository,
+    private readonly transacao: ExecutorDeTransacao,
+    private readonly emails: EnfileirarEmail,
+    /** Endereço público do sistema, para o link de acompanhamento. */
+    private readonly appUrl: string,
   ) {}
 
   // ---- Lado da prefeitura ---------------------------------------------------
 
-  exigir = async (entrada: NovaExigenciaEntrada): Promise<{ id: string }> => {
+  exigir = async (
+    entrada: NovaExigenciaEntrada,
+  ): Promise<{ id: string; email: ResultadoDoEnfileiramento }> => {
     if (entrada.texto.trim().length < 10) {
       throw new ErroDeNegocio("Descreva a exigência com pelo menos dez caracteres");
     }
@@ -78,23 +89,57 @@ export class ExigirDoRequerente {
         .slice(0, 10)
       : null;
 
-    const id = await this.protocolo.criarExigencia({
-      orgaoId: entrada.orgaoId,
-      processoId: entrada.processoId,
-      texto: entrada.texto.trim(),
-      prazoDias: entrada.prazoDias,
-      criadaPorUsuarioId: entrada.usuarioId,
-    }, prazoLimite);
+    /**
+     * O aviso ao requerente é o ponto da exigência.
+     *
+     * Sem ele, o cidadão só descobre que o processo dele parou se voltar ao
+     * portal por conta própria — e o prazo corre enquanto isso. É a mensagem
+     * que mais justifica esta fatia inteira.
+     *
+     * O atendimento é buscado **antes** da transação: é leitura, e prendê-la
+     * junto só alongaria o tempo em que a linha fica travada.
+     */
+    const atendimento = await this.protocolo.buscarAtendimento(
+      entrada.orgaoId, entrada.processoId,
+    );
+
+    const { id, email } = await this.transacao(async (tx) => {
+      const criada = await this.protocolo.criarExigencia({
+        orgaoId: entrada.orgaoId,
+        processoId: entrada.processoId,
+        texto: entrada.texto.trim(),
+        prazoDias: entrada.prazoDias,
+        criadaPorUsuarioId: entrada.usuarioId,
+      }, prazoLimite, tx);
+
+      const enviado = await this.emails.executar(tx, {
+        orgaoId: entrada.orgaoId,
+        tipo: "EXIGENCIA_AO_REQUERENTE",
+        destinatario: atendimento?.requerenteEmail,
+        referenciaId: entrada.processoId,
+        chave: `EXIGENCIA:${criada}`,
+        mensagem: exigenciaAoRequerente({
+          orgao: entrada.orgaoNome ?? "Prefeitura",
+          requerente: atendimento?.requerenteNome ?? "Prezado(a)",
+          numeroProtocolo: atendimento?.numeroProtocolo ?? "",
+          descricao: entrada.texto.trim(),
+          link: `${this.appUrl}/acompanhar`,
+          prazoEm: prazoLimite,
+        }),
+      });
+
+      return { id: criada, email: enviado };
+    });
 
     await this.auditoria.registrar({
       orgaoId: entrada.orgaoId,
       usuarioId: entrada.usuarioId,
       tipoEvento: "EXIGENCIA_REGISTRADA",
       referenciaId: entrada.processoId,
-      detalhes: { exigenciaId: id, prazoDias: entrada.prazoDias ?? null },
+      detalhes: { exigenciaId: id, prazoDias: entrada.prazoDias ?? null, email },
     });
 
-    return { id };
+    return { id, email };
   };
 
   cancelarExigencia = async (entrada: {

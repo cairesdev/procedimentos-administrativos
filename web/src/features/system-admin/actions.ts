@@ -312,3 +312,49 @@ export const saveGlobalTemplate = async (
     revalidatePath("/admin/modelos");
     revalidatePath(`/admin/modelos/${tipo}`);
   }, "Modelo padrão salvo");
+
+/**
+ * Salva o SMTP — global (sem `tenantId`) ou da prefeitura.
+ *
+ * `senha` em branco **não apaga** a que está lá: quem entrou para corrigir a
+ * porta não pode sair sem senha. Remover a autenticação é ato explícito, e
+ * passa por deixar usuário e senha vazios.
+ */
+export const saveEmailSettings = async (
+  input: {
+    host: string; porta: number; usuario?: string; senha?: string;
+    remetente: string; tlsDireto: boolean; ativo: boolean;
+  },
+  tenantId?: string,
+) =>
+  runAction(async () => {
+    const caminho = tenantId ? `/admin/orgaos/${tenantId}/email` : "/admin/email";
+    await withAdminToken(caminho, "PUT", {
+      host: input.host,
+      porta: input.porta,
+      usuario: input.usuario?.trim() || null,
+      // `undefined` some do JSON e a API entende "não mexe".
+      ...(input.senha?.trim() ? { senha: input.senha.trim() } : {}),
+      remetente: input.remetente,
+      tlsDireto: input.tlsDireto,
+      ativo: input.ativo,
+    });
+    revalidatePath("/admin/email");
+    if (tenantId) revalidarPrefeitura(tenantId);
+  }, "Configuração de e-mail salva");
+
+/**
+ * O teste de envio.
+ *
+ * Configuração de SMTP sem botão de testar se descobre errada no dia em que um
+ * cidadão precisava do aviso. Usa o que **está salvo**, não o que está no
+ * formulário: testar o digitado e gravar outra coisa seria testar o que não
+ * vai valer.
+ */
+export const testEmailSettings = async (para: string, tenantId?: string) =>
+  runAction(async () => {
+    const caminho = tenantId
+      ? `/admin/orgaos/${tenantId}/email/teste`
+      : "/admin/email/teste";
+    await withAdminToken(caminho, "POST", { para });
+  }, "Teste enviado");

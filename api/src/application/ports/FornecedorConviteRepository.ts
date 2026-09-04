@@ -1,3 +1,4 @@
+import type { Tx } from "./Transacao";
 /** Convite aberto, como as telas e o caso de uso o enxergam. */
 export type ConviteDeFornecedor = {
   id: string;
@@ -20,7 +21,7 @@ export type NovoConvite = {
 };
 
 export interface FornecedorConviteRepository {
-  criar(dados: NovoConvite): Promise<string>;
+  criar(dados: NovoConvite, tx?: Tx): Promise<string>;
   buscarPorHash(tokenHash: string): Promise<ConviteDeFornecedor | null>;
   /** Convite ainda de pé desta prefeitura para este fornecedor. */
   buscarAberto(fornecedorId: string, orgaoId: string): Promise<ConviteDeFornecedor | null>;

@@ -340,12 +340,14 @@ checklistsRouter.post(
 
 checklistsRouter.post("/:id/convite", administra, async (req, res, next) => {
   try {
-    const { destinatario } = conviteSchema.parse(req.body);
+    const { destinatario, destinatarioEmail } = conviteSchema.parse(req.body);
     res.status(201).json(await container.convidarParaChecklist.convidar({
       orgaoId: req.sessao!.orgaoId,
       usuarioId: req.sessao!.usuarioId,
       checklistId: req.params.id!,
       destinatario,
+      destinatarioEmail,
+      orgaoNome: (await container.adminSistema.buscarOrgao(req.sessao!.orgaoId))?.nome,
     }));
   } catch (error) {
     next(error);

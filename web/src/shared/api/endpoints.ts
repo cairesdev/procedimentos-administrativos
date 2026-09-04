@@ -16,6 +16,7 @@ export const endpoints = {
   requests: "/solicitacoes",
   processes: "/processos",
   audit: "/auditoria",
+  emails: "/emails",
   assetLocations: "/patrimonio/locais",
   assetCategories: "/patrimonio/categorias",
   assetIntakes: "/patrimonio/remessas",

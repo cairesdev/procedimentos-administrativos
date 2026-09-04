@@ -24,22 +24,41 @@ export const InviteButton = ({
   conviteAberto,
 }: {
   checklistId: string;
-  conviteAberto: { expiraEm: string; destinatario: string | null } | null;
+  conviteAberto: {
+    expiraEm: string; destinatario: string | null; destinatarioEmail?: string | null;
+  } | null;
 }) => {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [destinatario, setDestinatario] = useState("");
+  const [email, setEmail] = useState("");
   const [link, setLink] = useState<{ url: string; expiraEm: string } | null>(null);
 
   const gerar = async () => {
     setOcupado(true);
-    const resultado = await inviteToChecklist(checklistId, destinatario);
+    const resultado = await inviteToChecklist(checklistId, destinatario, email);
     setOcupado(false);
 
     if ("error" in resultado) {
       toast.error(resultado.error);
       return;
+    }
+
+    /**
+     * O convite vale mesmo quando o e-mail não sai.
+     *
+     * Por isso o aviso é `toast`, e não erro: o link está pronto na tela e
+     * alguém manda por WhatsApp, que é como metade das prefeituras trabalha.
+     * O único caso que merece atenção é o endereço digitado errado — é a
+     * única chance de corrigir antes de o fornecedor não receber nada.
+     */
+    if (resultado.email === "enfileirado") {
+      toast.success("Convite gerado e e-mail a caminho");
+    } else if (resultado.email === "endereco-invalido") {
+      toast.error("O e-mail informado não é válido. O link foi gerado, mas nada foi enviado.");
+    } else {
+      toast.success("Convite gerado. Copie o link abaixo para enviar.");
     }
     setLink({
       url: `${window.location.origin}/exigencias/${resultado.token}`,
@@ -116,10 +135,23 @@ export const InviteButton = ({
               <InputField
                 label="Para quem"
                 name="destinatario"
-                placeholder="Construtora Alfa — contato@alfa.com.br"
-                hint="Só para o registro; o link não é enviado por e-mail pelo sistema."
+                placeholder="Construtora Alfa"
+                hint="O nome de quem vai receber — aparece no e-mail e no registro."
                 value={destinatario}
                 onChange={(evento) => setDestinatario(evento.target.value)}
+              />
+
+              <InputField
+                label="E-mail (opcional)"
+                name="destinatarioEmail"
+                type="email"
+                placeholder="contato@alfa.com.br"
+                hint={
+                  "Preenchido, o sistema manda o link. Em branco, o link fica aqui "
+                  + "para você enviar como preferir."
+                }
+                value={email}
+                onChange={(evento) => setEmail(evento.target.value)}
               />
 
               <div className={styles.rodape}>

@@ -190,7 +190,7 @@ export interface ProtocoloRepository {
   buscarAtendimento(orgaoId: string, id: string): Promise<AtendimentoDetalhe | null>;
   listarExigencias(orgaoId: string, processoId: string): Promise<Exigencia[]>;
   buscarExigencia(id: string): Promise<Exigencia | null>;
-  criarExigencia(dados: NovaExigencia, prazoLimite: string | null): Promise<string>;
+  criarExigencia(dados: NovaExigencia, prazoLimite: string | null, tx?: Tx): Promise<string>;
   responderExigencia(id: string, texto: string): Promise<void>;
   cancelarExigencia(orgaoId: string, id: string, motivo: string): Promise<void>;
   /** Exigências que o requerente vê no acompanhamento — sem dado interno. */

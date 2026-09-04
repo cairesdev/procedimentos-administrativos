@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   ConvidarParaChecklist, hashDoToken,
 } from "../../src/application/checklist/ConvidarParaChecklist";
+import { filaDeEmailFalsa } from "../ajudantes/dobras";
+import { EnfileirarEmail } from "../../src/application/email/EnfileirarEmail";
 
 const recusa = async (acao: () => Promise<unknown>, mensagem: RegExp) => {
   await assert.rejects(acao, (erro: Error) => {
@@ -31,7 +33,10 @@ const montar = (opcoes: {
   convite?: Record<string, unknown> | null;
   itensDoFornecedor?: boolean;
 } = {}) => {
-  const gravado = { criados: [] as unknown[], ciclos: [] as unknown[], usos: [] as string[] };
+  const gravado = {
+    criados: [] as unknown[], ciclos: [] as unknown[], usos: [] as string[],
+    emails: [] as unknown[],
+  };
 
   const caso = new ConvidarParaChecklist(
     {
@@ -65,6 +70,8 @@ const montar = (opcoes: {
     } as never,
     { registrar: async () => undefined } as never,
     (async (fn: (tx: unknown) => unknown) => fn({})) as never,
+    new EnfileirarEmail(filaDeEmailFalsa(gravado.emails).porta as never),
+    "https://exemplo.gov.br",
   );
 
   return { caso, gravado };

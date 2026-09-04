@@ -322,8 +322,14 @@ export class PostgresProtocoloRepository implements ProtocoloRepository {
     return rows[0] ? comAnexos(rows[0]) : null;
   };
 
-  criarExigencia = async (dados: NovaExigencia, prazoLimite: string | null): Promise<string> => {
-    const { rows } = await pool.query(SQL.criarExigencia, [
+  criarExigencia = async (
+    dados: NovaExigencia,
+    prazoLimite: string | null,
+    tx?: Tx,
+  ): Promise<string> => {
+    // A exigência e o aviso ao requerente entram juntos: o cidadão não pode
+    // receber cobrança de uma exigência que a transação desfez.
+    const { rows } = await (tx ?? pool).query(SQL.criarExigencia, [
       dados.orgaoId, dados.processoId, dados.texto,
       dados.prazoDias ?? null, prazoLimite, dados.criadaPorUsuarioId,
     ]);

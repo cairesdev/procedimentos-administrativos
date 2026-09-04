@@ -1622,3 +1622,52 @@ antes de parsear, com a perda declarada em comentário: quem confere função e
 gatilho é `db/verificar-migrations.py`, num Postgres de verdade, e ele confere
 (121/121 invariantes, incluindo "encerrado o primeiro, o bem passa para o termo
 novo", que só passa se o gatilho funcionar).
+
+## Envio de e-mail
+
+| O que | Onde |
+| --- | --- |
+| Configuração de SMTP editável | `/admin/email` e, por prefeitura, dentro dela |
+| Senha cifrada (AES-256-GCM, `EMAIL_CHAVE`) | `domain/email/SegredoDoSmtp.ts` |
+| Resolução prefeitura → global | `PostgresConfiguracaoEmailRepository.resolver` |
+| As quatro mensagens, em texto puro | `domain/email/Mensagens.ts` |
+| Fila com idempotência e retentativa | `email_fila` (0047) + `DespacharFilaDeEmails` |
+| Worker em contêiner próprio | `src/worker.ts`, serviço `email-worker` no compose |
+| Fila visível à prefeitura, com reenvio | `/administracao/emails` |
+| E-mail no convite de checklist | `destinatario_email` (0047) + `InviteButton` |
+
+**Quatro atos passaram a avisar**, cada um dentro da própria transação:
+convite de fornecedor, convite de checklist, exigência ao requerente e
+confirmação de protocolo. Enfileirar **nunca lança**: o e-mail é um aviso sobre
+o ato, não o ato — uma exigência não deixa de ser registrada porque o cidadão
+digitou o e-mail errado no balcão.
+
+**Verificação:** 798 testes na API, 142/142 invariantes em Postgres real,
+442/442 consultas preparadas, e um palco com Postgres + API + worker + um
+servidor SMTP de mentira (26 asserções): a exigência entra na fila junto com o
+ato, o worker manda pelo SMTP certo, a prefeitura com domínio próprio sai pelo
+dela, o SMTP fora do ar não perde a mensagem, o teto vira FALHOU com o erro do
+servidor, o reenvio funciona e o que já saiu é recusado.
+
+**Três guardas quebrados de propósito**, três acusaram: endereço inválido
+barrado na entrada, "sem SMTP" não contando como tentativa, e o isolamento que
+impede um e-mail ruim de derrubar o lote.
+
+### O que precisa ser feito no deploy
+
+1. `EMAIL_CHAVE` no `.env.prod` (`openssl rand -base64 32`), `chmod 600`. **Sem
+   ela o worker não sobe** — de propósito: ele não teria como decifrar senha
+   nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
+2. `APP_URL` apontando para o endereço público — é o que monta os links dentro
+   dos e-mails.
+3. Subir o serviço `email-worker` (mesma imagem da API, outro comando).
+4. Cadastrar o SMTP global em `/admin/email` e **usar o botão de teste**.
+
+### Limitações conhecidas
+
+- **A alteração do SMTP global não fica na auditoria.** A trilha é por
+  prefeitura (`auditoria.orgao_id` é obrigatório) e a configuração do produto
+  não é de nenhuma. Quem mexe nela são os administradores gerais, que são
+  poucos e nomeados. Resolver pede uma trilha própria do produto.
+- **Recuperação de senha continua fora**, e segue sendo o único caso sem
+  alternativa manual.

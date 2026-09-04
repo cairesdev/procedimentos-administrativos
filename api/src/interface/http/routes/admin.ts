@@ -518,3 +518,118 @@ adminRouter.patch("/orgaos/:id/administradores/:usuarioId", async (req, res, nex
     next(error);
   }
 });
+
+// ---- Configuração de SMTP ---------------------------------------------------
+//
+// Uma global, do produto, e opcionalmente uma por prefeitura. Sai do `.env` e
+// vem para cá: trocar de provedor, corrigir porta ou girar senha deixou de
+// exigir acesso à VPS e reinício de contêiner.
+//
+// `orgaoId` nulo é a do produto; a rota de prefeitura passa o id dela.
+
+const smtpSchema = z.object({
+  host: z.string().min(1).max(200),
+  porta: z.number().int().min(1).max(65535),
+  usuario: z.string().max(200).nullish(),
+  /**
+   * Ausente mantém a senha que está lá — é o campo em branco de quem entrou
+   * só para corrigir a porta. `null` remove a autenticação, e é ato explícito.
+   */
+  senha: z.string().max(200).nullish(),
+  remetente: z.string().min(3).max(200),
+  tlsDireto: z.boolean().default(false),
+  ativo: z.boolean().default(true),
+});
+
+const orgaoDaRota = (valor?: string): string | null => valor ?? null;
+
+adminRouter.get("/email", async (_req, res, next) => {
+  try {
+    res.json(await container.gerenciarEmail.ver(null));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/email", async (req, res, next) => {
+  try {
+    await container.gerenciarEmail.salvar(
+      null, smtpSchema.parse(req.body), req.admin?.adminId ?? "",
+    );
+    res.json({ message: "Configuração de e-mail salva" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete("/email", async (req, res, next) => {
+  try {
+    await container.gerenciarEmail.remover(null, req.admin?.adminId ?? "");
+    res.json({ message: "Configuração de e-mail removida" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/orgaos/:id/email", async (req, res, next) => {
+  try {
+    res.json(await container.gerenciarEmail.ver(orgaoDaRota(req.params.id)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/orgaos/:id/email", async (req, res, next) => {
+  try {
+    await container.gerenciarEmail.salvar(
+      orgaoDaRota(req.params.id), smtpSchema.parse(req.body), req.admin?.adminId ?? "",
+    );
+    res.json({ message: "Configuração de e-mail salva" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete("/orgaos/:id/email", async (req, res, next) => {
+  try {
+    await container.gerenciarEmail.remover(
+      orgaoDaRota(req.params.id), req.admin?.adminId ?? "",
+    );
+    res.json({ message: "Configuração de e-mail removida" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * O teste de envio.
+ *
+ * Vai direto, fora da fila, para o e-mail do próprio administrador: sem ele a
+ * configuração se descobre errada no dia em que um cidadão precisava do aviso.
+ * O erro do servidor sobe como veio — "535 authentication failed" diz o que
+ * corrigir; "falha no envio" não diz nada.
+ */
+const testeSchema = z.object({ para: z.string().min(3).max(200) });
+
+adminRouter.post("/email/teste", async (req, res, next) => {
+  try {
+    const { para } = testeSchema.parse(req.body);
+    await container.gerenciarEmail.testar(null, para, "Sistema de procedimentos");
+    res.json({ message: `Teste enviado para ${para}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/orgaos/:id/email/teste", async (req, res, next) => {
+  try {
+    const { para } = testeSchema.parse(req.body);
+    const orgao = await container.adminSistema.buscarOrgao(req.params.id!);
+    await container.gerenciarEmail.testar(
+      orgaoDaRota(req.params.id), para, orgao?.nome ?? "Prefeitura",
+    );
+    res.json({ message: `Teste enviado para ${para}` });
+  } catch (error) {
+    next(error);
+  }
+});

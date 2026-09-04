@@ -54,3 +54,29 @@ export const listEntityAdmins = (tenantId: string) =>
 
 export const listPromotableUsers = (tenantId: string) =>
   adminRequest<PromotableUser[]>(`/admin/orgaos/${tenantId}/promoviveis`);
+
+/**
+ * A configuração de SMTP.
+ *
+ * `orgaoId` nulo é a do produto; com órgão, a da prefeitura. `temSenha` é tudo
+ * o que a tela sabe da senha — ela não sai da API em resposta nenhuma, nem
+ * cifrada: uma tela que a carregasse a deixaria no cache do navegador, no
+ * histórico do DevTools e em qualquer print.
+ */
+export type EmailSettings = {
+  id: string;
+  orgaoId: string | null;
+  host: string;
+  porta: number;
+  usuario: string | null;
+  remetente: string;
+  tlsDireto: boolean;
+  ativo: boolean;
+  atualizadoEm: string;
+  temSenha: boolean;
+};
+
+export const getEmailSettings = (tenantId?: string) =>
+  adminRequest<EmailSettings | null>(
+    tenantId ? `/admin/orgaos/${tenantId}/email` : "/admin/email",
+  );

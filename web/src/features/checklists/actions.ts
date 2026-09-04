@@ -226,13 +226,30 @@ export const reopenItem = async (checklistId: string, itemId: string) =>
  * token precisa chegar à tela — é a única vez em que ele existe em texto. O
  * banco guarda o hash.
  */
+/**
+ * `email` conta o que aconteceu com o aviso: enfileirado, sem endereço, ou
+ * endereço inválido. A tela usa isso para dizer se alguém precisa mandar o
+ * link à mão — o convite vale de qualquer jeito.
+ */
+export type ResultadoDoConvite = {
+  token: string;
+  expiraEm: string;
+  email: "enfileirado" | "sem-endereco" | "endereco-invalido" | "repetido";
+};
+
 export const inviteToChecklist = async (
-  checklistId: string, destinatario?: string,
-): Promise<{ token: string; expiraEm: string } | { error: string }> => {
+  checklistId: string, destinatario?: string, destinatarioEmail?: string,
+): Promise<ResultadoDoConvite | { error: string }> => {
   try {
-    const dados = await apiRequest<{ token: string; expiraEm: string }>(
+    const dados = await apiRequest<ResultadoDoConvite>(
       `${endpoints.checklists}/${checklistId}/convite`,
-      { method: "POST", body: { destinatario: semVazio(destinatario) ?? null } },
+      {
+        method: "POST",
+        body: {
+          destinatario: semVazio(destinatario) ?? null,
+          destinatarioEmail: semVazio(destinatarioEmail) ?? null,
+        },
+      },
     );
     revalidatePath(`${BASE}/${checklistId}`);
     return dados;

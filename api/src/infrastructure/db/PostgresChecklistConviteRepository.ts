@@ -1,4 +1,5 @@
 import { pool } from "./pool";
+import type { Tx } from "../../application/ports/Transacao";
 import type {
   ChecklistConviteRepository, ConviteDeChecklist,
 } from "../../application/ports/ChecklistConviteRepository";
@@ -6,8 +7,8 @@ import type {
 const SQL = {
   criar: `
     INSERT INTO checklist_convite
-      (checklist_id, token_hash, destinatario, criado_por, expira_em)
-    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      (checklist_id, token_hash, destinatario, destinatario_email, criado_por, expira_em)
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 
   /**
    * O órgão vem pelo checklist, e não guardado no convite.
@@ -26,7 +27,8 @@ const SQL = {
      WHERE cv.token_hash = $1`,
 
   buscarAberto: `
-    SELECT expira_em AS "expiraEm", destinatario, criado_em AS "criadoEm"
+    SELECT expira_em AS "expiraEm", destinatario,
+           destinatario_email AS "destinatarioEmail", criado_em AS "criadoEm"
       FROM checklist_convite
      WHERE checklist_id = $1 AND revogado_em IS NULL
      ORDER BY criado_em DESC
@@ -51,11 +53,14 @@ const SQL = {
 export class PostgresChecklistConviteRepository implements ChecklistConviteRepository {
   criar = async (dados: {
     checklistId: string; tokenHash: string; destinatario: string | null;
-    criadoPor: string; expiraEm: string;
-  }): Promise<string> => {
-    const { rows } = await pool.query(SQL.criar, [
+    destinatarioEmail?: string | null; criadoPor: string; expiraEm: string;
+  }, tx?: Tx): Promise<string> => {
+    // O convite e o e-mail dele entram na mesma transação: convite sem e-mail
+    // é o caso de hoje, mas e-mail sem convite avisaria de um link que não
+    // existe.
+    const { rows } = await (tx ?? pool).query(SQL.criar, [
       dados.checklistId, dados.tokenHash, dados.destinatario,
-      dados.criadoPor, dados.expiraEm,
+      dados.destinatarioEmail ?? null, dados.criadoPor, dados.expiraEm,
     ]);
     return rows[0].id as string;
   };
@@ -68,7 +73,8 @@ export class PostgresChecklistConviteRepository implements ChecklistConviteRepos
   buscarAberto = async (checklistId: string) => {
     const { rows } = await pool.query(SQL.buscarAberto, [checklistId]);
     return (rows[0] as {
-      expiraEm: string; destinatario: string | null; criadoEm: string;
+      expiraEm: string; destinatario: string | null;
+      destinatarioEmail: string | null; criadoEm: string;
     }) ?? null;
   };
 
