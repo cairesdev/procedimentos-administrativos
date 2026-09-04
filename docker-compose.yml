@@ -99,6 +99,13 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-procedimentos}
       MINIO_REGIAO: ${MINIO_REGIAO:-us-east-1}
+      # A API também cifra: é ela que grava a senha do SMTP vinda da tela do
+      # administrativo geral, e que a decifra no envio de teste. Só o worker
+      # ter a chave deixaria a tela salvar e estourar.
+      EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env (openssl rand -base64 32)}
+      # Endereço público: entra nos links dos e-mails e no código de
+      # conferência das peças. Vazio produz link quebrado, em silêncio.
+      APP_URL: ${APP_URL:-http://localhost:3000}
     ports:
       - "${API_PORT:-8004}:3333"
     restart: unless-stopped

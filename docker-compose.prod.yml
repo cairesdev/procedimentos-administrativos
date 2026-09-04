@@ -130,6 +130,13 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-procedimentos}
       MINIO_REGIAO: ${MINIO_REGIAO:-us-east-1}
+      # A API cifra a senha do SMTP que a tela do administrativo geral grava, e
+      # a decifra no envio de teste. Pôr a variável só no `.env.prod` não basta:
+      # o Compose passa para dentro do contêiner **apenas** o que está aqui.
+      EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env.prod (openssl rand -base64 32)}
+      # Endereço público: entra nos links dos e-mails e no código de
+      # conferência das peças emitidas. Vazio produz link quebrado, calado.
+      APP_URL: ${APP_URL:?defina APP_URL no .env.prod (https://seu-dominio)}
     # Sem `ports`: quem fala com a API é o Caddy, pela rede interna.
     restart: unless-stopped
     logging: *logging
@@ -137,6 +144,39 @@ services:
       resources:
         limits:
           memory: ${API_MEM:-512M}
+
+  # ---------------------------------------------------------------------------
+  # O worker que esvazia a fila de e-mails.
+  #
+  # Mesma imagem da API, outro comando. Separado de propósito: pico de envio não
+  # afeta quem está na tela, e reiniciar um não derruba o outro. Sem porta e sem
+  # healthcheck HTTP — ele não atende ninguém, só lê a fila.
+  #
+  # `RUN_MIGRATIONS: "false"`: quem aplica migration é a API. Dois processos
+  # correndo o migrator ao mesmo tempo é a corrida clássica de deploy.
+  email-worker:
+    image: ${IMAGE_REPO:-workcenterma/br-consultoria}:api-${IMAGE_TAG:?defina IMAGE_TAG no .env.prod}
+    pull_policy: always
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-procedimentos}
+      TZ: ${TZ:-America/Sao_Paulo}
+      RUN_MIGRATIONS: "false"
+      # Sem ela o worker não sobe: não teria como decifrar senha de SMTP
+      # nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
+      EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env.prod (openssl rand -base64 32)}
+      APP_URL: ${APP_URL:?defina APP_URL no .env.prod (https://seu-dominio)}
+      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-60000}
+      EMAIL_LOTE: ${EMAIL_LOTE:-20}
+    restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: ${EMAIL_WORKER_MEM:-256M}
 
   web:
     image: ${IMAGE_REPO:-workcenterma/br-consultoria}:web-${IMAGE_TAG:?defina IMAGE_TAG no .env.prod}
