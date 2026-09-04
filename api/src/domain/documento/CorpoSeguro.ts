@@ -35,9 +35,22 @@ const REGRAS: sanitizeHtml.IOptions = {
       "font-size": [/^\d{1,2}(\.\d+)?(px|pt|em|rem)$/],
       "font-style": [/^italic$|^normal$/],
       "text-decoration": [/^underline$|^none$/],
-      width: [/^\d{1,3}(\.\d+)?(px|%|em)$/],
-      padding: [/^\d{1,2}(\.\d+)?(px|em)$/],
-      margin: [/^\d{1,2}(\.\d+)?(px|em)( \d{1,2}(\.\d+)?(px|em)){0,3}$/],
+      /**
+       * Zero sem unidade é CSS válido — e era descartado aqui.
+       *
+       * `margin: 0 0 18px` é como se escreve "encostado em cima, respiro
+       * embaixo", e a regra antiga exigia unidade em cada componente: a
+       * declaração inteira sumia, calada. A capa do processo foi desenhada com
+       * esses zeros e saiu da fábrica sem espaçamento nenhum, com o
+       * sanitizador tendo apagado dezenove margens — nada avisa, porque
+       * `tagsRemovidas` só olha tag, não estilo.
+       *
+       * `MEDIDA` está escrita uma vez e reaproveitada: três regexes quase
+       * iguais foi como o zero passou despercebido em duas delas.
+       */
+      width: [/^(0|\d{1,3}(\.\d+)?(px|%|em))$/],
+      padding: [/^(0|\d{1,2}(\.\d+)?(px|em))( (0|\d{1,2}(\.\d+)?(px|em))){0,3}$/],
+      margin: [/^(0|\d{1,2}(\.\d+)?(px|em))( (0|\d{1,2}(\.\d+)?(px|em))){0,3}$/],
       border: [/^\d{1,2}px (solid|dashed|dotted) #[0-9a-fA-F]{3,6}$/],
       "border-collapse": [/^collapse$|^separate$/],
       "vertical-align": [/^top$|^middle$|^bottom$/],

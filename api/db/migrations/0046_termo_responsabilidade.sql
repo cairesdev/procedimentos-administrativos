@@ -129,18 +129,17 @@ CREATE TABLE termo_responsabilidade_item (
 
 CREATE INDEX idx_termo_item_bem ON termo_responsabilidade_item(bem_id);
 
-/*
-  Um bem, um responsável por vez.
-  ---------------------------------------------------------------------------
-  A regra que dá sentido ao módulo: perguntado "quem responde por este bem", o
-  sistema tem de ter **uma** resposta. O índice único parcial é quem garante —
-  a aplicação encerra o termo anterior antes de emitir o novo, e se algum
-  caminho esquecer, o banco recusa em vez de deixar dois donos vivos.
-
-  "Vivo" é o item não devolvido de um termo não encerrado. O `WHERE` não alcança
-  colunas de outra tabela, então a condição de termo aberto mora numa coluna
-  espelhada aqui, mantida por gatilho.
-*/
+-- ---------------------------------------------------------------------------
+-- Um bem, um responsável por vez.
+--
+-- A regra que dá sentido ao módulo: perguntado "quem responde por este bem", o
+-- sistema tem de ter **uma** resposta. O índice único parcial é quem garante —
+-- a aplicação encerra o termo anterior antes de emitir o novo, e se algum
+-- caminho esquecer, o banco recusa em vez de deixar dois donos vivos.
+--
+-- "Vivo" é o item não devolvido de um termo não encerrado. O `WHERE` não
+-- alcança colunas de outra tabela, então a condição de termo aberto mora numa
+-- coluna espelhada aqui, mantida por gatilho.
 ALTER TABLE termo_responsabilidade_item
   ADD COLUMN termo_encerrado BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -163,91 +162,27 @@ CREATE TRIGGER termo_encerrado_espelha
   FOR EACH ROW EXECUTE FUNCTION espelhar_encerramento_do_termo();
 
 -- ---------------------------------------------------------------------------
--- AS PEÇAS
+-- AS PEÇAS FICAM PARA A FATIA QUE AS EMITE
 --
--- Dois escopos: o termo e a devolução. São documentos diferentes — um diz "sob
--- minha responsabilidade", o outro diz "devolvi, nestas condições" —, e é a
--- segunda que protege quem entregou.
-
-ALTER TABLE documento_modelo DROP CONSTRAINT IF EXISTS documento_modelo_escopo_check;
-ALTER TABLE documento_modelo
-  ADD CONSTRAINT documento_modelo_escopo_check
-  CHECK (escopo IN (
-    'PROCESSO', 'PROCESSO_CONTRATO', 'ORDEM_FORNECIMENTO', 'SOLICITACAO',
-    'BEM', 'TRANSFERENCIA_BEM', 'BAIXA_BEM', 'INVENTARIO',
-    'VIAGEM', 'MANUTENCAO',
-    'SOLICITACAO_ESTOQUE', 'ENTRADA_ESTOQUE', 'DEVOLUCAO_ESTOQUE',
-    'RELATORIO_CONSUMO', 'CHECKLIST',
-    'RELATORIO_PANORAMA', 'RELATORIO_SETOR',
-    'TERMO_RESPONSABILIDADE', 'DEVOLUCAO_RESPONSABILIDADE'
-  ));
-
-/*
-  O termo que já existia sai de cena.
-  ---------------------------------------------------------------------------
-  A 0020 semeou um `TERMO_RESPONSABILIDADE` no escopo `BEM`: uma folha por bem,
-  assinada por "Responsável pelo local" — uma linha em branco, sem nome, e sem
-  o sistema guardar nada do que foi assinado. Serve para imprimir e não serve
-  para responder quem responde pelo bem.
-
-  Ele não é apagado: documento já emitido aponta para o modelo, e apagar levaria
-  o histórico junto. Ganha nome próprio, deixa de ser oferecido e libera o
-  `tipo` — que é único entre os modelos globais — para o termo de verdade.
-  Reverter é um UPDATE.
-*/
-UPDATE documento_modelo
-   SET tipo = 'TERMO_RESPONSABILIDADE_BEM',
-       nome = 'Termo de responsabilidade (modelo antigo, por bem)',
-       ativo = FALSE
- WHERE orgao_id IS NULL
-   AND escopo = 'BEM'
-   AND tipo = 'TERMO_RESPONSABILIDADE';
-
-INSERT INTO documento_modelo (orgao_id, modulo, escopo, tipo, nome, titulo, corpo)
-VALUES
-
-(NULL, 'PATRIMONIO', 'TERMO_RESPONSABILIDADE', 'TERMO_RESPONSABILIDADE',
- 'Termo de responsabilidade', 'TERMO DE RESPONSABILIDADE',
-$corpo$<p>Termo nº <strong>{{termo.numero}}</strong>, emitido em {{termo.dataEmissao}}.</p>
-
-<p>Pelo presente termo, <strong>{{responsavel.nome}}</strong>, {{responsavel.cargo}},
-inscrito(a) no CPF sob o nº {{responsavel.cpf}}, declara receber e assumir a
-responsabilidade pela guarda e conservação dos bens patrimoniais abaixo
-relacionados, lotados em <strong>{{local.nome}}</strong>.</p>
-
-<p>Os bens permanecerão sob sua responsabilidade até a devolução formal, devendo
-ser comunicada de imediato qualquer ocorrência de dano, extravio ou necessidade
-de transferência.</p>
-
-{{termo.tabelaDeBens}}
-
-<p>{{termo.observacao}}</p>
-
-<p>{{orgao.municipio}}, {{documento.dataPorExtenso}}.</p>
-
-<br /><br />
-<p style="text-align:center">_____________________________________<br />
-{{responsavel.nome}}<br />{{responsavel.cargo}}</p>
-<br />
-<p style="text-align:center">_____________________________________<br />
-{{usuario.nome}}<br />Setor de Patrimônio</p>$corpo$),
-
-(NULL, 'PATRIMONIO', 'DEVOLUCAO_RESPONSABILIDADE', 'DEVOLUCAO_RESPONSABILIDADE',
- 'Termo de devolução de bens', 'TERMO DE DEVOLUÇÃO DE BENS',
-$corpo$<p><strong>{{responsavel.nome}}</strong>, {{responsavel.cargo}}, CPF nº
-{{responsavel.cpf}}, devolve nesta data os bens patrimoniais abaixo relacionados,
-recebidos por meio do Termo de Responsabilidade nº <strong>{{termo.numero}}</strong>,
-emitido em {{termo.dataEmissao}}, referentes a <strong>{{local.nome}}</strong>.</p>
-
-<p>Motivo da devolução: {{termo.motivoEncerramento}}.</p>
-
-{{termo.tabelaDeDevolucao}}
-
-<p>{{orgao.municipio}}, {{documento.dataPorExtenso}}.</p>
-
-<br /><br />
-<p style="text-align:center">_____________________________________<br />
-{{responsavel.nome}}</p>
-<br />
-<p style="text-align:center">_____________________________________<br />
-{{usuario.nome}}<br />Setor de Patrimônio</p>$corpo$);
+-- Esta migration entrega o **registro**: quem responde por qual bem, desde
+-- quando, e a trava de um responsável por vez. O termo impresso e o termo de
+-- devolução — decisões 4 e 6 do levantamento — são peças do motor de
+-- documentos, e peça sem tela que a emita é modelo que o administrador vê na
+-- lista, edita, e não tem de onde imprimir.
+--
+-- O projeto tem um guarda para isso ("escopo de documento alcançável pela
+-- interface"), e ele estava certo: a versão anterior desta migration já
+-- estendia o CHECK de escopo, aposentava o modelo antigo de 0020 e semeava os
+-- dois novos, sem nenhuma tela do lado de lá.
+--
+-- Voltam juntas, na migration da fatia do termo no patrimônio:
+--
+--   1. `ALTER TABLE documento_modelo` estendendo o CHECK com
+--      'TERMO_RESPONSABILIDADE' e 'DEVOLUCAO_RESPONSABILIDADE';
+--   2. o `UPDATE` que renomeia o `TERMO_RESPONSABILIDADE` de 0020 para
+--      `TERMO_RESPONSABILIDADE_BEM` e o desativa, liberando o `tipo` — o
+--      modelo antigo não é apagado porque documento emitido aponta para ele;
+--   3. os dois modelos globais novos.
+--
+-- Nada disso depende de decisão nova: está tudo em `docs/decisoes.md`. O que
+-- falta é o código que as alcança.

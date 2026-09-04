@@ -87,12 +87,46 @@ const modelosDe = (arquivo: string, retroativo: Record<string, string>): ModeloS
   );
 };
 
+/**
+ * Modelo renomeado por migration posterior.
+ *
+ * O `tipo` é único entre os globais, e às vezes uma peça nova quer o nome que
+ * uma antiga ocupa — foi o caso do `TERMO_RESPONSABILIDADE`, que em 0020 era
+ * uma folha por bem com assinatura em branco e em 0046 virou o termo de
+ * verdade. A antiga não é apagada (documento emitido aponta para ela), é
+ * renomeada e desativada.
+ *
+ * Ler só os INSERT enxergaria dois modelos com o mesmo `tipo` e acusaria uma
+ * colisão que o banco não tem. O teste precisa ler o estado **final**, que é o
+ * que o índice único mede.
+ */
+const renomeados = (): Record<string, string> => {
+  const mapa: Record<string, string> = {};
+  for (const arquivo of readdirSync(MIGRATIONS).filter((n) => n.endsWith(".sql")).sort()) {
+    for (const achado of ler(arquivo).matchAll(
+      /UPDATE documento_modelo\s+SET tipo = '(\w+)'[\s\S]*?AND tipo = '(\w+)'/g,
+    )) {
+      mapa[achado[2]!] = achado[1]!;
+    }
+  }
+  return mapa;
+};
+
 const semeados = (): ModeloSemeado[] => {
   const retroativo = escopoRetroativo();
+  const trocas = renomeados();
+
   return readdirSync(MIGRATIONS)
     .filter((nome) => nome.endsWith(".sql"))
     .sort()
-    .flatMap((arquivo) => modelosDe(arquivo, retroativo));
+    .flatMap((arquivo) => modelosDe(arquivo, retroativo))
+    .map((modelo, indice, todos) => {
+      // Só o **primeiro** com aquele tipo foi renomeado: quem veio depois é
+      // justamente a peça que ficou com o nome vago.
+      const primeiro = todos.findIndex((outro) => outro.tipo === modelo.tipo) === indice;
+      const novoNome = trocas[modelo.tipo];
+      return primeiro && novoNome ? { ...modelo, tipo: novoNome } : modelo;
+    });
 };
 
 /**

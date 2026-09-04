@@ -1569,3 +1569,56 @@ o teto de 200 MB, que não cabe num palco.
 
 **Sem `MINIO_*` configurado nada disso funciona** — a tela mostra a lista vazia
 em vez de quebrar, mas o upload falha. É o mesmo pré-requisito do anexo antigo.
+
+## Capa do processo, redesenhada
+
+Os clientes disseram que a capa estava desagradável de olhar: quatro tabelas
+empilhadas, 22 células, tudo com o mesmo peso. A capa é a primeira folha da
+pasta e precisa dizer de longe **qual processo é**, **do que se trata** e
+**quanto custa** — numa grade, nada disso se destaca.
+
+A folha nova é folha de rosto: número do processo em corpo 34, objeto
+centralizado logo abaixo, valor numa moldura com o extenso, e contratada,
+origem e unidade gestora como blocos rotulados (rótulo pequeno acima, dado em
+destaque). Sobrou uma tabela só, a da movimentação financeira — três números
+que se somam. Sem cor: a hierarquia sai de tamanho, peso, moldura e espaço em
+branco, que sobrevivem à fotocópia.
+
+**O defeito que apareceu no caminho:** a lista de estilos permitidos do
+sanitizador exigia unidade em **todo** valor, então `margin: 0 0 18px` — CSS
+válido — era descartado inteiro, calado. A capa foi desenhada com esses zeros e
+sairia sem espaçamento nenhum; `tagsRemovidas` não avisa, porque só olha tag.
+Corrigido em `CorpoSeguro.ts` (zero sem unidade agora passa, em `margin`,
+`padding` e `width`) e travado por `tests/dominio/corpo-seguro.test.ts`, que
+confere **todo modelo semeado** contra o sanitizador e falha se qualquer
+declaração for engolida.
+
+**Se a 0043 já tiver sido aplicada** na VPS, a capa nova entra por `UPDATE`:
+
+```sql
+UPDATE documento_modelo SET corpo = $corpo$...$corpo$
+ WHERE orgao_id IS NULL AND tipo = 'CAPA_PROCESSO';
+```
+
+(o corpo é o mesmo bloco `$corpo$` de `0043_capa_do_processo.sql`.)
+
+## Termo de responsabilidade: as tabelas vêm agora, as peças vêm com a tela
+
+A 0046 estendia o CHECK de escopo, aposentava o modelo antigo de 0020 e semeava
+`TERMO_RESPONSABILIDADE` e `DEVOLUCAO_RESPONSABILIDADE` — sem nenhuma tela que
+os emitisse. O guarda "escopo de documento alcançável pela interface" acusou, e
+estava certo: modelo que o administrador vê na lista, edita e não tem de onde
+imprimir é o defeito que esse guarda existe para impedir.
+
+A 0046 entrega o **registro** (responsável, termo, itens, e a trava de um
+responsável por vez, com gatilho). As três coisas que saíram estão listadas no
+rodapé do arquivo, prontas para voltar na migration da fatia do termo — nenhuma
+delas depende de decisão nova.
+
+**Outro achado:** a 0046 é a primeira migration com `CREATE FUNCTION`/`CREATE
+TRIGGER`, e o parser de `sql.test.ts` não conhece PL/pgSQL — o erro caía no
+comando seguinte e derrubava o arquivo inteiro. Os blocos agora são removidos
+antes de parsear, com a perda declarada em comentário: quem confere função e
+gatilho é `db/verificar-migrations.py`, num Postgres de verdade, e ele confere
+(121/121 invariantes, incluindo "encerrado o primeiro, o bem passa para o termo
+novo", que só passa se o gatilho funcionar).

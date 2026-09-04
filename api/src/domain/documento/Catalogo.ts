@@ -24,6 +24,15 @@ export const ESCOPOS = [
   "CHECKLIST",
   "RELATORIO_PANORAMA",
   "RELATORIO_SETOR",
+  /**
+   * `TERMO_RESPONSABILIDADE` e `DEVOLUCAO_RESPONSABILIDADE` entram aqui junto
+   * com a tela que os emite, e não antes.
+   *
+   * As tabelas do termo já existem (0046); as peças, não. Declarar o escopo
+   * sem a tela faria o administrador ver o modelo na lista, editá-lo e não ter
+   * de onde emitir — que é o defeito que o guarda "escopo de documento
+   * alcançável pela interface" existe para impedir.
+   */
 ] as const;
 
 export type EscopoDeDocumento = (typeof ESCOPOS)[number];
@@ -200,6 +209,7 @@ const BENS_CONFERIDOS = [
   "tombamento", "nome", "categoria",
   "situacao", "estadoObservado", "observacao",
 ];
+
 
 const VEICULO = [
   "veiculo.placa", "veiculo.modelo", "veiculo.ano", "veiculo.tipo",

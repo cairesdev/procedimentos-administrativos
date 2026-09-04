@@ -216,9 +216,28 @@ describe("migrations", () => {
 
     for (const arquivo of arquivos) {
       const bruto = readFileSync(path.join(MIGRATIONS, arquivo), "utf8");
+
+      /**
+       * PL/pgSQL sai antes de parsear — e isso é uma perda declarada.
+       *
+       * O parser é de SQL, não de PL/pgSQL: `CREATE FUNCTION` e `CREATE
+       * TRIGGER` fazem ele parar, e o erro cai no comando **seguinte**, o que
+       * mandaria quem for depurar para o lugar errado. Deixar passar custaria
+       * o teste inteiro do arquivo.
+       *
+       * O que se perde é conferido em outro lugar, e num lugar melhor:
+       * `db/verificar-migrations.py` aplica todas as migrations num Postgres
+       * de verdade, onde função e gatilho são compilados pelo próprio banco —
+       * um `NEW.coluna_que_nao_existe` falha lá, e aqui não falharia nem com o
+       * parser certo.
+       */
+      const semPlpgsql = bruto
+        .replace(/CREATE (?:OR REPLACE )?FUNCTION[\s\S]*?LANGUAGE plpgsql;/gi, "")
+        .replace(/CREATE TRIGGER[\s\S]*?;/gi, "");
+
       // O parser não conhece dollar-quote, que o Postgres suporta: converte
       // para literal comum só para conferir a estrutura do comando.
-      const conteudo = bruto.replace(
+      const conteudo = semPlpgsql.replace(
         /\$(\w*)\$([\s\S]*?)\$\1\$/g,
         (_todo, _marca, corpo: string) => `'${corpo.replaceAll("'", "''")}'`,
       );
