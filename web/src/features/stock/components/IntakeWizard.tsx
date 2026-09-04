@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ClipboardEvent } from "react";
+import { useMemo, useState } from "react";
 import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";

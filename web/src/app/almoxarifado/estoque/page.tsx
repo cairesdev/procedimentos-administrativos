@@ -1,8 +1,8 @@
 import { getLocalStock, getStockSettings, listStockLocations } from "@/features/stock/queries";
 import { LocalStockView } from "@/features/stock/components/LocalStockView";
 import { requirePermission } from "@/shared/auth/guards";
-import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
-import { Button } from "@/shared/ui/button";
+import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 
 type LocalStockPageProps = { searchParams: Promise<{ local?: string }> };
 
@@ -21,20 +21,17 @@ export default async function LocalStockPage({ searchParams }: LocalStockPagePro
         subtitle="O que cada escola tem no armário, lote a lote, com a validade de origem"
       />
 
-      <form method="get">
-        <Toolbar>
-          <select name="local" defaultValue={escolhido ?? ""} aria-label="Local">
+      <FilterBar base="/almoxarifado/estoque" acao="Ver saldo">
+        <FilterField label="Local" htmlFor="local">
+          <select id="local" name="local" defaultValue={escolhido ?? ""}>
             {locais.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.nome}
               </option>
             ))}
           </select>
-          <Button type="submit" variant="secondary">
-            Ver saldo
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       {locais.length === 0 ? (
         <Alert tone="info">Nenhum local cadastrado ainda.</Alert>

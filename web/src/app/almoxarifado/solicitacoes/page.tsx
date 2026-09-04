@@ -4,7 +4,8 @@ import { RequestTable } from "@/features/stock/components/RequestTable";
 import { REQUEST_STATUSES } from "@/features/stock/types";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { Pagination } from "@/shared/ui/Pagination";
 
 type RequestsPageProps = {
@@ -50,9 +51,9 @@ export default async function StockRequestsPage({ searchParams }: RequestsPagePr
         </Alert>
       ) : null}
 
-      <form method="get">
-        <Toolbar>
-          <select name="status" defaultValue={status ?? ""} aria-label="Situação">
+      <FilterBar base="/almoxarifado/solicitacoes" ativo={Boolean(status || almoxarifado)}>
+        <FilterField label="Situação" htmlFor="status">
+          <select id="status" name="status" defaultValue={status ?? ""}>
             <option value="">Todas as situações</option>
             {REQUEST_STATUSES.map((item) => (
               <option key={item.value} value={item.value}>
@@ -60,8 +61,10 @@ export default async function StockRequestsPage({ searchParams }: RequestsPagePr
               </option>
             ))}
           </select>
+        </FilterField>
 
-          <select name="almoxarifado" defaultValue={almoxarifado ?? ""} aria-label="Almoxarifado">
+        <FilterField label="Almoxarifado" htmlFor="almoxarifado">
+          <select id="almoxarifado" name="almoxarifado" defaultValue={almoxarifado ?? ""}>
             <option value="">Todos os almoxarifados</option>
             {warehouses.map((item) => (
               <option key={item.id} value={item.id}>
@@ -69,12 +72,8 @@ export default async function StockRequestsPage({ searchParams }: RequestsPagePr
               </option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${requests.total} pedidos`} padded={false}>
         <RequestTable requests={requests.itens} />

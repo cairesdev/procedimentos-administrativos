@@ -2,8 +2,8 @@ import { listSuppliers } from "@/features/suppliers/queries";
 import { SupplierForm } from "@/features/suppliers/components/SupplierForm";
 import { SupplierTable } from "@/features/suppliers/components/SupplierTable";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { Pagination } from "@/shared/ui/Pagination";
 
@@ -33,20 +33,15 @@ export default async function SuppliersPage({ searchParams }: SuppliersPageProps
       />
 
       {/* Busca por GET: some da URL ao limpar e volta para a página 1. */}
-      <form method="get">
-        <Toolbar>
-          <input
+      <FilterBar base="/processos/fornecedores" ativo={Boolean(busca)} acao="Buscar">
+        <FilterField label="Buscar fornecedor" htmlFor="busca" largo>
+          <input id="busca"
             type="search"
             name="busca"
             defaultValue={busca ?? ""}
-            placeholder="Razão social ou CNPJ"
-            aria-label="Buscar fornecedor"
-          />
-          <Button type="submit" variant="secondary">
-            Buscar
-          </Button>
-        </Toolbar>
-      </form>
+            placeholder="Razão social ou CNPJ" />
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${suppliers.total} encontrados`} padded={false}>
         <SupplierTable suppliers={suppliers.itens} canWrite={viewer.can("suppliers:write")} />

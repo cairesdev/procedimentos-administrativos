@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import styles from "./layout.module.css";
 
 export const PageHeader = ({
@@ -59,18 +59,88 @@ export const FieldGrid = ({ children }: { children: ReactNode }) => (
   <div className={styles.grid}>{children}</div>
 );
 
+/**
+ * A tela vazia que ensina o próximo passo.
+ *
+ * "Nenhum registro" é verdade e não serve: prefeitura recém-instalada tem tudo
+ * vazio, e quem abre a primeira tela precisa saber o que fazer, não que não há
+ * nada. A frase diz o que aquela lista guarda; a ação, quando existe, é o
+ * mesmo botão do cabeçalho — perto de onde a pessoa está olhando.
+ *
+ * `filtrado` troca a explicação: lista vazia por filtro não é lista sem
+ * cadastro, e mandar "cadastre o primeiro" para quem tem duzentos registros e
+ * filtrou errado é o conselho errado.
+ */
+export const EmptyState = ({
+  titulo,
+  descricao,
+  acao,
+  filtrado,
+}: {
+  titulo: string;
+  descricao?: string;
+  acao?: ReactNode;
+  filtrado?: boolean;
+}) => (
+  <div className={styles.empty_state}>
+    <p className={styles.empty_titulo}>
+      {filtrado ? "Nada encontrado com esses filtros" : titulo}
+    </p>
+    {filtrado ? (
+      <p className={styles.empty_descricao}>
+        Tente limpar os filtros ou procurar por outro termo.
+      </p>
+    ) : descricao ? (
+      <p className={styles.empty_descricao}>{descricao}</p>
+    ) : null}
+    {!filtrado && acao ? <div className={styles.empty_acao}>{acao}</div> : null}
+  </div>
+);
+
 export const Table = ({
   columns,
   isEmpty,
   emptyMessage,
+  empty,
   children,
 }: {
   columns: string[];
   isEmpty: boolean;
+  /** A frase curta de sempre. Continua valendo onde ela basta. */
   emptyMessage: string;
+  /** O estado vazio inteiro, quando a tela merece explicar e oferecer a ação. */
+  empty?: ReactNode;
   children: ReactNode;
 }) => {
-  if (isEmpty) return <p className={styles.empty}>{emptyMessage}</p>;
+  if (isEmpty) return <>{empty ?? <p className={styles.empty}>{emptyMessage}</p>}</>;
+
+  /**
+   * Cada célula leva o nome da sua coluna.
+   *
+   * No celular a tabela vira lista de cartões, e é o `data-coluna` que o CSS
+   * imprime na frente do valor — sem ele, o cartão seria uma pilha de números
+   * sem dizer o que é cada um. A alternativa era repetir o rótulo à mão em
+   * quinze telas, e ela envelhece na primeira coluna que muda de nome.
+   *
+   * O que não for `<tr>` passa intacto: `LinhasPorCategoria` monta as próprias
+   * linhas, e clonar às cegas quebraria o agrupador.
+   */
+  const linhas = Children.map(children, (linha) => {
+    if (!isValidElement(linha) || linha.type !== "tr") return linha;
+
+    const celulas = Children.map(
+      (linha.props as { children?: ReactNode }).children,
+      (celula, indice) => {
+        if (!isValidElement(celula) || celula.type !== "td") return celula;
+        const props = celula.props as Record<string, unknown>;
+        if (props["data-coluna"] !== undefined) return celula;
+        return cloneElement(celula, { "data-coluna": columns[indice] ?? "" } as never);
+      },
+    );
+
+    return cloneElement(linha, undefined, celulas);
+  });
+
   return (
     // O container de rolagem é o que impede a tabela de sete colunas de sair
     // do card e cobrir a coluna ao lado nas telas de detalhe.
@@ -83,7 +153,7 @@ export const Table = ({
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody>{linhas}</tbody>
       </table>
     </div>
   );

@@ -5,7 +5,8 @@ import { RequestTable } from "@/features/requests/components/RequestTable";
 import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { Pagination } from "@/shared/ui/Pagination";
 
 type RequestsPageProps = {
@@ -39,15 +40,17 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       />
 
       {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
-          <select name="situacao" defaultValue={situacao ?? ""} aria-label="Situação">
+      <FilterBar base="/processos/solicitacoes" ativo={Boolean(situacao || unidade)}>
+        <FilterField label="Situação" htmlFor="situacao">
+          <select id="situacao" name="situacao" defaultValue={situacao ?? ""}>
             <option value="">Rascunhos e enviadas</option>
             <option value="RASCUNHO">Só rascunhos</option>
             <option value="ENVIADA">Só enviadas</option>
           </select>
+        </FilterField>
 
-          <select name="unidade" defaultValue={unidade ?? ""} aria-label="Unidade">
+        <FilterField label="Unidade" htmlFor="unidade">
+          <select id="unidade" name="unidade" defaultValue={unidade ?? ""}>
             <option value="">Todas as unidades</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
@@ -55,12 +58,8 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
               </option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${requests.total} solicitações`} padded={false}>
         <RequestTable requests={requests.itens} />

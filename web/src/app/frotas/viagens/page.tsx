@@ -4,8 +4,8 @@ import { TripTable } from "@/features/fleet/components/TripTable";
 import { TRIP_STATUSES } from "@/features/fleet/types";
 import { listUnits } from "@/features/units/queries";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { Pagination } from "@/shared/ui/Pagination";
 
@@ -43,9 +43,9 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
       />
 
       {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
-          <select name="status" defaultValue={status ?? ""} aria-label="Situação">
+      <FilterBar base="/frotas/viagens" ativo={Boolean(status || veiculo)}>
+        <FilterField label="Situação" htmlFor="status">
+          <select id="status" name="status" defaultValue={status ?? ""}>
             <option value="">Todas as situações</option>
             {TRIP_STATUSES.map((item) => (
               <option key={item.value} value={item.value}>
@@ -53,8 +53,10 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
               </option>
             ))}
           </select>
+        </FilterField>
 
-          <select name="veiculo" defaultValue={veiculo ?? ""} aria-label="Veículo">
+        <FilterField label="Veículo" htmlFor="veiculo">
+          <select id="veiculo" name="veiculo" defaultValue={veiculo ?? ""}>
             <option value="">Todos os veículos</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
@@ -62,12 +64,8 @@ export default async function TripsPage({ searchParams }: TripsPageProps) {
               </option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${trips.total} viagens`} padded={false}>
         <TripTable trips={trips.itens} />

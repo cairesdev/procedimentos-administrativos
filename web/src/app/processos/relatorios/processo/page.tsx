@@ -2,11 +2,10 @@ import Link from "next/link";
 import { getProcessDossier, searchProcesses } from "@/features/reports/queries";
 import { bidModalityLabel } from "@/features/bids/types";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
 import {
-  Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, Toolbar,
-  celulaLonga, numericCell,
+  Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, celulaLonga, numericCell,
 } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { LinhasPorCategoria } from "@/shared/ui/LinhasPorCategoria";
 import { humanize, toCurrency } from "@/shared/ui/labels";
 import { TabNav } from "@/shared/ui/TabNav";
@@ -48,19 +47,15 @@ export default async function DossiePage({ searchParams }: Props) {
 
       <TabNav tabs={abas("processo")} />
 
-      <form method="get">
-        <Toolbar>
-          <input
+      <FilterBar base="/processos/relatorios/processo" ativo={Boolean(busca)} acao="Procurar">
+        <FilterField label="Procurar processo" htmlFor="busca" largo>
+          <input id="busca"
             type="search"
             name="busca"
             defaultValue={busca}
-            placeholder="Número do processo, protocolo ou objeto"
-            aria-label="Procurar processo"
-            style={{ minWidth: "280px" }}
-          />
-          <Button type="submit" variant="secondary">Procurar</Button>
-        </Toolbar>
-      </form>
+            placeholder="Número do processo, protocolo ou objeto" />
+        </FilterField>
+      </FilterBar>
 
       {/* Achou mas ainda não escolheu: a lista fica; escolhido, ela sai de cena
           e o dossiê ocupa a tela. */}

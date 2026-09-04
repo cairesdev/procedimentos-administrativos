@@ -1,0 +1,78 @@
+/*
+  A barra de filtro das listagens.
+  ---------------------------------------------------------------------------
+  Quinze telas tinham a sua, cada uma montada à mão: campos sem rótulo visível,
+  alturas diferentes da dos formulários, e nenhuma quebrando linha — a barra do
+  relatório empurrava a página para a direita.
+*/
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio_grande);
+  box-shadow: var(--sombra);
+}
+
+.campo {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rotulo {
+  font-size: 12px;
+  color: var(--texto_suave);
+}
+
+/*
+  Teto de largura no que o conteúdo dimensiona.
+
+  `select` cresce até a opção mais larga, e razão social de empresa é longa —
+  um campo sozinho passava de 500px. `min-width: 0` é o que permite encolher:
+  em flex o mínimo de um item é o do seu conteúdo, e sem ele o teto não vale.
+*/
+.campo > select,
+.campo > input {
+  min-width: 0;
+  max-width: 240px;
+}
+
+.campo_largo > input {
+  max-width: none;
+  width: 260px;
+}
+
+/* As ações ficam presas à direita quando sobra espaço, e descem quando não. */
+.acoes {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 700px) {
+  .barra {
+    /* Em tela estreita cada filtro ocupa a linha: meio campo não se lê. */
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .campo > select,
+  .campo > input,
+  .campo_largo > input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .acoes {
+    margin-left: 0;
+  }
+
+  .acoes > * {
+    flex: 1;
+  }
+}

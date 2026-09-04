@@ -1,8 +1,8 @@
 import { listTransfers, listWarehouses } from "@/features/stock/queries";
 import { TransferForm } from "@/features/stock/components/TransferForm";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Table, Toolbar, numericCell } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader, Table, numericCell } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { toDate } from "@/shared/ui/labels";
 import { Pagination } from "@/shared/ui/Pagination";
@@ -47,9 +47,9 @@ export default async function StockTransfersPage({ searchParams }: TransfersPage
         </Alert>
       ) : null}
 
-      <form method="get">
-        <Toolbar>
-          <select name="almoxarifado" defaultValue={almoxarifado ?? ""} aria-label="Almoxarifado">
+      <FilterBar base="/almoxarifado/transferencias" ativo={Boolean(almoxarifado)}>
+        <FilterField label="Almoxarifado" htmlFor="almoxarifado">
+          <select id="almoxarifado" name="almoxarifado" defaultValue={almoxarifado ?? ""}>
             <option value="">Todos os almoxarifados</option>
             {almoxarifados.map((item) => (
               <option key={item.id} value={item.id}>
@@ -57,11 +57,8 @@ export default async function StockTransfersPage({ searchParams }: TransfersPage
               </option>
             ))}
           </select>
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${transferencias.total} transferências`} padded={false}>
         <Table

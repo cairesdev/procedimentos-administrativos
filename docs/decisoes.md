@@ -1837,3 +1837,48 @@ ou objeto, bem pelo tombamento (o número da plaqueta) ou nome, veículo pela
 placa ou modelo. Um teste estrutural cruza a lista de tipos do domínio com os
 ramos da consulta: oferecer um tipo que a busca não atende é oferecer um botão
 que não faz nada.
+
+## Rodada de interface: padronizar campos e listas
+
+**O campo cru também é campo.** A aparência do controle desceu para o elemento
+em `globals.css` — `input`, `select` e `textarea` nascem com a altura, a borda e
+o foco dos formulários em qualquer lugar. Eram 81 campos fora dos componentes,
+quase todos nas barras de filtro, e a mesma tela tinha dois sotaques: o
+formulário com rótulo acima do campo, o filtro com o `<select>` do navegador. O
+componente continua por cima com rótulo, dica e erro — que é o que ele
+acrescenta de verdade.
+
+**`FilterBar` para as quinze telas de lista.** `method="get"` mantido de
+propósito: o recorte vira query string, o endereço descreve a lista, e a tela
+segue server component. Filtro que aplica sozinho no `onChange` exigiria
+JavaScript e devolveria um endereço que não leva a lugar nenhum.
+
+**Rótulo visível, e não só `aria-label`.** O `aria-label` serve ao leitor de
+tela e não serve a quem enxerga: diante de três seletores lado a lado a pessoa
+abre um a um para descobrir qual é qual. Um teste estrutural recusa `aria-label`
+dentro do `FilterBar`.
+
+**"Limpar" só quando há filtro.** Botão sempre visível é botão que quase nunca
+faz nada — e some justamente quando a pessoa não entende por que a lista está
+vazia. Seletor sem opção em branco é escolha obrigatória, não filtro, e fica
+fora dessa conta: o local do estoque não "limpa".
+
+**A tabela vira cartão abaixo de 700px.** Cada célula recebe `data-coluna` com o
+nome da sua coluna, e o CSS o imprime na frente do valor. O `Table` injeta o
+atributo clonando as linhas — repetir o rótulo à mão em quinze telas envelhece
+na primeira coluna que muda de nome. No HTML continua sendo tabela: leitor de
+tela e impressão seguem lendo a estrutura certa.
+
+**O vazio que ensina.** "Nenhum registro" é verdade e não serve: prefeitura
+recém-instalada tem tudo vazio. O `EmptyState` diz o que a lista guarda e traz a
+ação. Vazio **por filtro** fala de filtro — mandar "cadastre o primeiro" para
+quem tem duzentos registros e filtrou errado é o conselho errado.
+
+**Esqueleto por rota.** As telas são server components: entre o clique e a
+resposta, a página anterior fica parada, e quem está do outro lado clica de
+novo. O `loading.tsx` de cada workspace responde na hora, com a forma do que
+vem. Quem pediu menos movimento não recebe animação, e quem usa leitor de tela
+ouve "carregando" em vez do silêncio.
+
+**Pular para o conteúdo.** Primeira parada do Tab em qualquer tela: quem navega
+por teclado atravessava doze links de menu a cada troca de tela.

@@ -1497,3 +1497,47 @@ sete tipos achando pelo número e pelo nome.
 
 **Se o campo continuar preso aí**, o palco diz que o código publicado não é este
 — vale conferir a imagem do web que está rodando na VPS.
+
+## Pendências de segurança — o que saiu da lista
+
+**Chaves do MinIO revogadas** no `bucket.administracaopublica.com.br` (setembro
+de 2026). Era a mais urgente: as credenciais do histórico apontavam para um
+servidor externo, e rotacionar a chave local não as invalidava.
+
+**Almoxarifados com setor definido** — a lotação de setor deixou de alcançar
+todos eles.
+
+**Continua aberto:** o repositório segue **público** (`"private": false`,
+0 forks). Com a chave revogada, o histórico exposto perdeu o que tinha de
+perigoso, mas o código de uma prefeitura em aberto é decisão que vale rever.
+Os outros dois: regenerar os segredos do `.env.prod` que passaram pelo
+`.env.prod.example`, e remover o `ADMIN_SENHA` depois do primeiro login.
+
+## Interface padronizada
+
+| O que | Onde |
+| --- | --- |
+| Campo cru com o corpo do campo de formulário | `globals.css` — alcança os 81 de uma vez |
+| `FilterBar` + `FilterField` | 16 telas de lista, com rótulo visível e "Limpar" |
+| `EmptyState` | vazio que ensina, e vazio por filtro que fala de filtro |
+| `Skeleton` + `loading.tsx` | 9 workspaces com retorno visual imediato |
+| Tabela → cartão abaixo de 700px | `data-coluna` injetado pelo `Table` |
+| Pular para o conteúdo, foco visível | `WorkspaceShell` e `globals.css` |
+| `LinkButton` | link com cara de botão, onde a ação é ir para outro lugar |
+
+**Dois guardas novos:** nenhuma página monta a própria barra de filtro (as duas
+telas públicas de consulta ficam de fora, com o motivo escrito), e nenhum filtro
+se apoia só no `aria-label`. Quebrei os dois de propósito e os dois acusam.
+
+**Verificação:** palco de render com os componentes de verdade — rótulo ligado
+ao campo, `data-coluna` em cada célula, "Limpar" aparecendo e sumindo, o vazio
+com ação e o vazio filtrado sem ela, e o esqueleto anunciando o carregamento.
+751 testes na API, 32 no web, typecheck e lint limpos.
+
+**O que não consegui provar aqui:** `next build`. O sandbox não alcança
+`fonts.googleapis.com` e o build fica preso no download da fonte — o CI e a VPS,
+com rede, fazem essa parte.
+
+**Fica para a próxima:** os estados vazios ricos entraram em licitações e
+contratos; as outras ~30 listagens seguem com a frase curta, que o `Table`
+continua aceitando.

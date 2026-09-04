@@ -2,8 +2,8 @@ import { getLocalStock, listAdjustments, listStockLocations } from "@/features/s
 import { AdjustmentForm } from "@/features/stock/components/AdjustmentForm";
 import { ADJUSTMENT_REASONS } from "@/features/stock/types";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Badge, Card, PageHeader, Table, Toolbar, numericCell } from "@/shared/ui/layout";
+import { Alert, Badge, Card, PageHeader, Table, numericCell } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { toDate } from "@/shared/ui/labels";
 import { Pagination } from "@/shared/ui/Pagination";
@@ -50,9 +50,9 @@ export default async function AdjustmentsPage({ searchParams }: AdjustmentsPageP
         lançaria um consumo falso e o relatório de consumo viraria ficção.
       </Alert>
 
-      <form method="get">
-        <Toolbar>
-          <select name="local" defaultValue={local ?? ""} aria-label="Local">
+      <FilterBar base="/almoxarifado/ajustes" ativo={Boolean(local)}>
+        <FilterField label="Local" htmlFor="local">
+          <select id="local" name="local" defaultValue={local ?? ""}>
             <option value="">Todos os locais</option>
             {locais.map((item) => (
               <option key={item.id} value={item.id}>
@@ -60,11 +60,8 @@ export default async function AdjustmentsPage({ searchParams }: AdjustmentsPageP
               </option>
             ))}
           </select>
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${ajustes.total} ajustes`} padded={false}>
         <Table

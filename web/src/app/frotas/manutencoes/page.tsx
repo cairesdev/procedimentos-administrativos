@@ -3,8 +3,8 @@ import { MaintenanceForm } from "@/features/fleet/components/MaintenanceForm";
 import { MaintenanceTable } from "@/features/fleet/components/MaintenanceTable";
 import { listTemplates } from "@/features/documents/queries";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { Pagination } from "@/shared/ui/Pagination";
 
@@ -49,9 +49,9 @@ export default async function MaintenancesPage({ searchParams }: MaintenancesPag
         </Alert>
       ) : null}
 
-      <form method="get">
-        <Toolbar>
-          <select name="veiculo" defaultValue={veiculo ?? ""} aria-label="Veículo">
+      <FilterBar base="/frotas/manutencoes" ativo={Boolean(veiculo || abertas)}>
+        <FilterField label="Veículo" htmlFor="veiculo">
+          <select id="veiculo" name="veiculo" defaultValue={veiculo ?? ""}>
             <option value="">Todos os veículos</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
@@ -59,18 +59,16 @@ export default async function MaintenancesPage({ searchParams }: MaintenancesPag
               </option>
             ))}
           </select>
+        </FilterField>
 
-          <select name="abertas" defaultValue={abertas ?? ""} aria-label="Situação">
+        <FilterField label="Situação" htmlFor="abertas">
+          <select id="abertas" name="abertas" defaultValue={abertas ?? ""}>
             <option value="">Abertas e concluídas</option>
             <option value="true">Só as abertas</option>
             <option value="false">Só as concluídas</option>
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${maintenances.total} registros`} padded={false}>
         <MaintenanceTable

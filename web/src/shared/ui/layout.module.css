@@ -120,6 +120,69 @@
   background: var(--superficie_alt);
 }
 
+/*
+  No celular, a tabela vira lista de cartões.
+  ---------------------------------------------------------------------------
+  A diretora da escola pede material do telefone, e uma tabela de seis colunas
+  em 375px só existe dentro de uma rolagem lateral — que esconde metade dos
+  dados e nunca é encontrada. Aqui cada linha vira um cartão, e cada célula
+  ganha na frente o nome da coluna, que o `Table` copia para `data-coluna`.
+
+  A tabela continua sendo uma tabela no HTML: leitor de tela e impressão
+  seguem lendo a estrutura certa. O que muda é só a apresentação.
+*/
+@media (max-width: 700px) {
+  .table thead {
+    /* `display: none` some para o leitor de tela junto; isto só tira da vista. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: auto;
+  }
+
+  .table tr {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--borda);
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    padding: 5px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .table td::before {
+    content: attr(data-coluna);
+    flex-shrink: 0;
+    color: var(--texto_suave);
+    font-size: 12px;
+    text-align: left;
+  }
+
+  /* Célula sem rótulo — a das ações — ocupa a linha inteira. */
+  .table td:not([data-coluna])::before,
+  .table td[data-coluna=""]::before {
+    content: none;
+  }
+
+  .numeric {
+    text-align: right;
+  }
+}
+
 .numeric {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -130,6 +193,36 @@
   text-align: center;
   color: var(--texto_apagado);
   font-size: 13px;
+}
+
+/*
+  O vazio que ensina.
+  ---------------------------------------------------------------------------
+  Espaço generoso de propósito: a tela vazia é a primeira que a prefeitura nova
+  vê, e um parágrafo cinza de treze pixels no meio de um card grande parece
+  defeito. Aqui ela parece um convite.
+*/
+.empty_state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 44px 24px;
+  text-align: center;
+}
+
+.empty_titulo {
+  font-size: 15px;
+  color: var(--texto);
+}
+
+.empty_descricao {
+  font-size: 13px;
+  color: var(--texto_suave);
+  max-width: 46ch;
+}
+
+.empty_acao {
+  margin-top: 6px;
 }
 
 .badge {

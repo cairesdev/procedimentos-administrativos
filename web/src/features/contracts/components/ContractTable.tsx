@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Badge, Table, numericCell } from "@/shared/ui/layout";
+import { Badge, EmptyState, Table, numericCell } from "@/shared/ui/layout";
+import { LinkButton } from "@/shared/ui/button";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import type { Supplier } from "@/features/suppliers/types";
 import type { Unit } from "@/features/units/types";
@@ -39,6 +40,18 @@ export const ContractTable = ({
       }
       isEmpty={contracts.length === 0}
       emptyMessage="Nenhum contrato cadastrado."
+      empty={
+        <EmptyState
+          titulo="Nenhum contrato cadastrado"
+          descricao={
+            "O contrato traz os itens que as unidades vão pedir. Sem ele, a "
+            + "solicitação não tem de onde puxar produto nem saldo."
+          }
+          acao={canWrite ? <LinkButton href="/processos/contratos/novo" variant="primary">
+            Cadastrar contrato
+          </LinkButton> : undefined}
+        />
+      }
     >
       {contracts.map((contract) => {
         const validity = validityTone(contract.dataFim);

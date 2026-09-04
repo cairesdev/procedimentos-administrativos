@@ -1,0 +1,47 @@
+/*
+  Esqueleto de carregamento.
+  ---------------------------------------------------------------------------
+  As telas são server components: entre o clique e a resposta do servidor, a
+  página anterior fica parada. Numa VPS com o banco na mesma máquina isso é
+  meio segundo; numa prefeitura com internet ruim, três — e três segundos sem
+  retorno é quando a pessoa clica de novo.
+*/
+
+.bloco {
+  background: linear-gradient(
+    90deg,
+    var(--superficie_alt) 25%,
+    #eef0f3 37%,
+    var(--superficie_alt) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--raio);
+  animation: deslizar 1.4s ease infinite;
+}
+
+@keyframes deslizar {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/*
+  Quem pediu menos movimento não recebe movimento — e continua vendo que
+  alguma coisa está sendo carregada, porque a forma cinza já diz isso.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .bloco {
+    animation: none;
+  }
+}
+
+.linhas {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.cabecalho {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}

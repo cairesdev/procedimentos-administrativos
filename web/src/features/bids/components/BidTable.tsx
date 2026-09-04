@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Badge, Table, numericCell } from "@/shared/ui/layout";
+import { Badge, EmptyState, Table, numericCell } from "@/shared/ui/layout";
+import { LinkButton } from "@/shared/ui/button";
 import { toCurrency, toDate } from "@/shared/ui/labels";
 import { RowActions } from "@/shared/ui/RowActions";
 import type { Unit } from "@/features/units/types";
@@ -25,6 +26,18 @@ export const BidTable = ({
     }
     isEmpty={bids.length === 0}
     emptyMessage="Nenhuma licitação cadastrada."
+    empty={
+      <EmptyState
+        titulo="Nenhuma licitação cadastrada"
+        descricao={
+          "A licitação é a origem do contrato: é dela que saem o objeto, o "
+          + "fornecedor e o teto de valor que o resto do processo respeita."
+        }
+        acao={canWrite ? <LinkButton href="/processos/licitacoes/nova" variant="primary">
+          Cadastrar licitação
+        </LinkButton> : undefined}
+      />
+    }
   >
     {bids.map((bid) => (
       <tr key={bid.id}>

@@ -1,7 +1,7 @@
 import { getUsageReport } from "@/features/fleet/queries";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, SummaryGrid, Table, Toolbar, numericCell } from "@/shared/ui/layout";
+import { Card, PageHeader, SummaryGrid, Table, numericCell } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { toCurrency } from "@/shared/ui/labels";
 
 type ReportPageProps = {
@@ -57,21 +57,15 @@ export default async function UsageReportPage({ searchParams }: ReportPageProps)
         subtitle="Quanto cada veículo rodou, gastou e ficou parado no período"
       />
 
-      <form method="get">
-        <Toolbar>
-          <label style={{ fontSize: "13px" }}>
-            De{" "}
-            <input type="date" name="de" defaultValue={inicioTexto} style={{ marginLeft: "4px" }} />
-          </label>
-          <label style={{ fontSize: "13px" }}>
-            Até{" "}
-            <input type="date" name="ate" defaultValue={fimTexto} style={{ marginLeft: "4px" }} />
-          </label>
-          <Button type="submit" variant="secondary">
-            Gerar
-          </Button>
-        </Toolbar>
-      </form>
+      <FilterBar base="/frotas/relatorios" ativo={Boolean(inicioTexto || fimTexto)} acao="Gerar">
+        <FilterField label="De" htmlFor="de">
+          <input id="de" type="date" name="de" defaultValue={inicioTexto} />
+        </FilterField>
+
+        <FilterField label="Até" htmlFor="ate">
+          <input id="ate" type="date" name="ate" defaultValue={fimTexto} />
+        </FilterField>
+      </FilterBar>
 
       <Card>
         <SummaryGrid

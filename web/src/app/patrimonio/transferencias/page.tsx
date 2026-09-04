@@ -4,8 +4,8 @@ import { WRITE_OFF_REASONS } from "@/features/assets/types";
 import { IssueDocumentButton } from "@/features/documents/components/IssueDocumentButton";
 import { listTemplates } from "@/features/documents/queries";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Table, Toolbar } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader, Table } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { toDateTime } from "@/shared/ui/labels";
 import { Pagination } from "@/shared/ui/Pagination";
 
@@ -54,16 +54,18 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
       ) : null}
 
       {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
-          <select name="status" defaultValue={status ?? ""} aria-label="Situação">
+      <FilterBar base="/patrimonio/transferencias" ativo={Boolean(status || local)}>
+        <FilterField label="Situação" htmlFor="status">
+          <select id="status" name="status" defaultValue={status ?? ""}>
             <option value="">Todas as situações</option>
             <option value="PENDENTE">Aguardando aceite</option>
             <option value="ACEITA">Aceitas</option>
             <option value="RECUSADA">Recusadas</option>
           </select>
+        </FilterField>
 
-          <select name="local" defaultValue={local ?? ""} aria-label="Local">
+        <FilterField label="Local" htmlFor="local">
+          <select id="local" name="local" defaultValue={local ?? ""}>
             <option value="">Todos os locais</option>
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
@@ -71,12 +73,8 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
               </option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${transfers.total} transferências`} padded={false}>
         <TransferTable

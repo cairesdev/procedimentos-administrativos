@@ -4,8 +4,8 @@ import {
 import { QualityForm } from "@/features/stock/components/QualityForm";
 import { QUALITY_TYPES } from "@/features/stock/types";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Badge, Card, PageHeader, Table, Toolbar, numericCell } from "@/shared/ui/layout";
+import { Alert, Badge, Card, PageHeader, Table, numericCell } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { toDateTime } from "@/shared/ui/labels";
 import { ModalTrigger } from "@/shared/ui/Modal";
 
@@ -60,17 +60,16 @@ export default async function QualityPage({ searchParams }: PageProps) {
         existe o ajuste, que pede o saldo contado e o motivo.
       </Alert>
 
-      <form method="get">
-        <Toolbar>
-          <select name="tipo" defaultValue={tipo ?? ""} aria-label="Tipo">
+      <FilterBar base="/almoxarifado/qualidade" ativo={Boolean(tipo)}>
+        <FilterField label="Tipo" htmlFor="tipo">
+          <select id="tipo" name="tipo" defaultValue={tipo ?? ""}>
             <option value="">Todos os tipos</option>
             {QUALITY_TYPES.map((item) => (
               <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </select>
-          <Button type="submit" variant="secondary">Filtrar</Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${registros.length} registros`} padded={false}>
         <Table

@@ -2,8 +2,8 @@ import { listAuditRecords } from "@/features/audit/queries";
 import { AuditTable } from "@/features/audit/components/AuditTable";
 import { EVENT_GROUPS, EVENT_LABELS } from "@/features/audit/types";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { Pagination } from "@/shared/ui/Pagination";
 
 type AuditPageProps = {
@@ -48,9 +48,9 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
       />
 
       {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
-          <select name="tipo" defaultValue={tipo ?? ""} aria-label="Tipo de evento">
+      <FilterBar base="/processos/auditoria" ativo={Boolean(tipo || inicioTexto || fimTexto)}>
+        <FilterField label="Tipo de evento" htmlFor="tipo">
+          <select id="tipo" name="tipo" defaultValue={tipo ?? ""}>
             <option value="">Todos os eventos</option>
             {EVENT_GROUPS.map((grupo) => (
               <optgroup key={grupo.group} label={grupo.group}>
@@ -62,21 +62,16 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
               </optgroup>
             ))}
           </select>
+        </FilterField>
 
-          <label style={{ fontSize: "13px" }}>
-            De{" "}
-            <input type="date" name="desde" defaultValue={inicioTexto} style={{ marginLeft: "4px" }} />
-          </label>
-          <label style={{ fontSize: "13px" }}>
-            Até{" "}
-            <input type="date" name="ate" defaultValue={fimTexto} style={{ marginLeft: "4px" }} />
-          </label>
+        <FilterField label="Desde" htmlFor="desde">
+          <input id="desde" type="date" name="desde" defaultValue={inicioTexto} />
+        </FilterField>
 
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        <FilterField label="Até" htmlFor="ate">
+          <input id="ate" type="date" name="ate" defaultValue={fimTexto} />
+        </FilterField>
+      </FilterBar>
 
       <Alert tone="info">
         A trilha registra só eventos de negócio — não guarda edição simples de cadastro. Cada linha

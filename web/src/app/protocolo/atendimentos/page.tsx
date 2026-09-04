@@ -4,7 +4,8 @@ import { listServiceRecords, listSubjects } from "@/features/protocol/queries";
 import { ServiceTable } from "@/features/protocol/components/ServiceTable";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { Pagination } from "@/shared/ui/Pagination";
 
 type ProtocolPageProps = {
@@ -38,17 +39,17 @@ export default async function ProtocolPage({ searchParams }: ProtocolPageProps) 
       />
 
       {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
-          <input
+      <FilterBar base="/protocolo/atendimentos" ativo={Boolean(busca || assunto || status)}>
+        <FilterField label="Buscar atendimento" htmlFor="busca" largo>
+          <input id="busca"
             type="search"
             name="busca"
             defaultValue={busca ?? ""}
-            placeholder="Protocolo, nome ou documento"
-            aria-label="Buscar atendimento"
-          />
+            placeholder="Protocolo, nome ou documento" />
+        </FilterField>
 
-          <select name="assunto" defaultValue={assunto ?? ""} aria-label="Assunto">
+        <FilterField label="Assunto" htmlFor="assunto">
+          <select id="assunto" name="assunto" defaultValue={assunto ?? ""}>
             <option value="">Todos os assuntos</option>
             {assuntos.map((item) => (
               <option key={item.id} value={item.id}>
@@ -56,20 +57,18 @@ export default async function ProtocolPage({ searchParams }: ProtocolPageProps) 
               </option>
             ))}
           </select>
+        </FilterField>
 
-          <select name="status" defaultValue={status ?? ""} aria-label="Situação">
+        <FilterField label="Situação" htmlFor="status">
+          <select id="status" name="status" defaultValue={status ?? ""}>
             <option value="">Todas as situações</option>
             <option value="ABERTO">Aberto</option>
             <option value="TRAMITANDO">Em tramitação</option>
             <option value="ENCERRADO">Encerrado</option>
             <option value="CANCELADO">Cancelado</option>
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${atendimentos.total} atendimentos`} padded={false}>
         <ServiceTable records={atendimentos.itens} />

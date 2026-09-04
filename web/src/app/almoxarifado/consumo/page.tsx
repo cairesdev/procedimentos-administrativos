@@ -2,8 +2,8 @@ import { getLocalStock, listConsumption, listStockLocations } from "@/features/s
 import { ConsumptionForm } from "@/features/stock/components/ConsumptionForm";
 import { CONSUMPTION_FORMS } from "@/features/stock/types";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Table, Toolbar, numericCell } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader, Table, numericCell } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { toDate } from "@/shared/ui/labels";
 import { Pagination } from "@/shared/ui/Pagination";
@@ -49,22 +49,25 @@ export default async function ConsumptionPage({ searchParams }: ConsumptionPageP
         <Alert tone="info">Nenhum local cadastrado ainda.</Alert>
       ) : (
         <>
-          <form method="get">
-            <Toolbar>
-              <select name="local" defaultValue={escolhido ?? ""} aria-label="Local">
+          <FilterBar base="/almoxarifado/consumo" ativo={Boolean(de || ate)}>
+            <FilterField label="Local" htmlFor="local">
+              <select id="local" name="local" defaultValue={escolhido ?? ""}>
                 {locais.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.nome}
                   </option>
                 ))}
               </select>
-              <input type="date" name="de" defaultValue={de ?? ""} aria-label="De" />
-              <input type="date" name="ate" defaultValue={ate ?? ""} aria-label="Até" />
-              <Button type="submit" variant="secondary">
-                Filtrar
-              </Button>
-            </Toolbar>
-          </form>
+            </FilterField>
+
+            <FilterField label="De" htmlFor="de">
+              <input id="de" type="date" name="de" defaultValue={de ?? ""} />
+            </FilterField>
+
+            <FilterField label="Até" htmlFor="ate">
+              <input id="ate" type="date" name="ate" defaultValue={ate ?? ""} />
+            </FilterField>
+          </FilterBar>
 
           <Card title={`${consumo.total} registros`} padded={false}>
             <Table

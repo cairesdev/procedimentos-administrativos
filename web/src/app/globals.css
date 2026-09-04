@@ -65,6 +65,68 @@ button {
   color: inherit;
 }
 
+/*
+  O campo sem componente também é campo.
+  ---------------------------------------------------------------------------
+  `InputField` e `SelectField` vestem o que passa por eles, e as barras de
+  filtro das listagens nunca passaram: eram `<select>` soltos, herdando só a
+  fonte. Resultado — filtro e formulário pareciam dois sistemas, com alturas e
+  bordas diferentes na mesma tela.
+
+  A aparência desce para o elemento, e não para a classe. Assim o campo nasce
+  certo em qualquer lugar, e o componente continua por cima com rótulo, dica e
+  estado de erro, que é o que ele acrescenta de verdade.
+*/
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--borda_forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  font-size: 14px;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+textarea {
+  height: auto;
+  min-height: 76px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+select[multiple] {
+  height: auto;
+  padding: 6px;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--texto_apagado);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--acao);
+  box-shadow: 0 0 0 3px var(--acao_suave);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--superficie_alt);
+  color: var(--texto_apagado);
+  cursor: not-allowed;
+}
+
+/*
+  Foco visível é acessibilidade e é usabilidade: quem preenche o dia inteiro
+  navega por Tab, e sem o anel a pessoa perde o lugar na tela.
+*/
 :focus-visible {
   outline: 2px solid var(--acao);
   outline-offset: 2px;
@@ -73,6 +135,48 @@ button {
 
 table {
   font-variant-numeric: tabular-nums;
+}
+
+/*
+  Texto que só o leitor de tela recebe.
+
+  "Carregando…" é a informação mais importante da tela naquele instante, e ela
+  chega pela cor cinza — que quem não enxerga não recebe.
+*/
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+  Pular para o conteúdo.
+  ---------------------------------------------------------------------------
+  Quem navega por teclado atravessa a barra lateral inteira a cada troca de
+  tela antes de chegar na tabela. O link fica escondido até receber foco, e a
+  primeira tecla Tab da página passa a oferecê-lo.
+*/
+.pular_para_conteudo {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 100;
+  padding: 10px 14px;
+  background: var(--superficie);
+  border: 1px solid var(--acao);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra_flutuante);
+  transition: top var(--transicao);
+}
+
+.pular_para_conteudo:focus {
+  top: 8px;
 }
 
 /* Cromo de tela que não vai para o papel: barra de ações, avisos de status.

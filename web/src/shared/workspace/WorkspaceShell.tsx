@@ -48,6 +48,13 @@ export const WorkspaceShell = async ({
         } as React.CSSProperties
       }
     >
+      {/*
+        Primeira parada do Tab em qualquer tela: pular a barra lateral inteira.
+        Quem navega por teclado atravessava doze links de menu a cada troca de
+        tela antes de chegar na tabela.
+      */}
+      <a href="#conteudo" className="pular_para_conteudo">Pular para o conteúdo</a>
+
       <header className={styles.topbar}>
         <div className={styles.identity}>
           <Link
@@ -88,7 +95,7 @@ export const WorkspaceShell = async ({
 
       <div className={styles.body}>
         <WorkspaceSidebar sections={sections} />
-        <main className={styles.content}>
+        <main id="conteudo" className={styles.content}>
           {children}
           <p className={styles.footer}>
             {app.name} · versão {app.version}

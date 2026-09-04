@@ -8,8 +8,8 @@ import { ReturnTable } from "@/features/stock/components/ReturnTable";
 import { RETURN_STATUSES, type StockReturn } from "@/features/stock/types";
 import { emptyPage } from "@/shared/api/pagination";
 import { requirePermission } from "@/shared/auth/guards";
-import { Button } from "@/shared/ui/button";
-import { Alert, Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Alert, Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { ModalTrigger } from "@/shared/ui/Modal";
 import { Pagination } from "@/shared/ui/Pagination";
 import { TabNav } from "@/shared/ui/TabNav";
@@ -104,18 +104,15 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
         </Alert>
       ) : null}
 
-      <form method="get">
-        <Toolbar>
-          {/* O status é a própria aba na fila; filtrar por ele só faz sentido
-              no histórico, onde há mais de um. */}
-          {naFila ? null : (
-            <>
-              <input type="hidden" name="aba" value="respondidas" />
-              <select
+      <FilterBar base="/almoxarifado/devolucoes" ativo={Boolean(status || local)}>
+        <FilterField label="Aba" htmlFor="aba">
+          <input id="aba" type="hidden" name="aba" value="respondidas" />
+        </FilterField>
+
+        <FilterField label="Situação" htmlFor="status">
+          <select id="status"
                 name="status"
-                defaultValue={status ?? ""}
-                aria-label="Situação"
-              >
+                defaultValue={status ?? ""}>
                 <option value="">Aceitas e recusadas</option>
                 {RETURN_STATUSES.filter(
                   (item) => item.value !== "PENDENTE",
@@ -125,10 +122,10 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
                   </option>
                 ))}
               </select>
-            </>
-          )}
+        </FilterField>
 
-          <select name="local" defaultValue={local ?? ""} aria-label="Local">
+        <FilterField label="Local" htmlFor="local">
+          <select id="local" name="local" defaultValue={local ?? ""}>
             <option value="">Todos os locais</option>
             {locais?.map((item) => (
               <option key={item.id} value={item.id}>
@@ -136,12 +133,8 @@ export default async function ReturnsPage({ searchParams }: ReturnsPageProps) {
               </option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card
         title={

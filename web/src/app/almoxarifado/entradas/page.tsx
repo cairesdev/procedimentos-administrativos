@@ -3,7 +3,8 @@ import { listIntakes, listStockTypes, listWarehouses } from "@/features/stock/qu
 import { IntakeTable } from "@/features/stock/components/IntakeTable";
 import { requirePermission } from "@/shared/auth/guards";
 import { Button } from "@/shared/ui/button";
-import { Card, PageHeader, Toolbar } from "@/shared/ui/layout";
+import { Card, PageHeader } from "@/shared/ui/layout";
+import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { Pagination } from "@/shared/ui/Pagination";
 
 type IntakesPageProps = {
@@ -34,39 +35,35 @@ export default async function IntakesPage({ searchParams }: IntakesPageProps) {
         }
       />
 
-      {/* Formulário GET: o filtro fica na URL e sobrevive ao recarregar. */}
-      <form method="get">
-        <Toolbar>
+      <FilterBar base="/almoxarifado/entradas" ativo={Boolean(almoxarifado || tipo || busca)}>
+        <FilterField label="Procurar" htmlFor="busca" largo>
           <input
+            id="busca"
             name="busca"
+            type="search"
             defaultValue={busca ?? ""}
             placeholder="Código ou título"
-            aria-label="Buscar remessa"
           />
+        </FilterField>
 
-          <select name="almoxarifado" defaultValue={almoxarifado ?? ""} aria-label="Almoxarifado">
-            <option value="">Todos os almoxarifados</option>
+        <FilterField label="Almoxarifado" htmlFor="almoxarifado">
+          <select id="almoxarifado" name="almoxarifado" defaultValue={almoxarifado ?? ""}>
+            <option value="">Todos</option>
             {warehouses.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nome}
-              </option>
+              <option key={item.id} value={item.id}>{item.nome}</option>
             ))}
           </select>
+        </FilterField>
 
-          <select name="tipo" defaultValue={tipo ?? ""} aria-label="Tipo de estoque">
-            <option value="">Todos os tipos</option>
+        <FilterField label="Tipo de estoque" htmlFor="tipo">
+          <select id="tipo" name="tipo" defaultValue={tipo ?? ""}>
+            <option value="">Todos</option>
             {types.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nome}
-              </option>
+              <option key={item.id} value={item.id}>{item.nome}</option>
             ))}
           </select>
-
-          <Button type="submit" variant="secondary">
-            Filtrar
-          </Button>
-        </Toolbar>
-      </form>
+        </FilterField>
+      </FilterBar>
 
       <Card title={`${intakes.total} entradas`} padded={false}>
         <IntakeTable intakes={intakes.itens} />
