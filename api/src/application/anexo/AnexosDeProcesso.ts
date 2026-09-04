@@ -18,6 +18,19 @@ export type AnexarEntrada = {
   despachoId?: string;
 };
 
+/**
+ * Quantos arquivos o servidor pode juntar a um processo.
+ *
+ * Não é limitação técnica — é o que separa "juntar o que importa" de "usar o
+ * processo como pasta de rede". Dez cobre o caso real (nota, empenho, parecer,
+ * certidões) com folga, e quando aperta a conversa certa é sobre qual arquivo
+ * não pertence ali, não sobre aumentar o número.
+ *
+ * Conta só o que entra por dentro. A resposta do cidadão a uma exigência é
+ * documento que o próprio processo pediu, e não gasta a cota de ninguém.
+ */
+export const TETO_DE_ANEXOS = 10;
+
 export class AnexosDeProcesso {
   constructor(
     private readonly anexos: AnexoRepository,
@@ -31,6 +44,21 @@ export class AnexosDeProcesso {
     if (!processo) throw new NaoEncontrado("Processo não encontrado");
     if (processo.status === "ENCERRADO" || processo.status === "CANCELADO") {
       throw new ErroDeNegocio("Processo concluído não recebe anexos");
+    }
+
+    /**
+     * O teto é conferido antes do upload.
+     *
+     * Subir cem megabytes para depois recusar é gastar a internet da prefeitura
+     * — e a de quem está numa escola com link ruim — para dizer não.
+     */
+    const jaAnexados = await this.anexos.contarDoServidor(dados.processoId);
+    if (jaAnexados >= TETO_DE_ANEXOS) {
+      throw new ErroDeNegocio(
+        `Este processo já tem ${TETO_DE_ANEXOS} arquivos anexados, que é o limite. `
+        + "Remova um que não seja mais necessário antes de juntar outro.",
+        422,
+      );
     }
 
     const caminho = `${dados.orgaoId}/processos/${dados.processoId}/${randomUUID()}-${sanitizarNomeDeArquivo(dados.nomeOriginal)}`;

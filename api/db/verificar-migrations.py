@@ -135,6 +135,32 @@ VALUES ('77777777-7777-7777-7777-777777777777','66666666-6666-6666-6666-66666666
 INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username)
 VALUES ('88888888-8888-8888-8888-888888888888','11111111-1111-1111-1111-111111111111',
         'Maria','maria@teste.gov.br','x','ADMIN','maria');
+-- Patrimônio: dois bens tombados na escola, para o termo de responsabilidade.
+INSERT INTO categoria_bem (id, orgao_id, nome)
+VALUES ('ca7e0000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',
+        'Mobiliario');
+INSERT INTO bem (id, orgao_id, codigo_tombamento, local_tombamento_id, local_atual_id,
+                 categoria_id, nome, estado_conservacao)
+VALUES ('be000000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',
+        '001-000001','33333333-3333-3333-3333-333333333333',
+        '33333333-3333-3333-3333-333333333333','ca7e0000-0000-0000-0000-000000000001',
+        'CADEIRA GIRATORIA','BOM'),
+       ('be000000-0000-0000-0000-000000000002','11111111-1111-1111-1111-111111111111',
+        '001-000002','33333333-3333-3333-3333-333333333333',
+        '33333333-3333-3333-3333-333333333333','ca7e0000-0000-0000-0000-000000000001',
+        'ARMARIO DE ACO','NOVO');
+INSERT INTO responsavel_bem (id, orgao_id, nome, cpf, cargo)
+VALUES ('4e500000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',
+        'Maria da Silva','12345678909','Diretora'),
+       ('4e500000-0000-0000-0000-000000000002','11111111-1111-1111-1111-111111111111',
+        'Joana Souza',NULL,'Diretora substituta');
+INSERT INTO termo_responsabilidade (id, orgao_id, numero, responsavel_id, local_id, emitido_por)
+VALUES ('7e000000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',
+        '0001/2026','4e500000-0000-0000-0000-000000000001',
+        '33333333-3333-3333-3333-333333333333','88888888-8888-8888-8888-888888888888');
+INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega)
+VALUES ('7e000000-0000-0000-0000-000000000001','be000000-0000-0000-0000-000000000001','BOM');
+
 INSERT INTO solicitacao_estoque (id, local_solicitante_id, autor_usuario_id, tipo_estoque_id,
                                  status, enviada_em)
 VALUES ('99999999-9999-9999-9999-999999999999','33333333-3333-3333-3333-333333333333',
@@ -695,6 +721,88 @@ CASOS: list[tuple[str, str, bool]] = [
      "SELECT count(*) INTO n FROM checklist_modelo_item "
      "WHERE descricao LIKE '%Setor sugerido pelo TCE%'; "
      "IF n > 0 THEN RAISE EXCEPTION '% descricoes ainda repetem a sugestao', n; END IF; END $$",
+     True),
+    # ---- 0046: quem responde pelo bem -------------------------------------
+    ("o mesmo bem nao entra em dois termos vivos",
+     "INSERT INTO termo_responsabilidade (id, orgao_id, numero, responsavel_id, local_id, "
+     "emitido_por) VALUES ('7e000000-0000-0000-0000-000000000002',"
+     "'11111111-1111-1111-1111-111111111111','0002/2026',"
+     "'4e500000-0000-0000-0000-000000000002','33333333-3333-3333-3333-333333333333',"
+     "'88888888-8888-8888-8888-888888888888'); "
+     "INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega) VALUES "
+     "('7e000000-0000-0000-0000-000000000002','be000000-0000-0000-0000-000000000001','BOM')",
+     False),
+    ("encerrado o primeiro, o bem passa para o termo novo",
+     "UPDATE termo_responsabilidade SET data_encerramento = current_date, "
+     "motivo_encerramento = 'Troca de diretora', "
+     "encerrado_por = '88888888-8888-8888-8888-888888888888' "
+     "WHERE id = '7e000000-0000-0000-0000-000000000001'; "
+     "INSERT INTO termo_responsabilidade (id, orgao_id, numero, responsavel_id, local_id, "
+     "emitido_por) VALUES ('7e000000-0000-0000-0000-000000000003',"
+     "'11111111-1111-1111-1111-111111111111','0003/2026',"
+     "'4e500000-0000-0000-0000-000000000002','33333333-3333-3333-3333-333333333333',"
+     "'88888888-8888-8888-8888-888888888888'); "
+     "INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega) VALUES "
+     "('7e000000-0000-0000-0000-000000000003','be000000-0000-0000-0000-000000000001','BOM')",
+     True),
+    ("devolvido o item, o bem volta a ficar livre",
+     "UPDATE termo_responsabilidade_item SET devolvido_em = current_date, "
+     "estado_na_devolucao = 'DANIFICADO' "
+     "WHERE termo_id = '7e000000-0000-0000-0000-000000000003'; "
+     "INSERT INTO termo_responsabilidade (id, orgao_id, numero, responsavel_id, local_id, "
+     "emitido_por) VALUES ('7e000000-0000-0000-0000-000000000004',"
+     "'11111111-1111-1111-1111-111111111111','0004/2026',"
+     "'4e500000-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333',"
+     "'88888888-8888-8888-8888-888888888888'); "
+     "INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega) VALUES "
+     "('7e000000-0000-0000-0000-000000000004','be000000-0000-0000-0000-000000000001','BOM')",
+     True),
+    ("devolver sem dizer o estado e recusado",
+     "UPDATE termo_responsabilidade_item SET devolvido_em = current_date "
+     "WHERE termo_id = '7e000000-0000-0000-0000-000000000004'",
+     False),
+    ("encerrar pela metade e recusado",
+     "UPDATE termo_responsabilidade SET data_encerramento = current_date "
+     "WHERE id = '7e000000-0000-0000-0000-000000000004'",
+     False),
+    ("encerramento antes da emissao e recusado",
+     "UPDATE termo_responsabilidade SET data_encerramento = current_date - 10, "
+     "motivo_encerramento = 'erro', encerrado_por = '88888888-8888-8888-8888-888888888888' "
+     "WHERE id = '7e000000-0000-0000-0000-000000000004'",
+     False),
+    ("arquivo assinado sem nome original e recusado",
+     "UPDATE termo_responsabilidade SET arquivo_assinado = 'termo/1.pdf' "
+     "WHERE id = '7e000000-0000-0000-0000-000000000004'",
+     False),
+    ("arquivo, nome e data juntos sao aceitos",
+     "UPDATE termo_responsabilidade SET arquivo_assinado = 'termo/1.pdf', "
+     "nome_original = 'assinado.pdf', assinado_em = now() "
+     "WHERE id = '7e000000-0000-0000-0000-000000000004'",
+     True),
+    ("dois responsaveis com o mesmo CPF sao a mesma pessoa",
+     "INSERT INTO responsavel_bem (orgao_id, nome, cpf) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Maria da Silva Souza','12345678909')",
+     False),
+    ("responsavel sem CPF entra, e outro sem CPF tambem",
+     "INSERT INTO responsavel_bem (orgao_id, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Terceira diretora')",
+     True),
+    ("CPF com letra e recusado",
+     "INSERT INTO responsavel_bem (orgao_id, nome, cpf) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Fulano','1234567890a')",
+     False),
+    ("numero de termo repetido na mesma prefeitura e recusado",
+     "INSERT INTO termo_responsabilidade (orgao_id, numero, responsavel_id, local_id, "
+     "emitido_por) VALUES ('11111111-1111-1111-1111-111111111111','0004/2026',"
+     "'4e500000-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333',"
+     "'88888888-8888-8888-8888-888888888888')",
+     False),
+    ("o mesmo bem nao entra duas vezes no mesmo termo",
+     "INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega) VALUES "
+     "('7e000000-0000-0000-0000-000000000004','be000000-0000-0000-0000-000000000001','BOM')",
+     False),
+    ("apagar o termo leva os itens junto",
+     "DELETE FROM termo_responsabilidade WHERE id = '7e000000-0000-0000-0000-000000000004'",
      True),
 ]
 

@@ -35,6 +35,7 @@ import { PostgresFonteDeContexto } from "./infrastructure/db/PostgresFonteDeCont
 import { EmitirDocumento } from "./application/documento/EmitirDocumento";
 import { ManterModelos } from "./application/documento/ManterModelos";
 import { AnexosDeProcesso } from "./application/anexo/AnexosDeProcesso";
+import { BaixarOsAutos } from "./application/anexo/BaixarOsAutos";
 import { PostgresAuditoriaRepository } from "./infrastructure/db/PostgresAuditoriaRepository";
 import { PostgresAtaRepository } from "./infrastructure/db/PostgresAtaRepository";
 import { CriarAta } from "./application/ata/CriarAta";
@@ -199,5 +200,8 @@ export const container = {
   emitirOrdem: new EmitirOrdemFornecimento(tramitacao, processos, auditoria, executarEmTransacao),
   anexosDeProcesso: new AnexosDeProcesso(
     new PostgresAnexoRepository(), tramitacao, new MinioArmazenamento(), auditoria,
+  ),
+  baixarOsAutos: new BaixarOsAutos(
+    new PostgresAnexoRepository(), documentos, tramitacao, new MinioArmazenamento(),
   ),
 };

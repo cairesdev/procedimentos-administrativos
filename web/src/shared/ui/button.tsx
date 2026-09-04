@@ -26,13 +26,31 @@ export const Button = ({ variant = "primary", className, ...button }: ButtonProp
 export const LinkButton = ({
   href,
   variant = "secondary",
+  arquivo,
   children,
 }: {
   href: string;
   variant?: Variante;
+  /**
+   * O destino é um arquivo, não uma página.
+   *
+   * `next/link` faz duas coisas que um download não quer: pré-carrega o
+   * destino ao passar o mouse — e "passar o mouse" viraria montar o zip do
+   * processo no servidor — e navega pelo roteador, que não sabe o que fazer
+   * com uma resposta que não é página. O `<a>` cru entrega ao navegador, que
+   * lê o `Content-Disposition` e salva.
+   */
+  arquivo?: boolean;
   children: ReactNode;
-}) => (
-  <Link href={href} className={`${styles.button} ${classeDa(variant)}`}>
-    {children}
-  </Link>
-);
+}) => {
+  const className = `${styles.button} ${classeDa(variant)}`;
+  return arquivo ? (
+    <a href={href} className={className} download>
+      {children}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+};

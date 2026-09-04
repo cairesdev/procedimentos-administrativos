@@ -1,7 +1,9 @@
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { withPage } from "@/shared/api/pagination";
-import type { ClosedProcess, ProcessDetail, ProcessQueue, SupplyOrder } from "./types";
+import type {
+  Attachment, ClosedProcess, ProcessDetail, ProcessQueue, SupplyOrder,
+} from "./types";
 import type { Page } from "@/shared/api/pagination";
 
 export const listProcesses = (sectorId?: string, pagina?: string) => {
@@ -39,3 +41,12 @@ export const findProcess = (id: string) =>
  */
 export const listSupplyOrders = (processId: string) =>
   apiRequest<SupplyOrder[]>(`${endpoints.processes}/${processId}/ordens`);
+
+/**
+ * Arquivos juntados ao processo.
+ *
+ * Pede `processes:read` na API: quem alcança o processo alcança os documentos
+ * que o sustentam — negar isso a quem dá parecer é pedir parecer sem os autos.
+ */
+export const listAttachments = (processId: string) =>
+  apiRequest<Attachment[]>(`${endpoints.processes}/${processId}/anexos`);

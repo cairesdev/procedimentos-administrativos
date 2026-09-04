@@ -11,7 +11,11 @@ Uma base de dados atende várias prefeituras. Módulos implementados:
   acesso por escola.
 - **Checklist** — modelos (inclusive o roteiro global do PNTP), ciclo com prazo e anexo,
   conferência e link externo para o fornecedor.
-- **Patrimônio** e **Frotas** — 1ª fatia de cada um.
+- **Patrimônio** — duas fatias: locais, categorias, entrada em lote com tombamento sequencial,
+  inventário, transferência com aceite e baixa formal. Fora de escopo até hoje: valor de
+  aquisição, foto/QR no bem e termo de responsável.
+- **Frotas** — duas fatias: veículos, motoristas, ciclo da viagem, manutenção, abastecimento,
+  agenda semanal e relatório de uso.
 
 ## Leitura obrigatória antes de codar
 

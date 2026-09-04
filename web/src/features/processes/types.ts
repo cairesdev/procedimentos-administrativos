@@ -53,6 +53,23 @@ export type SupplyOrder = {
 };
 
 /**
+ * Arquivo juntado ao processo.
+ *
+ * `arquivo` é o caminho no armazenamento, no formato `<uuid>-<nome original>`;
+ * o nome legível sai dele. `origem` separa o que o servidor juntou do que o
+ * requerente mandou respondendo exigência — só o primeiro gasta a cota de dez.
+ */
+export type Attachment = {
+  id: string;
+  processoId: string;
+  despachoId: string | null;
+  tipoDocumento: string;
+  arquivo: string;
+  data: string;
+  origem: "SERVIDOR" | "REQUERENTE";
+};
+
+/**
  * Fila paginada. Os contadores vêm da API porque falam da fila inteira, não
  * da página — e `limiarAlertaDias` vem junto para a linha ser pintada com o
  * mesmo critério que gerou o número.

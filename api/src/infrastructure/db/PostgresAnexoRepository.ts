@@ -3,7 +3,8 @@ import type { AnexoDetalhe, AnexoRepository, NovoAnexo } from "../../application
 
 const COLUNAS = `
   a.id, a.processo_id AS "processoId", a.despacho_id AS "despachoId",
-  a.tipo_documento AS "tipoDocumento", a.arquivo, a.data`;
+  a.tipo_documento AS "tipoDocumento", a.arquivo, a.data,
+  CASE WHEN a.enviado_por_usuario_id IS NOT NULL THEN 'SERVIDOR' ELSE 'REQUERENTE' END AS origem`;
 
 const SQL = {
   criar: `
@@ -18,6 +19,12 @@ const SQL = {
       JOIN processo p ON p.id = a.processo_id
      WHERE p.orgao_id = $1 AND a.id = $2`,
   remover: `DELETE FROM anexo WHERE id = $1`,
+
+  // `enviado_por_usuario_id` é o que separa: o CHECK da tabela garante que
+  // exatamente um dos dois remetentes está preenchido.
+  contarDoServidor: `
+    SELECT count(*) AS total FROM anexo
+     WHERE processo_id = $1 AND enviado_por_usuario_id IS NOT NULL`,
 };
 
 export class PostgresAnexoRepository implements AnexoRepository {
@@ -42,5 +49,10 @@ export class PostgresAnexoRepository implements AnexoRepository {
 
   remover = async (anexoId: string): Promise<void> => {
     await pool.query(SQL.remover, [anexoId]);
+  };
+
+  contarDoServidor = async (processoId: string): Promise<number> => {
+    const { rows } = await pool.query(SQL.contarDoServidor, [processoId]);
+    return Number(rows[0]?.total ?? 0);
   };
 }

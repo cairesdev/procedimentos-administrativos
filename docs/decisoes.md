@@ -1000,12 +1000,6 @@ teria como cadastrar uma escola. O CRUD passa a existir também em
 módulos. Tabela própria faria a mesma escola existir duas vezes, com dois CNPJs
 livres para divergir bem no dado que o PNAE cobra.
 
-### Alterações e ajustes
-
-Anexo de arquivos nos processos.
-
-Adicionar documento de solicitação de pagamento do fornecedor, com direito a costumização de timbragem.
-
 ## Contrato, ordem e apresentação — decidido
 
 Cinco pedidos que o uso real trouxe, depois de o módulo de Processos estar em
@@ -1654,7 +1648,7 @@ partir do nada — dado que não existe não se inventa por migration.
 
 ### `reports:read`, e não `contracts:read`
 
-`contracts:read` autoriza ver *um* contrato, e quem o tem em mãos precisa dele.
+`contracts:read` autoriza ver _um_ contrato, e quem o tem em mãos precisa dele.
 O relatório mostra o conjunto: quanto a prefeitura contratou no ano, de quem, e
 onde o processo trava. É leitura de gestão, e quem lê um contrato não
 necessariamente responde por ela. Gestor, compras e controladoria recebem; o
@@ -1882,3 +1876,87 @@ ouve "carregando" em vez do silêncio.
 
 **Pular para o conteúdo.** Primeira parada do Tab em qualquer tela: quem navega
 por teclado atravessava doze links de menu a cada troca de tela.
+
+## Termo de responsabilidade do bem — levantamento consolidado
+
+Terceira coisa que a 1ª fatia do patrimônio deixou de fora, ao lado do valor de
+aquisição e da etiqueta com QR. O sistema sabe **onde** o bem está e não sabe
+**quem responde por ele** — e é essa a pergunta do Tribunal quando um bem some.
+
+1. **O responsável é uma pessoa, com ou sem login.** Nome, CPF e cargo, com
+   vínculo opcional a um `usuario`. A diretora que assina pelo mobiliário da
+   escola raramente é quem opera o sistema, e exigir login dela transformaria
+   uma assinatura de papel em cadastro de acesso.
+2. **Um termo cobre vários bens.** É como a prefeitura já faz: uma folha com as
+   trinta carteiras, e não trinta folhas. Termo de um bem só continua possível —
+   é o mesmo termo com um item.
+3. **O termo nasce a qualquer momento**, pela tela do patrimônio. Não sai do
+   aceite da transferência nem da entrada: são momentos em que o bem muda de
+   lugar, e mudar de lugar não é mudar de responsável — o mesmo diretor recebe
+   bem novo o ano inteiro sem assinar nada de novo.
+4. **Assinatura em papel, digitalizado de volta.** O sistema emite a peça com
+   timbre e QR pelo motor que já existe, alguém assina, e o PDF assinado volta
+   como anexo do termo. É o caminho que o Tribunal aceita hoje; aceite em tela
+   valeria só para quem tem login, que é justamente quem menos assina.
+5. **Um bem, um responsável por vez.** Emitir termo novo sobre bem já coberto
+   **encerra o anterior** na data, e a passagem fica no histórico. Recusar
+   obrigaria a encerrar trinta termos à mão só para trocar o diretor.
+6. **A saída tem peça própria: o termo de devolução.** Data e estado de
+   conservação de cada bem devolvido. Sem ela, quem entregou continua
+   respondendo por bem que já não tem — e é justamente essa pessoa que o termo
+   deveria proteger.
+7. **O termo é por local.** Escolhe-se a escola, e os bens ofertados são os que
+   estão nela. Casa com a realidade e **cria o vínculo pessoa-local que hoje
+   falta** — a limitação conhecida de qualquer um com `assets:write` aceitar
+   transferência de qualquer lugar passa a ter como ser resolvida depois.
+8. **A responsabilidade vale desde a emissão**, e o termo sem assinatura
+   anexada aparece numa lista de pendentes. Esperar o digitalizado deixaria o
+   bem sem dono nas semanas entre imprimir e recolher a assinatura — e é
+   exatamente nesse intervalo que ninguém está olhando.
+
+### O que fica fora desta fatia
+
+- **Quem pode aceitar transferência** continua como está. O vínculo pessoa-local
+  passa a existir, mas usá-lo para travar o aceite é decisão de outra rodada.
+- **Valor de aquisição e etiqueta com QR** seguem fora, como já estavam.
+- **Assinatura eletrônica com certificado** não foi pedida e não foi modelada.
+
+## Anexos do processo e o pacote dos autos — levantamento consolidado
+
+A API guarda anexo desde a primeira fatia e a tela interna **nunca teve** o
+painel: só o portal do cidadão anexava, respondendo exigência. Na prática o
+servidor juntava a nota fiscal por fora do sistema, e o processo chegava à
+prestação de contas sem os documentos que o justificam.
+
+1. **Dez arquivos por processo, e nem um a mais.** Não é limitação técnica — é
+   o que separa "juntar o que importa" de "usar o processo como pasta de rede".
+   Dez cobre o caso real (nota, empenho, parecer, certidões) com folga, e quando
+   apertar, a conversa certa é sobre qual arquivo não pertence ali.
+2. **O teto conta só o que o servidor junta.** A resposta do cidadão a uma
+   exigência é documento que o próprio processo pediu: ele não enxerga quantos
+   arquivos já existem, e barrá-lo travaria a resposta que a prefeitura exigiu.
+   Aparece na lista, marcado, e não ocupa vaga.
+3. **Anexar vale a qualquer momento do processo aberto.** Processo encerrado ou
+   cancelado não recebe mais nada — a trava já existia e continua.
+4. **Só por dentro.** O painel vive na tela interna; nenhuma superfície pública
+   ganha upload novo.
+5. **O pacote leva anexos e peças emitidas juntos.** É "o processo" que o
+   Tribunal pede, e a tela separava isso em dois cards. Rascunho fica de fora:
+   peça não emitida é texto que alguém está escrevendo.
+6. **As peças vão como HTML, não PDF.** O sistema já guarda a peça como HTML
+   congelado na emissão e imprime pelo navegador; gerar PDF no servidor exigiria
+   um Chromium dentro do contêiner — centenas de megabytes e uma superfície de
+   atualização nova — para produzir o mesmo papel. O arquivo abre com dois
+   cliques e imprime igual, com o código de conferência no rodapé.
+7. **Teto de 200 MB no pacote, com recusa clara.** O zip é montado inteiro na
+   memória; derrubar a API da prefeitura por causa de um download seria pior que
+   negar o pacote. Acima do teto, a recusa diz o tamanho e manda baixar separado.
+8. **Arquivo que sumiu do armazenamento recusa o pacote inteiro**, dizendo qual
+   arquivo faltou. Entregar autos incompletos a quem acredita que estão
+   completos é o pior desfecho possível.
+
+### O que fica fora desta fatia
+
+- **Compressão no zip** — o conteúdo é PDF, JPEG e PNG, já comprimidos.
+- **Download em fluxo** — o pacote passa pela memória, e o teto é o que segura.
+- **Assinatura ou carimbo de tempo no pacote** não foi pedido.

@@ -149,6 +149,36 @@ processosRouter.get("/:id/anexos/:anexoId/download", async (req, res, next) => {
   }
 });
 
+/**
+ * Os autos num arquivo só.
+ *
+ * Vem antes da rota de download de um anexo? Não precisa: os caminhos não se
+ * confundem. Mas fica junto delas de propósito — quem procurar "como se baixa
+ * arquivo deste processo" acha as duas respostas no mesmo lugar.
+ */
+processosRouter.get("/:id/autos.zip", async (req, res, next) => {
+  try {
+    // O endereço público sai da configuração, não do cabeçalho do pedido: o
+    // `Host` vem do cliente, e o código de conferência impresso na peça
+    // apontaria para onde o cliente mandasse.
+    const baseUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
+
+    const { nomeArquivo, conteudo } = await container.baixarOsAutos.montar(
+      req.sessao!.orgaoId, req.params.id!, baseUrl,
+    );
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Length", conteudo.length);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${nomeArquivo}"`,
+    );
+    res.end(conteudo);
+  } catch (error) {
+    next(error);
+  }
+});
+
 processosRouter.delete("/:id/anexos/:anexoId", exigirPermissao("processes:dispatch"), async (req, res, next) => {
   try {
     await container.anexosDeProcesso.remover(

@@ -1541,3 +1541,31 @@ com rede, fazem essa parte.
 **Fica para a próxima:** os estados vazios ricos entraram em licitações e
 contratos; as outras ~30 listagens seguem com a frase curta, que o `Table`
 continua aceitando.
+
+## Anexos do processo e "baixar os autos"
+
+| O que | Onde |
+| --- | --- |
+| Teto de 10, conferido **antes** do upload | `AnexosDeProcesso.anexar` + `contarDoServidor` |
+| Origem do anexo (SERVIDOR/REQUERENTE) | `PostgresAnexoRepository`, para a tela contar igual à API |
+| Escritor de zip sem dependência nova | `domain/shared/Zip.ts` — método 0, CRC32, UTF-8 |
+| Peça emitida vira HTML que se abre sozinho | `domain/documento/PecaEmHtml.ts` |
+| O pacote | `application/anexo/BaixarOsAutos.ts`, teto de 200 MB |
+| `GET /processos/:id/autos.zip` | usa `APP_URL`, nunca o `Host` do pedido |
+| Painel de anexos na tela interna | `features/processes/components/AttachmentPanel.tsx` |
+
+**Dois defeitos que a verificação pegou, e nenhum teste estático pegaria:**
+a data da peça chega do `pg` como `Date` e não como o `string` que o tipo
+promete — `.replace()` nela derrubava o pacote com "Erro interno"; e o
+saneamento do nome achatava a barra da pasta, entregando `anexos-nota.pdf` no
+lugar de `anexos/nota.pdf`. Os dois têm teste agora, e os dois acusam quando
+quebrados de propósito.
+
+**Verificação:** Postgres real, a API no ar e um S3 de mentira que fala o
+suficiente para o cliente do MinIO — 25 asserções, do décimo primeiro anexo
+recusado ao `unzip -t` conferindo o CRC de cada entrada. Mais palco de render do
+painel (contador, teto, processo fechado, vazio) e 5 testes de caso de uso para
+o teto de 200 MB, que não cabe num palco.
+
+**Sem `MINIO_*` configurado nada disso funciona** — a tela mostra a lista vazia
+em vez de quebrar, mas o upload falha. É o mesmo pré-requisito do anexo antigo.

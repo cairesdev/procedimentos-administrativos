@@ -3,7 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { getActiveAssignmentId, getProfile } from "@/features/auth/queries";
 import { listAllContracts } from "@/features/contracts/queries";
 import { ChecklistCard } from "@/features/checklists/components/ChecklistCard";
-import { findProcess, listSupplyOrders } from "@/features/processes/queries";
+import { findProcess, listAttachments, listSupplyOrders } from "@/features/processes/queries";
+import { AttachmentPanel } from "@/features/processes/components/AttachmentPanel";
 import { ProcessActions } from "@/features/processes/components/ProcessActions";
 import { ProcessTimeline } from "@/features/processes/components/ProcessTimeline";
 import { SupplyOrderPanel } from "@/features/processes/components/SupplyOrderPanel";
@@ -27,7 +28,7 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
   const viewer = await requirePermission("processes:read", "PROCESSOS");
   const { id } = await params;
 
-  const [process, profile, activeAssignmentId, sectors, contracts, modelos, emitidos] =
+  const [process, profile, activeAssignmentId, sectors, contracts, modelos, emitidos, anexos] =
     await Promise.all([
       findProcess(id),
       getProfile(),
@@ -36,6 +37,9 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
       listAllContracts(),
       listTemplates("PROCESSOS"),
       listDocumentsFor(id),
+      // Anexo não derruba a tela do processo: se o armazenamento estiver fora,
+      // o que interessa — tramitação, prazo, despacho — continua aparecendo.
+      listAttachments(id).catch(() => []),
     ]);
 
   // O override de destino é configurado por tipo de processo. Serve só para
@@ -141,6 +145,17 @@ export default async function ProcessDetailPage({ params }: ProcessPageProps) {
               </Alert>
             </Card>
           )}
+
+          {/*
+            Os arquivos ficam na coluna larga, com a tramitação: são o que
+            sustenta cada ato dela, e a tabela de nomes de arquivo não cabe na
+            coluna estreita sem virar uma pilha de reticências.
+          */}
+          <AttachmentPanel
+            processoId={process.id}
+            anexos={anexos}
+            podeAnexar={isOpen && viewer.can("processes:dispatch")}
+          />
         </Stack>
 
         <Stack>
