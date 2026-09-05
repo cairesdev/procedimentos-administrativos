@@ -134,7 +134,7 @@ services:
       # Sem ela o worker não sobe: não teria como decifrar senha de SMTP
       # nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
       EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env (openssl rand -base64 32)}
-      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-60000}
+      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-15000}
       EMAIL_LOTE: ${EMAIL_LOTE:-20}
     restart: unless-stopped
 

@@ -169,7 +169,7 @@ services:
       # nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
       EMAIL_CHAVE: ${EMAIL_CHAVE:?defina EMAIL_CHAVE no .env.prod (openssl rand -base64 32)}
       APP_URL: ${APP_URL:?defina APP_URL no .env.prod (https://seu-dominio)}
-      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-60000}
+      EMAIL_INTERVALO_MS: ${EMAIL_INTERVALO_MS:-15000}
       EMAIL_LOTE: ${EMAIL_LOTE:-20}
     restart: unless-stopped
     logging: *logging

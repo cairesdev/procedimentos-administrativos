@@ -28,6 +28,23 @@ const PROJETO = path.join(RAIZ, "..");
 const ler = (caminho: string) => readFileSync(caminho, "utf8");
 
 /**
+ * Comentário fora antes de procurar `process.env`.
+ *
+ * Sem isto, um comentário que **fala** de variável de ambiente vira variável
+ * exigida. Aconteceu na primeira vez que este teste rodou depois de alguém
+ * escrever, num JSDoc, que "`process.env.X` devolve NaN": o teste passou a
+ * cobrar uma variável chamada `X` nos dois composes.
+ *
+ * É a terceira vez que um teste deste projeto casa com o próprio comentário —
+ * o padrão está em `emissao-de-relatorio.test.ts` e em
+ * `setvalue-em-campo-registrado.test.ts` pelo mesmo motivo.
+ */
+const semComentarios = (codigo: string) =>
+  codigo
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+/**
  * Lidas fora do processo da API, ou só em teste/script.
  *
  * Cada uma some da conferência, então a lista é curta e justificada — é aqui
@@ -52,7 +69,8 @@ const usadasNoCodigo = (): string[] => {
 
   const nomes = new Set<string>();
   for (const arquivo of arquivos) {
-    for (const achado of ler(arquivo).matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) {
+    for (const achado of semComentarios(ler(arquivo))
+      .matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) {
       nomes.add(achado[1]!);
     }
   }

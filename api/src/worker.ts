@@ -1,4 +1,5 @@
 import { chaveDoAmbiente } from "./domain/email/SegredoDoSmtp";
+import { intervaloDoAmbiente, loteDoAmbiente } from "./domain/email/RitmoDoWorker";
 import { DespacharFilaDeEmails } from "./application/email/DespacharFilaDeEmails";
 import { PostgresConfiguracaoEmailRepository } from "./infrastructure/db/PostgresConfiguracaoEmailRepository";
 import { PostgresEmailFilaRepository } from "./infrastructure/db/PostgresEmailFilaRepository";
@@ -16,8 +17,11 @@ import { pool } from "./infrastructure/db/pool";
  * mesmo e-mail duas vezes.
  */
 
-const INTERVALO_MS = Number(process.env.EMAIL_INTERVALO_MS ?? 60_000);
-const TAMANHO_DO_LOTE = Number(process.env.EMAIL_LOTE ?? 20);
+const intervalo = intervaloDoAmbiente();
+const lote = loteDoAmbiente();
+
+const INTERVALO_MS = intervalo.valor;
+const TAMANHO_DO_LOTE = lote.valor;
 
 const main = async (): Promise<void> => {
   /**
@@ -46,6 +50,11 @@ const main = async (): Promise<void> => {
   };
   process.on("SIGTERM", () => parar("SIGTERM"));
   process.on("SIGINT", () => parar("SIGINT"));
+
+  // O valor corrigido é dito em voz alta: o worker rodando num ritmo que
+  // ninguém pediu, em silêncio, é pior que a variável errada.
+  if (intervalo.aviso) console.warn(`EMAIL_INTERVALO_MS: ${intervalo.aviso}`);
+  if (lote.aviso) console.warn(`EMAIL_LOTE: ${lote.aviso}`);
 
   console.log(
     `worker de e-mail no ar: lote de ${TAMANHO_DO_LOTE} a cada ${INTERVALO_MS / 1000}s`,
