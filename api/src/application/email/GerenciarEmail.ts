@@ -1,6 +1,7 @@
 import { ErroDeNegocio, NaoEncontrado } from "../../domain/shared/ErroDeNegocio";
 import { chaveDoAmbiente, cifrar, decifrar } from "../../domain/email/SegredoDoSmtp";
 import { enderecoValido, remetenteComNome } from "../../domain/email/Remetente";
+import { explicarErroDoSmtp } from "../../domain/email/ErroDoSmtp";
 import type {
   ConfiguracaoEmailRepository, ConfiguracaoNaTela,
 } from "../ports/ConfiguracaoEmailRepository";
@@ -194,10 +195,19 @@ export class GerenciarEmail {
         },
       );
     } catch (erro) {
+      /**
+       * Traduzido, e não repassado cru.
+       *
+       * O que sobe daqui é do OpenSSL ou do servidor SMTP, e fala com quem
+       * escreve código. Quem está na tela é um administrador de prefeitura, e
+       * "wrong version number" não diz a ele que marcou TLS direto numa porta
+       * de STARTTLS. O texto original vai junto, entre parênteses.
+       */
       throw new ErroDeNegocio(
-        `O servidor de e-mail recusou o envio: ${
-          erro instanceof Error ? erro.message : String(erro)
-        }`,
+        explicarErroDoSmtp(erro, {
+          porta: configuracao.porta,
+          tlsDireto: configuracao.tlsDireto,
+        }),
       );
     }
   };

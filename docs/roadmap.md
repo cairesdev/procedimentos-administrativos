@@ -1677,6 +1677,32 @@ código de conferência apontando para lugar nenhum.
 da API e cobra a declaração nos dois composes, mais a linha no `.env.example` e
 no `.env.prod.example` correspondentes. Falha no CI, antes do deploy.
 
+### O erro do SMTP, traduzido
+
+O primeiro teste de envio real falhou com isto:
+
+```
+58B21C639A770000:error:0A00010B:SSL routines:tls_validate_record_header:
+wrong version number:.../tlsany_meth.c:77
+```
+
+Significa TLS batendo numa porta que fala texto puro — "TLS direto" marcado
+numa porta 587. Mas a mensagem é do OpenSSL: ela fala com quem escreve código,
+e quem está na tela é um administrador de prefeitura. Nada ali aponta o campo
+errado.
+
+`domain/email/ErroDoSmtp.ts` traduz os oito erros que a prefeitura vai
+encontrar — TLS trocado, senha recusada, conexão negada, firewall, domínio
+inexistente, relay negado, certificado próprio, autenticação exigida — e
+**mantém o texto original entre parênteses**: a tradução resolve o caso
+conhecido, o texto cru salva quando o caso não é nenhum dos previstos. Erro
+desconhecido volta cru, e nunca vira "falha no envio".
+
+A tela avisa antes: porta 587 com TLS direto (e as outras duas combinações
+improváveis) mostram a dica no campo enquanto se digita. É aviso, não trava —
+existe servidor interno em porta fora do convencional. Um teste confere que o
+texto do web e o da API não divergem.
+
 ### Limitações conhecidas
 
 - **A alteração do SMTP global não fica na auditoria.** A trilha é por

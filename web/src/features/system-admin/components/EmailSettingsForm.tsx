@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { InputField, SelectField } from "@/shared/ui/form-field";
 import { Alert, FieldGrid, Stack } from "@/shared/ui/layout";
 import { saveEmailSettings, testEmailSettings } from "../actions";
+import { avisoDePortaETls } from "./aviso-de-porta";
 import type { EmailSettings } from "../queries";
 
 /**
@@ -140,10 +141,23 @@ export const EmailSettingsForm = ({
         <SelectField
           label="Criptografia"
           name="tlsDireto"
+          /**
+           * O aviso aparece **antes** de o teste falhar.
+           *
+           * Porta e criptografia trocadas é o erro mais comum aqui, e o que
+           * ele produz é uma mensagem do OpenSSL — "wrong version number" —
+           * que não diz a ninguém qual campo está errado. Dizer aqui custa uma
+           * linha; descobrir depois custa uma ligação.
+           *
+           * É aviso, e não trava: existe servidor interno em porta fora do
+           * convencional, e recusar o cadastro por causa de um palpite seria
+           * pior.
+           */
+          hint={avisoDePortaETls(Number(porta), tlsDireto) ?? undefined}
           value={tlsDireto ? "direto" : "starttls"}
           onChange={(evento) => setTlsDireto(evento.target.value === "direto")}
           options={[
-            { value: "starttls", label: "STARTTLS (porta 587)" },
+            { value: "starttls", label: "STARTTLS (porta 587, a mais comum)" },
             { value: "direto", label: "TLS direto (porta 465)" },
           ]}
         />

@@ -1,5 +1,6 @@
 import { decifrar } from "../../domain/email/SegredoDoSmtp";
 import { remetenteComNome } from "../../domain/email/Remetente";
+import { explicarErroDoSmtp } from "../../domain/email/ErroDoSmtp";
 import type { ConfiguracaoEmailRepository } from "../ports/ConfiguracaoEmailRepository";
 import type { EmailFilaRepository, EmailParaEnviar } from "../ports/EmailFilaRepository";
 import type { EnviadorDeEmail } from "../ports/EnviadorDeEmail";
@@ -119,19 +120,17 @@ export class DespacharFilaDeEmails {
         ? null
         : new Date(Date.now() + esperaEmMinutos(email.tentativas) * 60 * 1000);
 
-      await this.fila.marcarFalha(email.id, mensagemDoErro(erro), proxima);
+      await this.fila.marcarFalha(
+        email.id,
+        // Traduzido também aqui: é este texto que a tela de e-mails mostra
+        // embaixo do assunto, e é por ele que alguém vai consertar.
+        explicarErroDoSmtp(erro, {
+          porta: configuracao.porta,
+          tlsDireto: configuracao.tlsDireto,
+        }).slice(0, 500),
+        proxima,
+      );
       return "falharam";
     }
   };
 }
-
-/**
- * O erro como ele veio, cortado.
- *
- * O texto do servidor SMTP é o que resolve o problema — "550 relay denied",
- * "535 authentication failed" dizem exatamente o que corrigir, e trocá-los por
- * "falha no envio" apagaria a única informação útil. O corte existe porque
- * alguns servidores devolvem parágrafos, e a coluna é lida numa tela.
- */
-const mensagemDoErro = (erro: unknown): string =>
-  (erro instanceof Error ? erro.message : String(erro)).slice(0, 500);
