@@ -1659,9 +1659,23 @@ impede um e-mail ruim de derrubar o lote.
    ela o worker não sobe** — de propósito: ele não teria como decifrar senha
    nenhuma, e todo envio autenticado falharia cinco vezes antes de morrer.
 2. `APP_URL` apontando para o endereço público — é o que monta os links dentro
-   dos e-mails.
-3. Subir o serviço `email-worker` (mesma imagem da API, outro comando).
+   dos e-mails e o código de conferência das peças.
+3. `docker compose -f docker-compose.prod.yml up -d` — o serviço `email-worker`
+   sobe junto, com a mesma imagem da API.
 4. Cadastrar o SMTP global em `/admin/email` e **usar o botão de teste**.
+
+**Erro que já aconteceu, e que agora tem guarda:** pôr a variável no `.env.prod`
+e ela não chegar à aplicação. O Compose **não repassa o `.env` inteiro** para
+dentro do contêiner — só injeta o que está declarado no `environment:` do
+serviço. A `EMAIL_CHAVE` estava no arquivo e ausente do `docker-compose.prod.yml`
+(que a fatia de e-mail não tocou), então `process.env.EMAIL_CHAVE` chegava
+`undefined` e a tela do administrativo geral estourava ao salvar. A `APP_URL`
+tinha o mesmo buraco e era pior: ela não estoura — produziria link de convite e
+código de conferência apontando para lugar nenhum.
+
+`tests/estrutura/variaveis-no-compose.test.ts` lê todo `process.env.X` do código
+da API e cobra a declaração nos dois composes, mais a linha no `.env.example` e
+no `.env.prod.example` correspondentes. Falha no CI, antes do deploy.
 
 ### Limitações conhecidas
 

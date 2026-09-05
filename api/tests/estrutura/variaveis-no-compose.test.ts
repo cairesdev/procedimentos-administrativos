@@ -109,18 +109,31 @@ describe("as variáveis de ambiente chegam ao contêiner", () => {
     }
   });
 
-  it("o .env.example documenta o que os composes exigem", () => {
-    // Variável obrigatória (`:?`) sem linha no exemplo é deploy que só falha na
-    // VPS, com uma mensagem do Compose e nada explicando o que ela é.
-    const exemplo = ler(path.join(PROJETO, ".env.example"));
-    const prod = ler(path.join(PROJETO, "docker-compose.prod.yml"));
+  /**
+   * Cada compose tem o seu exemplo.
+   *
+   * `DOMINIO` e `EMAIL_ACME` só existem em produção (são do Caddy) e não têm o
+   * que fazer no `.env.example` do desenvolvimento. Conferir os dois contra o
+   * mesmo arquivo cobraria variável no lugar errado — foi o que este teste fez
+   * na primeira versão.
+   */
+  for (const [compose, exemplo] of [
+    ["docker-compose.yml", ".env.example"],
+    ["docker-compose.prod.yml", ".env.prod.example"],
+  ] as const) {
+    it(`${exemplo} documenta o que ${compose} exige`, () => {
+      // Variável obrigatória (`:?`) sem linha no exemplo é deploy que só falha
+      // na VPS, com uma mensagem do Compose e nada explicando o que ela é.
+      const texto = ler(path.join(PROJETO, exemplo));
+      const definicao = ler(path.join(PROJETO, compose));
 
-    for (const achado of prod.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?/g)) {
-      const nome = achado[1]!;
-      assert.match(
-        exemplo, new RegExp(`^${nome}=`, "m"),
-        `${nome} é obrigatória no compose de produção e não está no .env.example`,
-      );
-    }
-  });
+      for (const achado of definicao.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?/g)) {
+        const nome = achado[1]!;
+        assert.match(
+          texto, new RegExp(`^${nome}=`, "m"),
+          `${nome} é obrigatória em ${compose} e não está no ${exemplo}`,
+        );
+      }
+    });
+  }
 });
