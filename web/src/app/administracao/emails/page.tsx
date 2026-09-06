@@ -29,6 +29,15 @@ export default async function EmailsPage({ searchParams }: PageProps) {
   const falhados = fila.itens.filter((email) => email.status === "FALHOU").length;
   const parados = fila.itens.filter((email) => email.status === "PENDENTE").length;
 
+  /**
+   * Cinco minutos de atraso no e-mail mais antigo = ninguém está processando.
+   *
+   * O worker roda a cada quinze segundos e a maior espera entre tentativas é
+   * de dezesseis minutos, mas essa espera empurra `agendado_para` para frente
+   * — o atraso só cresce quando **nada** pega a fila.
+   */
+  const travada = (fila.atrasoEmMinutos ?? 0) >= 5;
+
   return (
     <>
       <PageHeader
@@ -46,11 +55,29 @@ export default async function EmailsPage({ searchParams }: PageProps) {
           </Alert>
         ) : null}
 
-        {parados > 0 ? (
+        {/*
+          A fila parada precisa parecer parada.
+          ------------------------------------------------------------------
+          Antes havia só o aviso azul de "esperando o próximo envio", que é o
+          que a tela mostrava enquanto o worker estava morto havia 22 horas.
+          Fila tranquila e fila travada eram a mesma frase.
+
+          O corte de cinco minutos é folgado de propósito: o worker roda a cada
+          quinze segundos, e um e-mail que falhou espera 1, 4, 9 ou 16 minutos
+          entre tentativas. Cinco minutos de atraso no **mais antigo** não
+          acontece com worker vivo.
+        */}
+        {travada ? (
+          <Alert tone="error">
+            <strong>A fila não está sendo processada.</strong> O e-mail mais antigo
+            devia ter saído há {fila.atrasoEmMinutos} minutos e continua parado —
+            o serviço de envio provavelmente está fora do ar. Avise o
+            administrativo geral: nenhum aviso está chegando aos destinatários.
+          </Alert>
+        ) : parados > 0 ? (
           <Alert tone="info">
             {parados === 1 ? "Um e-mail está" : `${parados} e-mails estão`} na fila,
-            esperando o próximo envio. Se ficarem parados, confira com o
-            administrativo geral se há servidor de e-mail configurado.
+            esperando o próximo envio.
           </Alert>
         ) : null}
 

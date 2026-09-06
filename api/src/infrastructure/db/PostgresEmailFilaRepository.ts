@@ -77,6 +77,17 @@ const SQL = {
            agendado_para = COALESCE($3::timestamptz, agendado_para)
      WHERE id = $1`,
 
+  /**
+   * O minuto mais antigo de atraso.
+   *
+   * Usa o mesmo índice parcial da varredura do worker — é a consulta que ele
+   * faz, olhada do outro lado. Nada atrasado devolve `NULL`.
+   */
+  atrasoDaFila: `
+    SELECT EXTRACT(EPOCH FROM (now() - MIN(agendado_para))) / 60 AS "minutos"
+      FROM email_fila
+     WHERE orgao_id = $1 AND status = 'PENDENTE' AND agendado_para <= now()`,
+
   listar: `
     SELECT ${COLUNAS}, ${TOTAL_DA_JANELA} FROM email_fila
      WHERE orgao_id = $1
@@ -128,6 +139,12 @@ export class PostgresEmailFilaRepository implements EmailFilaRepository {
       orgaoId, paginacao.porPagina, deslocamentoDe(paginacao),
     ]);
     return montarPagina(rows, paginacao);
+  };
+
+  atrasoDaFila = async (orgaoId: string): Promise<number | null> => {
+    const { rows } = await pool.query(SQL.atrasoDaFila, [orgaoId]);
+    const minutos = rows[0]?.minutos;
+    return minutos === null || minutos === undefined ? null : Math.floor(Number(minutos));
   };
 
   reenfileirar = async (orgaoId: string, id: string): Promise<boolean> => {

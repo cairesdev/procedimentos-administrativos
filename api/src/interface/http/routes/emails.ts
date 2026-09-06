@@ -20,9 +20,19 @@ emailsRouter.use(exigirPermissao("audit:read"));
 
 emailsRouter.get("/", async (req, res, next) => {
   try {
-    res.json(await container.emailFila.listar(
-      req.sessao!.orgaoId, paginacaoSchema.parse(req.query),
-    ));
+    /**
+     * O atraso vem junto da página.
+     *
+     * É o sinal de vida da fila: se o e-mail mais antigo devia ter saído há
+     * muito tempo e não saiu, ninguém está processando. Sem isto, fila parada
+     * e fila tranquila são indistinguíveis — foi o que deixou o worker morto
+     * por 22 horas sem ninguém perceber.
+     */
+    const [pagina, atrasoEmMinutos] = await Promise.all([
+      container.emailFila.listar(req.sessao!.orgaoId, paginacaoSchema.parse(req.query)),
+      container.emailFila.atrasoDaFila(req.sessao!.orgaoId),
+    ]);
+    res.json({ ...pagina, atrasoEmMinutos });
   } catch (error) {
     next(error);
   }

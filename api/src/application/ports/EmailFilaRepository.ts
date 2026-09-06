@@ -67,6 +67,20 @@ export interface EmailFilaRepository {
 
   listar(orgaoId: string, paginacao: Paginacao): Promise<Pagina<EmailNaFila>>;
 
+  /**
+   * Há quantos minutos o e-mail mais antigo devia ter saído e não saiu.
+   *
+   * `null` quando não há nada atrasado. É o sinal de vida da fila **pelo
+   * efeito**, e não por um batimento que o worker escreveria: worker escrevendo
+   * "estou vivo" pode estar vivo e sem conseguir mandar nada. O que interessa
+   * a quem olha a tela é se o e-mail saiu.
+   *
+   * Existe porque a fila parada e a fila tranquila eram indistinguíveis: o
+   * worker ficou 22 horas reiniciando em laço e a tela dizia "esperando o
+   * próximo envio".
+   */
+  atrasoDaFila(orgaoId: string): Promise<number | null>;
+
   /** Devolve para a fila o que falhou — o botão de reenviar da tela. */
   reenfileirar(orgaoId: string, id: string): Promise<boolean>;
 }

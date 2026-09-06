@@ -1703,6 +1703,42 @@ improváveis) mostram a dica no campo enquanto se digita. É aviso, não trava �
 existe servidor interno em porta fora do convencional. Um teste confere que o
 texto do web e o da API não divergem.
 
+### O worker que ficou 22 horas reiniciando em laço
+
+O primeiro deploy da fila não processou nada, e ninguém percebeu. Três defeitos
+meus, em camadas:
+
+1. **`config/env.ts` exigia `JWT_SECRET` no import.** `pool.ts` importa `env`, o
+   worker importa `pool.ts` — e o serviço `email-worker` não declara essa
+   variável, nem deveria: ele não emite nem confere token nenhum. O contêiner
+   subia, estourava no import e reiniciava, para sempre.
+2. **O guarda de variáveis conferia só o serviço `api`.** Deu confiança falsa:
+   825 testes verdes com o worker morto em produção.
+3. **A tela dizia "e-mails esperando o próximo envio".** Fila tranquila e fila
+   travada eram a mesma frase, então o único jeito de descobrir era entrar na
+   VPS e ler `docker logs`.
+
+As três correções:
+
+- **Variáveis lidas sob demanda** (`env` com getters). Cada processo cobra o
+  que ele usa: o worker, o banco; a API, o banco e o segredo. A API continua
+  falhando no arranque, por `validarParaApi()` na primeira linha do
+  `server.ts` — descobrir que falta `JWT_SECRET` no primeiro login de segunda
+  seria pior que não subir.
+- **`tests/estrutura/worker-sobe.test.ts`** liga o processo de verdade, com
+  exatamente as variáveis que o compose declara para ele e o `.env` desligado.
+  Conferência estática não pegaria: o que quebra é a cadeia de imports, e ela
+  só existe em tempo de execução. Restaurei o `env.ts` antigo de propósito e o
+  teste acusou.
+- **A tela mostra o atraso da fila.** Se o e-mail mais antigo devia ter saído
+  há cinco minutos e não saiu, o aviso é vermelho e diz que ninguém está
+  processando. O corte é folgado: o worker roda a cada quinze segundos, e a
+  espera entre tentativas empurra `agendado_para` para frente — o atraso só
+  cresce quando **nada** pega a fila.
+
+O sinal é o **efeito**, e não um batimento que o worker escreveria: worker
+escrevendo "estou vivo" pode estar vivo e sem conseguir mandar nada.
+
 ### Limitações conhecidas
 
 - **A alteração do SMTP global não fica na auditoria.** A trilha é por
