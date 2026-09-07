@@ -30,7 +30,14 @@ export type Role =
   // A escola, a creche, o posto: quem recebe material e responde por ele.
   | "UNIDADE"
   | "PATRIMONIO"
-  | "FROTAS";
+  | "FROTAS"
+  // Saúde: os quatro papéis da ficha do pronto atendimento. A separação é a
+  // do papel impresso — recepção identifica, enfermeiro tria e dá a saída,
+  // técnico carimba o horário da medicação, médico avalia e prescreve.
+  | "SAUDE_RECEPCAO"
+  | "SAUDE_TECNICO"
+  | "SAUDE_ENFERMEIRO"
+  | "SAUDE_MEDICO";
 
 export type ModuleName =
   | "PROCESSOS"
@@ -38,7 +45,8 @@ export type ModuleName =
   | "PATRIMONIO"
   | "ALMOXARIFADO"
   | "PROTOCOLO"
-  | "CHECKLIST";
+  | "CHECKLIST"
+  | "SAUDE";
 
 export type LoginResponse = {
   token: string;

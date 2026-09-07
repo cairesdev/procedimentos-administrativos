@@ -75,4 +75,5 @@ export const MODULES: ModuleName[] = [
   "PATRIMONIO",
   "ALMOXARIFADO",
   "CHECKLIST",
+  "SAUDE",
 ];

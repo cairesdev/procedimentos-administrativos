@@ -13,21 +13,35 @@ const SQL = {
   existeEmail: `SELECT 1 FROM usuario WHERE email = $1`,
   existeUsername: `SELECT 1 FROM usuario WHERE username = $1`,
   criar: `
-    INSERT INTO usuario (orgao_id, nome, email, username, senha_hash, papel_base)
-    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    INSERT INTO usuario (orgao_id, nome, email, username, senha_hash, papel_base,
+                         conselho_tipo, conselho_numero, conselho_uf)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
   criarLotacao: `
     INSERT INTO lotacao (usuario_id, unidade_id, setor_id, departamento_id, local_id)
     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
   buscarPorId: `
-    SELECT id, nome, email, papel_base AS "papelBase", ativo
+    SELECT id, nome, email, papel_base AS "papelBase", ativo,
+           conselho_tipo AS "conselhoTipo", conselho_numero AS "conselhoNumero",
+           conselho_uf AS "conselhoUf"
       FROM usuario WHERE orgao_id = $1 AND id = $2`,
+  /**
+   * O conselho é limpo em bloco, e não com `COALESCE`.
+   *
+   * `$11` é a bandeira de "o formulário mandou o conselho". Sem ela, apagar o
+   * CRM de alguém que trocou de função seria impossível pela tela: o
+   * `COALESCE` leria o nulo como "não mexer" e o campo ficaria preso para
+   * sempre — o mesmo defeito que a lotação já teve neste cadastro.
+   */
   atualizar: `
     UPDATE usuario
        SET nome = COALESCE($3, nome),
            email = COALESCE($4, email),
            papel_base = COALESCE($5, papel_base),
            senha_hash = COALESCE($6, senha_hash),
-           ativo = COALESCE($7, ativo)
+           ativo = COALESCE($7, ativo),
+           conselho_tipo   = CASE WHEN $11 THEN $8 ELSE conselho_tipo END,
+           conselho_numero = CASE WHEN $11 THEN $9 ELSE conselho_numero END,
+           conselho_uf     = CASE WHEN $11 THEN $10 ELSE conselho_uf END
      WHERE orgao_id = $1 AND id = $2`,
   vinculos: `
     SELECT
@@ -115,7 +129,15 @@ export class PostgresUsuarioRepository implements UsuarioRepository, FluxoReposi
 
   criar = async (dados: NovoUsuario): Promise<string> => {
     const { rows } = await pool.query(SQL.criar, [
-      dados.orgaoId, dados.nome, dados.email, dados.username, dados.senhaHash, dados.papelBase,
+      dados.orgaoId,
+      dados.nome,
+      dados.email,
+      dados.username,
+      dados.senhaHash,
+      dados.papelBase,
+      dados.conselhoTipo ?? null,
+      dados.conselhoNumero ?? null,
+      dados.conselhoUf ?? null,
     ]);
     return rows[0].id;
   };
@@ -139,9 +161,29 @@ export class PostgresUsuarioRepository implements UsuarioRepository, FluxoReposi
   };
 
   atualizar = async (orgaoId: string, id: string, dados: EdicaoUsuario): Promise<void> => {
+    /**
+     * O formulário mandou o conselho?
+     *
+     * `undefined` é "não mexe" e `null` é "apague" — a diferença importa, e é
+     * ela que a bandeira carrega até o SQL. Sem isso, tirar o CRM de alguém
+     * que trocou de função seria impossível pela tela.
+     */
+    const mexeNoConselho = dados.conselhoTipo !== undefined
+      || dados.conselhoNumero !== undefined
+      || dados.conselhoUf !== undefined;
+
     await pool.query(SQL.atualizar, [
-      orgaoId, id, dados.nome ?? null, dados.email ?? null,
-      dados.papelBase ?? null, dados.senhaHash ?? null, dados.ativo ?? null,
+      orgaoId,
+      id,
+      dados.nome ?? null,
+      dados.email ?? null,
+      dados.papelBase ?? null,
+      dados.senhaHash ?? null,
+      dados.ativo ?? null,
+      dados.conselhoTipo ?? null,
+      dados.conselhoNumero ?? null,
+      dados.conselhoUf ?? null,
+      mexeNoConselho,
     ]);
   };
 

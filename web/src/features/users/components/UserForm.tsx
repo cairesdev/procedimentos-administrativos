@@ -8,7 +8,7 @@ import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import { createUser, updateUser } from "../actions";
 import { userSchema, type UserInput } from "../schemas";
-import { ROLE_GROUPS, ROLES_DE_ESCOLA, type User } from "../types";
+import { ROLE_GROUPS, ROLES_COM_CONSELHO, ROLES_DE_ESCOLA, type User } from "../types";
 
 export const UserForm = ({
   assignmentOptions,
@@ -28,6 +28,9 @@ export const UserForm = ({
       senha: "",
       papelBase: user?.papelBase ?? "SERVIDOR",
       destino: user?.lotacaoValor ?? "",
+      conselhoTipo: user?.conselhoTipo ?? "",
+      conselhoNumero: user?.conselhoNumero ?? "",
+      conselhoUf: user?.conselhoUf ?? "",
     },
     action: (values) => (user ? updateUser(user.id, values) : createUser(values)),
     resetOnSuccess: !isEditing,
@@ -40,6 +43,15 @@ export const UserForm = ({
   // opcional, como sempre foi.
   const exigeEscola = ROLES_DE_ESCOLA.includes(form.watch("papelBase"));
   const destino = form.watch("destino") ?? "";
+
+  /**
+   * O conselho só aparece para quem assina prontuário.
+   *
+   * Pedir CRM ao setor de compras seria campo que ninguém preenche; não pedir
+   * ao médico seria descobrir a falta às três da manhã, com o paciente
+   * esperando e a triagem recusando o fecho.
+   */
+  const assinaProntuario = ROLES_COM_CONSELHO.includes(form.watch("papelBase"));
 
   return (
     <form onSubmit={onSubmit} style={{ display: "grid", gap: "14px" }}>
@@ -104,6 +116,36 @@ export const UserForm = ({
         error={errors.destino?.message}
         {...form.register("destino")}
       />
+
+      {assinaProntuario ? (
+        <FieldGrid>
+          <SelectField
+            label="Conselho"
+            required
+            options={[
+              { value: "", label: "Selecione" },
+              { value: "CRM", label: "CRM (medicina)" },
+              { value: "COREN", label: "COREN (enfermagem)" },
+            ]}
+            error={errors.conselhoTipo?.message}
+            {...form.register("conselhoTipo")}
+          />
+          <InputField
+            label="Número"
+            required
+            hint="É o carimbo impresso na ficha de atendimento."
+            error={errors.conselhoNumero?.message}
+            {...form.register("conselhoNumero")}
+          />
+          <InputField
+            label="UF do conselho"
+            required
+            maxLength={2}
+            error={errors.conselhoUf?.message}
+            {...form.register("conselhoUf")}
+          />
+        </FieldGrid>
+      ) : null}
 
       {exigeEscola && !destino.startsWith("escola:") ? (
         <Alert tone="error">

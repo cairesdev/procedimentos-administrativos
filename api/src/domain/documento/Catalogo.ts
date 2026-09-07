@@ -25,6 +25,14 @@ export const ESCOPOS = [
   "RELATORIO_PANORAMA",
   "RELATORIO_SETOR",
   /**
+   * A ficha do pronto atendimento, impressa como o papel que ela substitui.
+   *
+   * Entra junto com a tela que a emite — ao contrário do termo de
+   * responsabilidade, logo abaixo, cujas tabelas existem desde a 0046 e cuja
+   * peça continua esperando.
+   */
+  "FICHA_ATENDIMENTO",
+  /**
    * `TERMO_RESPONSABILIDADE` e `DEVOLUCAO_RESPONSABILIDADE` entram aqui junto
    * com a tela que os emite, e não antes.
    *
@@ -56,6 +64,7 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   CHECKLIST: "CHECKLIST",
   RELATORIO_PANORAMA: "PROCESSOS",
   RELATORIO_SETOR: "PROCESSOS",
+  FICHA_ATENDIMENTO: "SAUDE",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -76,6 +85,8 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   CHECKLIST: "Checklist, com o cumprimento de cada item",
   RELATORIO_PANORAMA: "Panorama de contratos, licitações, fornecedores e unidades",
   RELATORIO_SETOR: "Tramitação por setor, com tempo e volume",
+  FICHA_ATENDIMENTO:
+    "Ficha de atendimento, com triagem, avaliação, prescrição e saída",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -100,6 +111,7 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   CHECKLIST: "checklist",
   RELATORIO_PANORAMA: "relatório",
   RELATORIO_SETOR: "relatório",
+  FICHA_ATENDIMENTO: "atendimento",
 };
 
 export type CatalogoDeMarcadores = {
@@ -359,6 +371,52 @@ const SETOR_LINHA = [
   "nome", "entraram", "sairam", "parados", "diasMedia", "diasMaisAntigo",
 ];
 
+/**
+ * A ficha de atendimento — os valores fixos das duas folhas do papel.
+ *
+ * `triagem.assinatura`, `avaliacao.assinatura` e `desfecho.assinatura` são o
+ * carimbo pronto: "Ana Souza — COREN 12345/MA". Vêm montados da fonte de
+ * contexto, e não como nome e conselho separados, porque o que a peça imprime
+ * é a linha inteira, como no papel.
+ *
+ * Bloco não preenchido vira "—" e **não some**: a ficha impressa precisa
+ * mostrar que a triagem ficou em branco — foi o plantão sem enfermeiro, e
+ * apagar o quadro esconderia isso de quem lê o prontuário depois.
+ */
+const FICHA = [
+  "atendimento.numero", "atendimento.unidade", "atendimento.abertoEm",
+  "atendimento.abertoPor", "atendimento.status",
+  "paciente.prontuario", "paciente.nome", "paciente.nomeMae",
+  "paciente.dataNascimento", "paciente.cns", "paciente.endereco",
+  "paciente.cidade", "paciente.uf", "paciente.telefone", "paciente.condicoes",
+  "triagem.glicemia", "triagem.pressao", "triagem.pulso", "triagem.saturacao",
+  "triagem.temperatura", "triagem.queixa", "triagem.conduta",
+  "triagem.prioridade", "triagem.assinatura",
+  "avaliacao.queixaClinica", "avaliacao.assinatura",
+  "prescricao.orientacoes",
+  "desfecho.tipo", "desfecho.destino", "desfecho.horario", "desfecho.assinatura",
+];
+
+const EXAMES_DA_FICHA = ["descricao", "resultado", "solicitadoPor", "solicitadoEm"];
+
+/**
+ * `horarios` é a coluna da direita do papel, achatada numa célula.
+ *
+ * No formulário impresso cada administração ganha uma linha ao lado da
+ * prescrição; numa tabela HTML isso viraria uma linha de medicamento por
+ * horário, repetindo dose e via em cada uma. A lista de horários numa célula
+ * só diz a mesma coisa e cabe na folha.
+ */
+const PRESCRICAO_DA_FICHA = [
+  "medicamento", "dose", "via", "frequencia", "observacao", "horarios",
+];
+
+const EVOLUCOES_DA_FICHA = ["tipo", "texto", "autor", "quando"];
+
+const PROCEDIMENTOS_DA_FICHA = ["tipo", "descricao", "autor", "quando"];
+
+const RETIFICACOES_DA_FICHA = ["sobre", "texto", "autor", "quando"];
+
 export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
   PROCESSO: {
     valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
@@ -446,6 +504,22 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
   CHECKLIST: {
     valores: [...COMUNS, ...CHECKLIST],
     listas: { itens: ITENS_DO_CHECKLIST },
+  },
+  /**
+   * Quatro listas, porque a ficha tem quatro quadros que crescem: exames,
+   * medicamentos prescritos (com os horários em que foram dados), evoluções e
+   * procedimentos. As retificações são a quinta — as rasuras, que aparecem no
+   * fim e nunca no lugar do que corrigem.
+   */
+  FICHA_ATENDIMENTO: {
+    valores: [...COMUNS, ...FICHA],
+    listas: {
+      exames: EXAMES_DA_FICHA,
+      medicamentos: PRESCRICAO_DA_FICHA,
+      evolucoes: EVOLUCOES_DA_FICHA,
+      procedimentos: PROCEDIMENTOS_DA_FICHA,
+      retificacoes: RETIFICACOES_DA_FICHA,
+    },
   },
 };
 

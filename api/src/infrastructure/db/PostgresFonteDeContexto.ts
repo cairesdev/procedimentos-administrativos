@@ -369,6 +369,182 @@ const LOTES_DA_ENTRADA = `
  * ainda serve. O órgão é alcançado pelo local — devolução de outra prefeitura
  * não vira documento aqui.
  */
+/**
+ * A ficha de atendimento — o cabeçalho.
+ *
+ * Todo `coalesce` para "—" é deliberado: bloco em branco tem de aparecer em
+ * branco na peça, e não sumir. A triagem vazia é o plantão sem enfermeiro, e
+ * apagar o quadro esconderia isso de quem lê o prontuário depois.
+ */
+/**
+ * Toda linha do banco vira texto antes de chegar ao modelo.
+ *
+ * O renderizador imprime o que receber; `null` viraria a palavra "null" no
+ * meio de um prontuário. `"—"` diz a mesma coisa e é o que o papel tem quando
+ * o campo ficou em branco.
+ */
+const textos = (linha: Record<string, unknown>): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(linha).map(([chave, valor]) => [chave, String(valor ?? "—")]),
+  );
+
+/** A ficha do inconsciente que ninguém reconheceu. Ela existe e é impressa. */
+const SEM_PACIENTE = {
+  prontuario: "—", nome: "PACIENTE NÃO IDENTIFICADO", nomeMae: "—",
+  dataNascimento: "—", cns: "—", endereco: "—", cidade: "—", uf: "—",
+  telefone: "—", condicoes: "—",
+};
+
+/** Triagem em branco é o plantão sem enfermeiro, e a peça precisa mostrá-lo. */
+const TRIAGEM_VAZIA = {
+  glicemia: "—", pressao: "—", pulso: "—", saturacao: "—", temperatura: "—",
+  queixa: "—", conduta: "—", prioridade: "—", assinatura: "—",
+};
+
+const FICHA_ATENDIMENTO = `
+  SELECT a.numero,
+         us.nome AS unidade,
+         to_char(a.aberto_em, 'DD/MM/YYYY HH24:MI') AS "abertoEm",
+         quem.nome AS "abertoPor",
+         CASE WHEN a.status = 'ENCERRADO' THEN 'encerrado' ELSE 'em andamento' END
+           AS status,
+         a.paciente_id AS "pacienteId"
+    FROM atendimento a
+    JOIN unidade_saude us ON us.id = a.unidade_saude_id
+    JOIN usuario quem ON quem.id = a.aberto_por
+   WHERE a.orgao_id = $1 AND a.id = $2`;
+
+const PACIENTE_DA_FICHA = `
+  SELECT p.prontuario::text AS prontuario, p.nome,
+         coalesce(p.nome_mae, '—') AS "nomeMae",
+         coalesce(to_char(p.data_nascimento, 'DD/MM/YYYY'), '—') AS "dataNascimento",
+         coalesce(p.cns, '—') AS cns,
+         coalesce(p.endereco, '—') AS endereco,
+         coalesce(p.cidade, '—') AS cidade,
+         coalesce(p.uf, '—') AS uf,
+         coalesce(p.telefone, '—') AS telefone,
+         coalesce((SELECT string_agg(
+                     c.tipo || coalesce(' (' || c.descricao || ')', ''), ', '
+                     ORDER BY c.tipo)
+                     FROM paciente_condicao c WHERE c.paciente_id = p.id), 'nenhum')
+           AS condicoes
+    FROM paciente p
+   WHERE p.id = $1`;
+
+/**
+ * O carimbo montado no SQL.
+ *
+ * "Ana Souza — COREN 12345/MA" sai pronto porque é a linha inteira que a peça
+ * imprime, como no papel. Sem conselho no cadastro sai só o nome — o que não
+ * deveria acontecer, porque o caso de uso recusa fechar a triagem assim, mas
+ * a peça não é lugar de descobrir isso.
+ */
+const TRIAGEM_DA_FICHA = `
+  SELECT coalesce(t.glicemia::text, '—') AS glicemia,
+         coalesce(t.pa_sistolica::text || ' × ' || t.pa_diastolica::text, '—')
+           AS pressao,
+         coalesce(t.pulso::text, '—') AS pulso,
+         coalesce(t.saturacao::text, '—') AS saturacao,
+         coalesce(t.temperatura::text, '—') AS temperatura,
+         coalesce(t.queixa, '—') AS queixa,
+         coalesce(t.conduta, '—') AS conduta,
+         CASE WHEN t.prioridade THEN 'SIM' ELSE 'não' END AS prioridade,
+         coalesce(u.nome || coalesce(' — ' || u.conselho_tipo || ' '
+                  || u.conselho_numero || '/' || u.conselho_uf, ''), '—')
+           AS assinatura
+    FROM triagem t
+    LEFT JOIN usuario u ON u.id = t.fechado_por
+   WHERE t.atendimento_id = $1`;
+
+const AVALIACAO_DA_FICHA = `
+  SELECT av.queixa_clinica AS "queixaClinica",
+         coalesce(u.nome || coalesce(' — ' || u.conselho_tipo || ' '
+                  || u.conselho_numero || '/' || u.conselho_uf, ''), '—')
+           AS assinatura
+    FROM avaliacao_medica av
+    LEFT JOIN usuario u ON u.id = av.fechado_por
+   WHERE av.atendimento_id = $1`;
+
+const EXAMES_DA_FICHA = `
+  SELECT e.descricao,
+         coalesce(e.resultado, 'aguardando') AS resultado,
+         u.nome AS "solicitadoPor",
+         to_char(e.solicitado_em, 'DD/MM/YYYY HH24:MI') AS "solicitadoEm"
+    FROM exame e
+    JOIN usuario u ON u.id = e.solicitado_por
+   WHERE e.atendimento_id = $1
+   ORDER BY e.solicitado_em`;
+
+/**
+ * A prescrição com os horários numa célula só.
+ *
+ * No papel cada administração ganha uma linha ao lado do medicamento; numa
+ * tabela isso viraria uma linha por horário, repetindo dose e via em cada uma.
+ * O `string_agg` diz a mesma coisa e cabe na folha.
+ */
+const PRESCRICAO_DA_FICHA = `
+  SELECT i.medicamento, i.dose, i.via, i.frequencia,
+         coalesce(i.observacao, '—') AS observacao,
+         coalesce((SELECT string_agg(to_char(ad.horario, 'DD/MM HH24:MI')
+                     || ' (' || ua.nome || ')', '; ' ORDER BY ad.horario)
+                     FROM administracao ad
+                     JOIN usuario ua ON ua.id = ad.executado_por
+                    WHERE ad.prescricao_item_id = i.id), 'não administrado')
+           AS horarios
+    FROM prescricao_item i
+    JOIN prescricao pr ON pr.id = i.prescricao_id
+   WHERE pr.atendimento_id = $1
+   ORDER BY pr.criado_em, i.medicamento`;
+
+const ORIENTACOES_DA_FICHA = `
+  SELECT coalesce(string_agg(pr.orientacoes, ' / '), '—') AS orientacoes
+    FROM prescricao pr
+   WHERE pr.atendimento_id = $1 AND pr.orientacoes IS NOT NULL`;
+
+const EVOLUCOES_DA_FICHA = `
+  SELECT CASE WHEN e.tipo = 'ENFERMAGEM' THEN 'enfermagem' ELSE 'médica' END AS tipo,
+         e.texto,
+         u.nome || coalesce(' — ' || u.conselho_tipo || ' ' || u.conselho_numero
+                  || '/' || u.conselho_uf, '') AS autor,
+         to_char(e.fechado_em, 'DD/MM/YYYY HH24:MI') AS quando
+    FROM evolucao e
+    JOIN usuario u ON u.id = e.fechado_por
+   WHERE e.atendimento_id = $1
+   ORDER BY e.fechado_em`;
+
+const PROCEDIMENTOS_DA_FICHA = `
+  SELECT replace(initcap(replace(pc.tipo, '_', ' ')), 'Urgencia', 'Urgência') AS tipo,
+         coalesce(pc.descricao, '—') AS descricao,
+         u.nome || coalesce(' — ' || u.conselho_tipo || ' ' || u.conselho_numero
+                  || '/' || u.conselho_uf, '') AS autor,
+         to_char(pc.executado_em, 'DD/MM/YYYY HH24:MI') AS quando
+    FROM procedimento pc
+    JOIN usuario u ON u.id = pc.executado_por
+   WHERE pc.atendimento_id = $1
+   ORDER BY pc.executado_em`;
+
+const DESFECHO_DA_FICHA = `
+  SELECT CASE d.tipo WHEN 'ALTA' THEN 'ALTA'
+                     WHEN 'OBITO' THEN 'ÓBITO'
+                     ELSE 'ENCAMINHAMENTO' END AS tipo,
+         coalesce(d.destino, '—') AS destino,
+         to_char(d.horario, 'DD/MM/YYYY HH24:MI') AS horario,
+         u.nome || coalesce(' — ' || u.conselho_tipo || ' ' || u.conselho_numero
+                  || '/' || u.conselho_uf, '') AS assinatura
+    FROM desfecho d
+    JOIN usuario u ON u.id = d.fechado_por
+   WHERE d.atendimento_id = $1`;
+
+const RETIFICACOES_DA_FICHA = `
+  SELECT r.tabela_origem AS sobre, r.texto,
+         u.nome || coalesce(' — ' || u.conselho_tipo || ' ' || u.conselho_numero
+                  || '/' || u.conselho_uf, '') AS autor,
+         to_char(r.criado_em, 'DD/MM/YYYY HH24:MI') AS quando
+    FROM retificacao r
+    JOIN usuario u ON u.id = r.autor_id
+   WHERE r.atendimento_id = $1
+   ORDER BY r.criado_em`;
+
 const DEVOLUCAO_ESTOQUE = `
   SELECT l.nome AS local, a.nome AS almoxarifado,
          p.nome AS produto, p.unidade_medida AS "unidadeMedida",
@@ -540,6 +716,7 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     }
     if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
     if (escopo === "CHECKLIST") return this.doChecklist(orgaoId, referenciaId, orgao);
+    if (escopo === "FICHA_ATENDIMENTO") return this.daFicha(orgaoId, referenciaId, orgao);
     if (escopo === "RELATORIO_PANORAMA" || escopo === "RELATORIO_SETOR") {
       return this.doRelatorioDeProcessos(escopo, orgaoId, referenciaId, orgao);
     }
@@ -949,6 +1126,74 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
    * Escopo sem lista: a devolução é de um lote só, e uma tabela de uma linha
    * seria enfeite onde cabe uma frase.
    */
+  /**
+   * A ficha de atendimento, montada como as duas folhas do papel.
+   *
+   * Onze consultas, todas penduradas na primeira — que é a única filtrada por
+   * `orgao_id` e, por isso, a trava. As outras dez só rodam se ela devolveu
+   * linha, e é assim que uma prefeitura não imprime a ficha de outra
+   * conhecendo o id.
+   *
+   * Bloco vazio vira `"—"` em vez de sumir. A ficha impressa precisa mostrar
+   * que a triagem ficou em branco: foi o plantão sem enfermeiro, e um quadro
+   * que desaparece esconde isso de quem lê o prontuário depois.
+   */
+  private daFicha = async (
+    orgaoId: string,
+    atendimentoId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const atendimento = (
+      await pool.query(FICHA_ATENDIMENTO, [orgaoId, atendimentoId])
+    ).rows[0];
+    if (!atendimento) return null;
+
+    const [
+      triagem, avaliacao, exames, prescricao, orientacoes,
+      evolucoes, procedimentos, desfecho, retificacoes,
+    ] = await Promise.all([
+      pool.query(TRIAGEM_DA_FICHA, [atendimentoId]),
+      pool.query(AVALIACAO_DA_FICHA, [atendimentoId]),
+      pool.query(EXAMES_DA_FICHA, [atendimentoId]),
+      pool.query(PRESCRICAO_DA_FICHA, [atendimentoId]),
+      pool.query(ORIENTACOES_DA_FICHA, [atendimentoId]),
+      pool.query(EVOLUCOES_DA_FICHA, [atendimentoId]),
+      pool.query(PROCEDIMENTOS_DA_FICHA, [atendimentoId]),
+      pool.query(DESFECHO_DA_FICHA, [atendimentoId]),
+      pool.query(RETIFICACOES_DA_FICHA, [atendimentoId]),
+    ]);
+
+    /**
+     * Sem paciente identificado a peça sai assim mesmo.
+     *
+     * É a ficha do inconsciente que ninguém reconheceu: recusar a impressão
+     * deixaria justamente o atendimento mais delicado sem registro em papel,
+     * que é o único que sobra quando falta energia.
+     */
+    const paciente = atendimento.pacienteId
+      ? (await pool.query(PACIENTE_DA_FICHA, [atendimento.pacienteId])).rows[0]
+      : null;
+
+    return {
+      orgao,
+      atendimento: textos(atendimento),
+      paciente: paciente ? textos(paciente) : SEM_PACIENTE,
+      triagem: triagem.rows[0] ? textos(triagem.rows[0]) : TRIAGEM_VAZIA,
+      avaliacao: avaliacao.rows[0]
+        ? textos(avaliacao.rows[0])
+        : { queixaClinica: "—", assinatura: "—" },
+      prescricao: { orientacoes: String(orientacoes.rows[0]?.orientacoes ?? "—") },
+      desfecho: desfecho.rows[0]
+        ? textos(desfecho.rows[0])
+        : { tipo: "EM ANDAMENTO", destino: "—", horario: "—", assinatura: "—" },
+      exames: exames.rows.map(textos),
+      medicamentos: prescricao.rows.map(textos),
+      evolucoes: evolucoes.rows.map(textos),
+      procedimentos: procedimentos.rows.map(textos),
+      retificacoes: retificacoes.rows.map(textos),
+    };
+  };
+
   private daDevolucao = async (
     orgaoId: string,
     devolucaoId: string,

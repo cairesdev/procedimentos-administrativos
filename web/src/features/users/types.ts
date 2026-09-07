@@ -11,6 +11,10 @@ export const ROLES = [
   "UNIDADE",
   "PATRIMONIO",
   "FROTAS",
+  "SAUDE_RECEPCAO",
+  "SAUDE_TECNICO",
+  "SAUDE_ENFERMEIRO",
+  "SAUDE_MEDICO",
 ] as const;
 
 /**
@@ -28,6 +32,16 @@ export const ROLE_DESCRIPTIONS: Record<(typeof ROLES)[number], string> = {
   UNIDADE: "Escola, creche ou posto: pede material e confirma o que recebeu",
   PATRIMONIO: "Bens, tombamento e inventário",
   FROTAS: "Veículos, motoristas e viagens",
+  /**
+   * Os quatro da ficha hospitalar, descritos pelo ato — não pelo cargo.
+   *
+   * Quem cadastra o usuário está olhando a escala do plantão, e a pergunta que
+   * ele faz é "o que esta pessoa preenche na ficha?".
+   */
+  SAUDE_RECEPCAO: "Recepção do hospital: identifica o paciente e abre a ficha",
+  SAUDE_TECNICO: "Auxiliar ou técnico de enfermagem: carimba o horário da medicação",
+  SAUDE_ENFERMEIRO: "Enfermeiro: faz a triagem, evolui e assina a saída do paciente",
+  SAUDE_MEDICO: "Médico: avalia, pede exame, prescreve e executa procedimento",
 };
 
 export type User = {
@@ -40,6 +54,10 @@ export type User = {
   lotacao: string | null;
   /** O mesmo destino no formato do seletor: `escola:<uuid>`. */
   lotacaoValor: string | null;
+  /** O carimbo de quem assina prontuário. Nulo para quem não assina. */
+  conselhoTipo?: "CRM" | "COREN" | null;
+  conselhoNumero?: string | null;
+  conselhoUf?: string | null;
 };
 
 /**
@@ -57,7 +75,25 @@ export const ROLE_GROUPS: { label: string; roles: Role[] }[] = [
   { label: "Almoxarifado e alimentação escolar", roles: ["NUTRICIONISTA", "UNIDADE"] },
   { label: "Patrimônio", roles: ["PATRIMONIO"] },
   { label: "Frotas", roles: ["FROTAS"] },
+  {
+    label: "Saúde",
+    roles: ["SAUDE_RECEPCAO", "SAUDE_TECNICO", "SAUDE_ENFERMEIRO", "SAUDE_MEDICO"],
+  },
 ];
+
+/**
+ * Papéis que assinam registro clínico e, por isso, precisam de conselho.
+ *
+ * O CRM/COREN é o carimbo: é o que vai impresso na ficha e o que identifica o
+ * responsável perante o conselho. Sem ele, o profissional não consegue fechar
+ * triagem, avaliação, prescrição, evolução, procedimento nem saída — e
+ * descobrir isso no meio do plantão é tarde demais.
+ *
+ * A recepção fica de fora (não tem conselho) e o técnico também: o auxiliar de
+ * enfermagem nem sempre está inscrito, e travar aí impediria o registro do
+ * horário da medicação.
+ */
+export const ROLES_COM_CONSELHO: Role[] = ["SAUDE_ENFERMEIRO", "SAUDE_MEDICO"];
 
 /**
  * Papéis cujo trabalho é de uma escola só.

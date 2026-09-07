@@ -66,4 +66,22 @@ export const endpoints = {
   refuel: (id: string) => `/frotas/abastecimentos/${id}`,
   fleetSchedule: "/frotas/agenda",
   fleetUsageReport: "/frotas/relatorios/uso",
+
+  // Saúde: a ficha do pronto atendimento.
+  healthUnits: "/saude/unidades",
+  cnesMunicipalities: "/saude/unidades/cnes/municipios",
+  cnesByMunicipality: (codigo: string) => `/saude/unidades/cnes/municipios/${codigo}`,
+  patients: "/saude/pacientes",
+  patientHistory: (id: string) => `/saude/pacientes/${id}/historico`,
+  patientConditions: (id: string) => `/saude/pacientes/${id}/condicoes`,
+  patientCondition: (id: string, condicaoId: string) =>
+    `/saude/pacientes/${id}/condicoes/${condicaoId}`,
+  visits: "/saude/atendimentos",
+  visit: (id: string) => `/saude/atendimentos/${id}`,
+  // Cada bloco da ficha é um ato próprio, com permissão própria: a URL
+  // desenha a mesma divisão que o papel imprime.
+  visitBlock: (id: string, bloco: string) => `/saude/atendimentos/${id}/${bloco}`,
+  examResult: (id: string, exameId: string) =>
+    `/saude/atendimentos/${id}/exames/${exameId}`,
+  administrations: (itemId: string) => `/saude/itens-prescritos/${itemId}/administracoes`,
 } as const;

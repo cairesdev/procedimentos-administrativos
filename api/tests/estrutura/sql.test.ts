@@ -182,6 +182,24 @@ describe("isolamento por órgão na fonte de contexto", () => {
     LOTES_DA_ENTRADA: "lotes da remessa de estoque já conferida",
     VEICULO_DA_VIAGEM: "veículo alcançado pela viagem ou manutenção já conferida",
     ITENS_DO_CHECKLIST: "itens do checklist já conferido",
+    /**
+     * Os dez quadros da ficha hospitalar.
+     *
+     * Todos penduram no atendimento, e `FICHA_ATENDIMENTO` — que **não** está
+     * nesta lista — é quem filtra por `orgao_id`. As outras só rodam se ela
+     * devolveu linha: é a mesma estrutura dos itens do checklist, com dez
+     * filhas em vez de uma porque a ficha tem dez quadros.
+     */
+    PACIENTE_DA_FICHA: "paciente do atendimento já conferido",
+    TRIAGEM_DA_FICHA: "triagem do atendimento já conferido",
+    AVALIACAO_DA_FICHA: "avaliação do atendimento já conferido",
+    EXAMES_DA_FICHA: "exames do atendimento já conferido",
+    PRESCRICAO_DA_FICHA: "prescrição do atendimento já conferido",
+    ORIENTACOES_DA_FICHA: "orientações do atendimento já conferido",
+    EVOLUCOES_DA_FICHA: "evoluções do atendimento já conferido",
+    PROCEDIMENTOS_DA_FICHA: "procedimentos do atendimento já conferido",
+    DESFECHO_DA_FICHA: "desfecho do atendimento já conferido",
+    RETIFICACOES_DA_FICHA: "retificações do atendimento já conferido",
   };
 
   const daFonte = consultas().filter((c) => c.arquivo === "PostgresFonteDeContexto.ts");

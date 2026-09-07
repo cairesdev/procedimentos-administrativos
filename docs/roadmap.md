@@ -1747,3 +1747,48 @@ escrevendo "estou vivo" pode estar vivo e sem conseguir mandar nada.
   poucos e nomeados. Resolver pede uma trilha própria do produto.
 - **Recuperação de senha continua fora**, e segue sendo o único caso sem
   alternativa manual.
+
+## Ficha hospitalar — levantamento consolidado, código não iniciado
+
+Levantamento aprovado em `docs/decisoes.md`, seção "Ficha hospitalar". Nenhuma
+migration, nenhum arquivo de código. O que está decidido:
+
+- Módulo `SAUDE` em `orgao_modulo`; paciente com `orgao_id`, nunca global.
+- Prontuário vitalício do paciente + número de atendimento por ano.
+- Guarda de 20 anos (Parecer CFM 19/2026), com arquivamento visual em 12 meses.
+  **Isto contraria o "1 ano" pedido de início, e foi por aí que o levantamento
+  começou** — o que ele queria era a série de trabalho limpa, não o expurgo.
+- Quatro papéis novos, com separação estrita de atos: recepção, técnico,
+  enfermeiro, médico.
+- Registro clínico fechado é imutável; correção é retificação aditiva.
+- `auditoria_log` passa a registrar **leitura** de prontuário — hoje só grava
+  escrita, e é a contrapartida de deixar o histórico aberto à equipe clínica.
+
+### O que precisa existir antes da primeira linha de SQL
+
+- **Faixas de plausibilidade dos sinais vitais**, revisadas por quem entende:
+  glicemia, PA, pulso, SpO2 e temperatura. São aviso, nunca bloqueio.
+- **A lista de prontuários que o hospital já usa**, se existir em formato
+  legível — para o paciente não terminar com dois números durante a transição.
+- ~~O código CNES do estabelecimento~~ — **resolvido**: CNES **7572883**,
+  HOSPITAL GERAL (tipo 5), município 210177. Ver `docs/integracao-cnes.md`.
+- **Um teste SOAP de verdade a partir da VPS** contra
+  `https://servicos.saude.gov.br/cnes/ProfissionalSaudeService/v1r0?wsdl`. É o
+  único caminho aberto para dados de profissional, e a especificação é de 2019.
+  Se não responder, a validação de profissional sai da fatia 1.
+- **Duas divergências a resolver com o cliente**: o nome oficial do hospital
+  ("MORAES" no CNES, "MORAIS" na ficha) e qual CNPJ vai no timbre — o da
+  Prefeitura, que consta no CNES, ou o do cabeçalho da ficha.
+
+### Riscos que já dá para nomear
+
+- **Dado de saúde é categoria especial na LGPD.** A decisão transversal "sem
+  sigilo de processos — transparência como princípio" vale para o
+  administrativo e **não** alcança este módulo. Nada de prontuário entra em
+  relatório aberto, conferência pública de documento ou portal do cidadão.
+- **O backup diário do compose passa a carregar prontuário.** Hoje ele é um
+  bind mount em disco da VPS. Antes de o módulo ir a produção, isso precisa de
+  cifra em repouso e de uma política de retenção própria.
+- **Queda de energia e de rede num hospital não é hipótese.** A ficha impressa
+  pelo motor de documentos é a contingência assumida nesta fatia; qualquer
+  coisa além disso (modo offline) é projeto próprio e não está no horizonte.

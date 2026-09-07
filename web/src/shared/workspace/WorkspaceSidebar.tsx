@@ -7,7 +7,7 @@ import {
   Boxes,
   Building2, ChevronRight, ClipboardCheck, FileSignature, Inbox, MapPin, Package, Route,
   ShieldCheck, Truck, Wrench,
-  ListChecks,
+  ListChecks, Stethoscope,
 } from "lucide-react";
 import type { NavIcon, NavSection } from "@/shared/auth/modules";
 import styles from "./WorkspaceSidebar.module.css";
@@ -25,6 +25,7 @@ const icons: Record<NavIcon, typeof Inbox> = {
   wrench: Wrench,
   boxes: Boxes,
   listChecks: ListChecks,
+  stethoscope: Stethoscope,
 };
 
 export const WorkspaceSidebar = ({ sections }: { sections: NavSection[] }) => {

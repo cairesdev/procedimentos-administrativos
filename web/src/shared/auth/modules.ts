@@ -13,7 +13,9 @@ export type NavIcon =
   | "route"
   | "wrench"
   | "boxes"
-  | "listChecks";
+  | "listChecks"
+  // Saúde: a ficha do pronto atendimento.
+  | "stethoscope";
 
 export type NavLink = {
   href: string;
@@ -33,6 +35,7 @@ export type WorkspaceId =
   | "patrimonio"
   | "almoxarifado"
   | "checklist"
+  | "saude"
   | "frotas"
   | "administracao";
 
@@ -264,6 +267,43 @@ export const workspaces: Workspace[] = [
             href: "/checklists/modelos",
             label: "Modelos",
             permission: "checklists:manage",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "saude",
+    name: "Saúde",
+    description: "Ficha de atendimento do hospital: triagem, avaliação, prescrição e saída",
+    basePath: "/saude",
+    icon: "stethoscope",
+    accent: "#0b7a5b",
+    accentSoft: "#e6f4ef",
+    module: "SAUDE",
+    permission: "health:read",
+    sections: [
+      {
+        group: "Atendimento",
+        icon: "stethoscope",
+        links: [
+          { href: "/saude", label: "Atendimentos", permission: "health:read" },
+          { href: "/saude/pacientes", label: "Pacientes", permission: "health:read" },
+        ],
+      },
+      {
+        group: "Cadastros",
+        icon: "building",
+        links: [
+          {
+            href: "/saude/unidades",
+            label: "Unidades de saúde",
+            /**
+             * `health:read` e não `health:manage`: a recepção precisa saber em
+             * qual unidade está abrindo a ficha, e o botão de cadastrar dentro
+             * da tela é que exige a permissão de administrar.
+             */
+            permission: "health:read",
           },
         ],
       },

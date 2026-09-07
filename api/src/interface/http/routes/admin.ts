@@ -14,6 +14,7 @@ import {
 
 const MODULOS = [
   "PROCESSOS", "FROTAS", "PATRIMONIO", "ALMOXARIFADO", "PROTOCOLO", "CHECKLIST",
+  "SAUDE",
 ] as const;
 
 const loginSchema = z.object({

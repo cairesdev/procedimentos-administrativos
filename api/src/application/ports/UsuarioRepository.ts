@@ -9,7 +9,20 @@ export type UsuarioAutenticavel = {
   ativo: boolean;
 };
 
-export type NovoUsuario = {
+/**
+ * O conselho profissional — o carimbo de quem assina prontuário.
+ *
+ * Só os papéis clínicos o preenchem, e sem ele o médico e o enfermeiro não
+ * fecham bloco nenhum da ficha. Os três campos andam juntos: conselho sem UF
+ * não identifica ninguém, porque CRM 1234 existe em 27 estados.
+ */
+export type ConselhoProfissional = {
+  conselhoTipo?: "CRM" | "COREN" | null;
+  conselhoNumero?: string | null;
+  conselhoUf?: string | null;
+};
+
+export type NovoUsuario = ConselhoProfissional & {
   orgaoId: string;
   nome: string;
   email: string;
@@ -61,7 +74,7 @@ export type PerfilUsuario = UsuarioResumo & {
   modulos: string[];
 };
 
-export type EdicaoUsuario = {
+export type EdicaoUsuario = ConselhoProfissional & {
   nome?: string;
   email?: string;
   papelBase?: string;

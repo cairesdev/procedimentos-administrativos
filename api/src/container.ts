@@ -1,3 +1,17 @@
+import { PostgresPacienteRepository } from "./infrastructure/db/PostgresPacienteRepository";
+import {
+  PostgresAtendimentoSaudeRepository,
+} from "./infrastructure/db/PostgresAtendimentoSaudeRepository";
+import {
+  PostgresUnidadeSaudeRepository,
+} from "./infrastructure/db/PostgresUnidadeSaudeRepository";
+import { CnesAberto } from "./infrastructure/saude/CnesAberto";
+import { GuardaDaFicha } from "./application/saude/GuardaDaFicha";
+import { CadastrarPaciente } from "./application/saude/CadastrarPaciente";
+import { AbrirAtendimento } from "./application/saude/AbrirAtendimento";
+import { FichaDeAtendimento } from "./application/saude/FichaDeAtendimento";
+import { PrescricaoEExames } from "./application/saude/PrescricaoEExames";
+import { UnidadesDeSaude } from "./application/saude/UnidadesDeSaude";
 import { PostgresEmailFilaRepository } from "./infrastructure/db/PostgresEmailFilaRepository";
 import { PostgresConfiguracaoEmailRepository } from "./infrastructure/db/PostgresConfiguracaoEmailRepository";
 import { EnfileirarEmail } from "./application/email/EnfileirarEmail";
@@ -107,6 +121,12 @@ const smtp = new SmtpEnviador();
  * regra do código de conferência das peças emitidas.
  */
 const APP_URL = (process.env.APP_URL ?? "").replace(/\/$/, "");
+
+// Saúde — a ficha hospitalar.
+const pacientes = new PostgresPacienteRepository();
+const atendimentosSaude = new PostgresAtendimentoSaudeRepository();
+const unidadesSaude = new PostgresUnidadeSaudeRepository();
+const guardaDaFicha = new GuardaDaFicha(atendimentosSaude);
 
 export const container = {
   almoxarifado,
@@ -228,5 +248,19 @@ export const container = {
   ),
   baixarOsAutos: new BaixarOsAutos(
     new PostgresAnexoRepository(), documentos, tramitacao, new MinioArmazenamento(),
+  ),
+
+  // Saúde. `CnesAberto` é o único ponto do sistema que fala com o Ministério,
+  // e só a partir de uma tela de cadastro — nenhum atendimento espera por ele.
+  unidadesDeSaude: new UnidadesDeSaude(unidadesSaude, new CnesAberto()),
+  cadastrarPaciente: new CadastrarPaciente(pacientes, executarEmTransacao),
+  abrirAtendimento: new AbrirAtendimento(
+    atendimentosSaude, pacientes, unidadesSaude, auditoria, executarEmTransacao,
+  ),
+  fichaDeAtendimento: new FichaDeAtendimento(
+    atendimentosSaude, guardaDaFicha, auditoria, executarEmTransacao,
+  ),
+  prescricaoEExames: new PrescricaoEExames(
+    atendimentosSaude, pacientes, guardaDaFicha, auditoria, executarEmTransacao,
   ),
 };

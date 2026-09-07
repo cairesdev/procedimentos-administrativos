@@ -57,7 +57,19 @@ export type Permission =
   | "stock:read"
   | "stock:request"
   | "stock:receive"
-  | "stock:manage";
+  | "stock:manage"
+  // Saúde. Seis atos clínicos porque a ficha em papel já separa seis
+  // assinaturas — achatar em `health:write` produziria um registro dizendo
+  // que o médico fez a triagem de enfermagem, que é ato privativo do
+  // enfermeiro. `health:manage` é administração: cadastra a unidade e o
+  // código CNES, e não abre prontuário nenhum.
+  | "health:read"
+  | "health:records"
+  | "health:admit"
+  | "health:nursing"
+  | "health:medical"
+  | "health:medicate"
+  | "health:manage";
 
 /**
  * Espelho da matriz da API (`domain/shared/Permissoes.ts`), que é a
@@ -88,6 +100,16 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "documents:template",
     "fleet:read",
     "fleet:write",
+    /**
+     * O ADMIN administra o módulo de saúde e **não lê prontuário**.
+     *
+     * É a primeira vez que ele não recebe tudo, e é deliberado: prontuário é
+     * dado de saúde, categoria especial na LGPD, e o histórico clínico ficou
+     * aberto a *profissional clínico* — o administrador de TI da prefeitura
+     * não é um. Se ela quiser o contrário, é exceção nominal em
+     * `usuario_permissao`, com autor e motivo.
+     */
+    "health:manage",
     "orders:invoice",
     "processes:dispatch",
     "processes:opinion",
@@ -266,6 +288,44 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "sectors:read",
     "trips:create",
     "units:read",
+  ],
+
+  /**
+   * Os quatro da saúde — e nenhum deles lê o organograma.
+   *
+   * Não é esquecimento: quem trabalha no pronto atendimento não precisa saber
+   * o nome do Setor de Compras para fazer o trabalho. As telas do módulo foram
+   * escritas sem depender desses cadastros justamente para o corte poder ser
+   * este.
+   */
+  SAUDE_RECEPCAO: [
+    "documents:issue",
+    "documents:read",
+    "health:admit",
+    "health:read",
+  ],
+  SAUDE_TECNICO: [
+    "documents:read",
+    "health:medicate",
+    "health:read",
+  ],
+  SAUDE_ENFERMEIRO: [
+    "documents:issue",
+    "documents:read",
+    "health:medicate",
+    "health:nursing",
+    "health:read",
+    "health:records",
+  ],
+  // Sem `health:nursing`: triagem é ato privativo do enfermeiro, e no plantão
+  // sem enfermeiro os sinais vitais entram na avaliação médica — que é o que
+  // acontece no papel hoje.
+  SAUDE_MEDICO: [
+    "documents:issue",
+    "documents:read",
+    "health:medical",
+    "health:read",
+    "health:records",
   ],
 };
 

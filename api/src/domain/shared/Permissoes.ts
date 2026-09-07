@@ -60,6 +60,25 @@ export const PERMISSOES = [
    * responde por ela.
    */
   "reports:read",
+  /**
+   * Saúde — a ficha hospitalar.
+   *
+   * São seis porque o papel em que a ficha é preenchida hoje já separa seis
+   * atos, e cada um traz impresso de quem é a assinatura. Achatar tudo em
+   * `health:write` produziria um registro dizendo que o médico fez a triagem
+   * de enfermagem, que é ato privativo do enfermeiro.
+   *
+   * `health:records` é a leitura do histórico de visitas anteriores, separada
+   * de `health:read` porque é ela que sai da ficha em curso e alcança o
+   * passado clínico da pessoa — e é a única do sistema cuja **leitura** entra
+   * na auditoria.
+   *
+   * `health:manage` é administração: cadastrar a unidade de saúde e o código
+   * CNES. Não abre prontuário nenhum, de propósito.
+   */
+  "health:read", "health:records", "health:admit",
+  "health:nursing", "health:medical", "health:medicate",
+  "health:manage",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
@@ -104,12 +123,36 @@ const CONDUZ_CONTRATACAO: Permissao[] = [
 ];
 
 /**
+ * O que só quem atende paciente pode.
+ *
+ * Existe para ser **subtraído** do ADMIN logo abaixo. Prontuário não é
+ * "tudo que a prefeitura contratou": é dado de saúde, categoria especial na
+ * LGPD, e o levantamento decidiu (decisão 17) que o histórico clínico fica
+ * aberto a *profissional clínico*, com a leitura registrada. O administrador
+ * de TI da prefeitura não é profissional clínico.
+ */
+const ATOS_CLINICOS: Permissao[] = [
+  "health:read", "health:records", "health:admit",
+  "health:nursing", "health:medical", "health:medicate",
+];
+
+/**
  * O que cada papel pode. Sem herança comum: a repetição aqui é deliberada e
  * barata, e é o que permite ler uma linha e saber exatamente o alcance dela.
  */
 export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
-  // O administrador da prefeitura responde por tudo que ela contratou.
-  ADMIN: [...PERMISSOES],
+  /**
+   * O administrador da prefeitura responde por tudo que ela contratou —
+   * **menos o prontuário**.
+   *
+   * Esta é a primeira vez que o ADMIN não recebe a lista inteira, e é
+   * deliberado. Ele continua administrando o módulo de saúde (`health:manage`:
+   * cadastrar a unidade, o código CNES), continua criando os usuários
+   * clínicos, e não lê a ficha de ninguém. Se a prefeitura quiser o contrário,
+   * é uma exceção em `usuario_permissao` — nominal, com autor e motivo — e não
+   * um poder que vem de graça com o cargo.
+   */
+  ADMIN: PERMISSOES.filter((permissao) => !ATOS_CLINICOS.includes(permissao)),
 
   // Secretário ou chefe de gabinete: conduz a contratação e administra os
   // cadastros, mas não mexe na trilha de auditoria dos próprios servidores.
@@ -220,6 +263,47 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "checklists:read", "checklists:fulfill",
     ...LE_O_ORGANOGRAMA,
     "fleet:read", "fleet:write", "trips:create", "documents:read", "documents:issue",
+  ],
+
+  /**
+   * Os quatro da saúde.
+   *
+   * Nenhum deles lê o organograma, e isso não é esquecimento: quem trabalha no
+   * pronto atendimento não precisa saber o nome do Setor de Compras para fazer
+   * o trabalho. As telas do módulo foram escritas sem depender desses dois
+   * cadastros justamente para o corte poder ser este.
+   *
+   * A separação entre eles é a do papel impresso, ato por ato.
+   */
+
+  // A recepção identifica e abre. Não lê histórico clínico: quem cadastra o
+  // paciente não precisa saber o que aconteceu com ele na visita passada.
+  SAUDE_RECEPCAO: [
+    "health:read", "health:admit",
+    "documents:read", "documents:issue",
+  ],
+
+  // O técnico/auxiliar carimba o horário de cada medicação — a coluna direita
+  // da prescrição. É o ato dele na ficha, e é só ele.
+  SAUDE_TECNICO: [
+    "health:read", "health:medicate",
+    "documents:read",
+  ],
+
+  // O enfermeiro tria, evolui e dá a saída do paciente. Também administra
+  // medicação: no plantão pequeno é ele quem faz, e o papel não distingue.
+  SAUDE_ENFERMEIRO: [
+    "health:read", "health:records", "health:nursing", "health:medicate",
+    "documents:read", "documents:issue",
+  ],
+
+  // O médico avalia, pede exame, prescreve e executa procedimento.
+  // **Não tem `health:nursing`**: triagem é ato privativo do enfermeiro, e no
+  // plantão sem enfermeiro os sinais vitais entram na avaliação médica — que é
+  // o que acontece no papel hoje.
+  SAUDE_MEDICO: [
+    "health:read", "health:records", "health:medical",
+    "documents:read", "documents:issue",
   ],
 };
 

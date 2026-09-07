@@ -3,7 +3,7 @@ import {
   Boxes,
   Building2, ClipboardCheck, FileSignature, Inbox, Lock, MapPin, Package, Route, ShieldCheck,
   Truck, Wrench,
-  ListChecks,
+  ListChecks, Stethoscope,
 } from "lucide-react";
 import { logout } from "@/features/auth/actions";
 import { getProfile } from "@/features/auth/queries";
@@ -27,6 +27,7 @@ const icons: Record<NavIcon, typeof Inbox> = {
   wrench: Wrench,
   boxes: Boxes,
   listChecks: ListChecks,
+  stethoscope: Stethoscope,
 };
 
 // Porta de entrada: cada sistema é um mundo à parte daqui para dentro.

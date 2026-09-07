@@ -59,6 +59,29 @@ export const lotacoesDoUsuarioSchema = z.object({
   lotacoes: z.array(lotacaoSchema),
 });
 
+/**
+ * O conselho profissional, quando o papel é clínico.
+ *
+ * Os três andam juntos ou nenhum anda — é o mesmo CHECK que o banco impõe.
+ * Conselho sem UF não identifica ninguém: CRM 1234 existe em 27 estados.
+ */
+const conselhoSchema = {
+  conselhoTipo: z.enum(["CRM", "COREN"]).nullish(),
+  conselhoNumero: z.string().trim().max(20).nullish(),
+  conselhoUf: z.string().trim().length(2).nullish(),
+};
+
+const conselhoCompleto = <T extends {
+  conselhoTipo?: unknown; conselhoNumero?: unknown; conselhoUf?: unknown;
+}>(dados: T): boolean => {
+  const informados = [dados.conselhoTipo, dados.conselhoNumero, dados.conselhoUf]
+    .filter((valor) => valor !== null && valor !== undefined && valor !== "");
+  return informados.length === 0 || informados.length === 3;
+};
+
+const MENSAGEM_DO_CONSELHO =
+  "Informe tipo, número e UF do conselho — os três juntos, ou nenhum.";
+
 export const criarUsuarioSchema = z.object({
   nome: z.string().min(1).max(150),
   email: z.string().email(),
@@ -66,7 +89,8 @@ export const criarUsuarioSchema = z.object({
   senha: z.string().min(8, "Senha precisa de ao menos 8 caracteres"),
   papelBase: z.enum(PAPEIS),
   lotacoes: z.array(lotacaoSchema).default([]),
-});
+  ...conselhoSchema,
+}).refine(conselhoCompleto, { message: MENSAGEM_DO_CONSELHO, path: ["conselhoNumero"] });
 
 export const editarUnidadeSchema = z.object({
   nome: z.string().min(1).max(150).optional(),
@@ -92,4 +116,5 @@ export const editarUsuarioSchema = z.object({
   papelBase: z.enum(PAPEIS).optional(),
   senha: z.string().min(8).optional(),
   ativo: z.boolean().optional(),
-});
+  ...conselhoSchema,
+}).refine(conselhoCompleto, { message: MENSAGEM_DO_CONSELHO, path: ["conselhoNumero"] });

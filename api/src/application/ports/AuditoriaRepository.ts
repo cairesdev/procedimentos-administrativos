@@ -83,7 +83,30 @@ export type TipoEvento =
   | "ADMIN_ENTIDADE_INATIVADO"
   | "ADMIN_ENTIDADE_REATIVADO"
   | "EMAIL_CONFIGURADO"
-  | "EMAIL_CONFIGURACAO_REMOVIDA";
+  | "EMAIL_CONFIGURACAO_REMOVIDA"
+  /**
+   * Saúde — e a primeira **leitura** que esta trilha registra.
+   *
+   * Até aqui a auditoria só guardava escrita, e de propósito: registrar quem
+   * abriu qual tela produziria ruído sem ninguém para lê-lo. Prontuário é
+   * outra coisa. O levantamento deixou o histórico clínico aberto a todo
+   * profissional clínico, porque continuidade do cuidado depende de ver a
+   * visita anterior; `PRONTUARIO_LIDO` é a contrapartida disso, e é o que
+   * inibe a curiosidade sobre a ficha do vizinho.
+   */
+  | "PRONTUARIO_LIDO"
+  | "FICHA_ABERTA"
+  | "FICHA_IDENTIFICADA"
+  | "TRIAGEM_REGISTRADA"
+  | "AVALIACAO_MEDICA_REGISTRADA"
+  | "EXAME_SOLICITADO"
+  | "RESULTADO_DE_EXAME_INFORMADO"
+  | "PRESCRICAO_REGISTRADA"
+  | "MEDICACAO_ADMINISTRADA"
+  | "EVOLUCAO_REGISTRADA"
+  | "PROCEDIMENTO_REGISTRADO"
+  | "ATENDIMENTO_ENCERRADO"
+  | "REGISTRO_CLINICO_RETIFICADO";
 
 export type EventoAuditoria = {
   orgaoId: string;

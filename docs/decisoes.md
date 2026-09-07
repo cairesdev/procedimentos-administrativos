@@ -2036,3 +2036,194 @@ portal por conta própria.
   vencendo). São muitos e-mails por dia e pedem preferência por usuário, que
   não foi modelada.
 - **Anexo no e-mail.** Nenhuma das quatro mensagens precisa: todas levam link.
+
+## Ficha hospitalar — levantamento consolidado
+
+O Hospital Municipal Antônio Morais da Silva atende em papel. A ficha tem duas
+folhas, passa por quatro mãos diferentes na mesma visita e é arquivada em pasta.
+Consultar o que aconteceu com um paciente há oito meses significa procurar
+fisicamente; montar série histórica de qualquer coisa — quantas nebulizações no
+inverno, quantos encaminhamentos para a UBS, quantos óbitos — é inviável. Foi
+isso que motivou o módulo.
+
+**A ficha não é um cadastro: é uma esteira.** Recepção identifica → enfermeiro
+tria → médico avalia, pede exame, prescreve e executa procedimento → técnico de
+enfermagem carimba o horário de cada medicação → enfermeiro dá a saída. Cada
+trecho do papel traz, impresso, de quem é a assinatura e o carimbo. O modelo
+existe para preservar essa divisão, não para achatá-la num formulário só.
+
+### O modelo, em uma frase
+
+`paciente` (vitalício) → `atendimento` (a visita) → blocos assinados, cada um
+com autor, conselho profissional e hora de fechamento.
+
+### Decisões
+
+1. **Módulo próprio, `SAUDE`, em `orgao_modulo`.** Prefeitura sem hospital não
+   vê nada disso; e o dado de saúde é o mais sensível que o produto guarda, o
+   que torna a separação por módulo uma trava de acesso e não só um item de
+   menu.
+2. **Paciente é cadastro da prefeitura, com `orgao_id`** — nunca global, ao
+   contrário de `fornecedor`. A exceção global existe porque um fornecedor
+   quer ser encontrado por todas as prefeituras; um paciente quer exatamente o
+   contrário. Duas prefeituras vizinhas jamais enxergam o paciente uma da
+   outra.
+3. **`requerente` não serve e não será reaproveitado.** É o cadastro de quem
+   protocola: `UNIQUE (orgao_id, documento)` com um documento só, sem CNS, sem
+   nome da mãe, e alcançável por todo papel que atende balcão. Paciente é
+   tabela nova, dentro do módulo, com sua própria permissão.
+4. **O paciente é identificável por vários documentos: CNS, CPF, NIS, CNH e
+   RG** — todos opcionais, cada um único na prefeitura quando preenchido
+   (índice único parcial). O SUS registra por Cartão, o Bolsa Família por NIS,
+   e quem chega de carro tem a CNH no bolso e mais nada. Guardar um campo só
+   obrigaria a recepção a cadastrar a mesma pessoa duas vezes na segunda visita
+   — que é como nascem prontuários duplicados.
+5. **Nome da mãe é campo de primeira classe, não observação.** É o
+   desempatador real entre homônimos na saúde pública brasileira, e é por isso
+   que está no papel logo abaixo do nome.
+6. **Número de prontuário vitalício do paciente, número de atendimento por
+   ano.** O prontuário é atribuído uma vez e acompanha a pessoa — é o que a
+   equipe já usa e o que costura a série histórica. O atendimento entra na
+   `numeracao_sequencia` que o sistema já tem, no formato `000123/2026`.
+7. **O atendimento abre com o que houver.** Inconsciente, sem acompanhante e
+   sem documento: registra-se a hora e "não identificado", e o socorro começa.
+   A ficha fica marcada como incompleta, a lista mostra isso, e o desfecho não
+   fecha sem ao menos uma tentativa de identificação. Exigir CNS antes de
+   atender não produz dado limpo — produz número inventado.
+8. **Guarda de vinte anos; a tela mostra um.** O usuário pediu "histórico de um
+   ano", mas prontuário tem guarda mínima legal de 20 anos a contar do último
+   registro, reafirmada pelo Parecer CFM nº 19/2026. Nada é apagado: o
+   atendimento com mais de 12 meses é *arquivado* — sai da lista padrão, dos
+   relatórios e da busca rápida, e reaparece quando alguém abre o histórico
+   completo do paciente. O problema real era a série de trabalho poluída, e
+   isso é filtro, não expurgo.
+9. **Quatro papéis novos**, e nenhum deles enxerga licitação, contrato, frota
+   ou patrimônio: `SAUDE_RECEPCAO` (identifica e abre), `SAUDE_ENFERMEIRO`
+   (tria e dá a saída), `SAUDE_TECNICO` (carimba o horário da medicação),
+   `SAUDE_MEDICO` (avalia, pede exame, prescreve, executa procedimento).
+   Continua valendo a regra da matriz de permissões: sem herança comum, cada
+   papel lista o que aquele cargo faz e nada além.
+10. **Separação estrita de atos.** Um médico não preenche a triagem de
+    enfermagem, nem no plantão de madrugada sem enfermeiro: naquele caso a
+    triagem fica em branco e os sinais vitais entram na avaliação médica, que é
+    o que acontece no papel hoje. Triagem é ato privativo do enfermeiro, e o
+    sistema não vai produzir registro que diga o contrário.
+11. **Registro clínico fechado não se edita.** Cada bloco grava autor, conselho
+    (CRM/COREN), data e hora ao ser fechado, e a partir daí é imutável.
+    Correção existe e é bem-vinda: entra como retificação, com autor e hora
+    próprios, e a ficha impressa mostra as duas — exatamente como a rasura
+    datada e rubricada do papel. Apagar o que um profissional escreveu é
+    adulteração de prontuário.
+12. **Conselho profissional obrigatório no usuário de papel clínico.** Sem
+    CRM/COREN no cadastro, o profissional não fecha bloco nenhum: é o que vai
+    impresso na ficha e é o que identifica o responsável perante o conselho.
+13. **Prescrição em itens estruturados** — medicamento, dose, via, frequência —
+    **mais um campo livre de orientações** (dieta, repouso, cuidados), que não
+    cabe em dose e via. A coluna de horários do papel vira uma linha de
+    *administração* por horário, com o técnico que a executou e a hora real.
+    Texto corrido fecharia a porta da conferência de medicação e da farmácia.
+14. **Alergia e condições crônicas pertencem ao paciente, não ao atendimento.**
+    No papel, "Portador: HAS / DM / Alergia / Outros" é reescrito a cada visita
+    e some quando alguém esquece. No sistema persiste e aparece antes da
+    prescrição.
+15. **Sinais vitais com faixa de plausibilidade.** Não é diagnóstico: é impedir
+    temperatura 368 °C e pulso 800. O sistema avisa e deixa confirmar — valor
+    extremo existe de verdade e não pode ser bloqueado.
+16. **O desfecho é único e terminal.** Alta, encaminhamento (com destino) ou
+    óbito, cada um com horário, assinado pelo enfermeiro. Depois do desfecho o
+    atendimento não recebe registro novo — o que vier é atendimento novo.
+17. **Histórico clínico aberto a qualquer profissional clínico, com a leitura
+    registrada.** Continuidade do cuidado depende de ver a visita anterior. Em
+    troca, `auditoria_log` passa a registrar *leitura* de prontuário, com nome
+    e hora — hoje ele só registra escrita. É a trilha que inibe a curiosidade,
+    e é o que a controladoria vai pedir para ver.
+18. **A ficha impressa sai pelo motor de documentos**, em escopo novo,
+    reproduzindo o layout de duas folhas do papel com o timbre da prefeitura.
+    O hospital precisa continuar imprimindo — para a pasta física durante a
+    transição, para o paciente que pede, e para quando faltar energia.
+19. **CNES em leitura, e fora do caminho crítico.** Detalhamento técnico em
+    `docs/integracao-cnes.md`, com as chamadas já reproduzidas. Em resumo: o
+    **estabelecimento** vem da API REST aberta (`apidadosabertos.saude.gov.br`,
+    sem autenticação, verificada) e o **profissional** só existe no barramento
+    SOAP (`ProfissionalSaudeService` / `VinculacaoProfissionalService`, com
+    credencial pública), que ainda precisa ser confirmado de pé a partir da VPS.
+    Toda consulta é guardada com a data em que foi feita; se o serviço do
+    Ministério estiver fora do ar, o atendimento acontece do mesmo jeito.
+    Nenhum atendimento depende de rede externa.
+    - **O hospital é o CNES 7572883**, tipo 5 (HOSPITAL GERAL), no município
+      210177. Dois desencontros com a ficha em papel a resolver com o cliente:
+      o CNES escreve "MORAES" e a ficha "MORAIS"; e o CNPJ do CNES
+      (01.612.347/0001-58, a Prefeitura) não é o do cabeçalho da ficha
+      (11.629.135/0001-37, provavelmente o Fundo Municipal de Saúde).
+    - **O CRM/COREN continua digitado à mão**, porque não há API pública de
+      conselho — o CNES identifica ocupação por CBO, não por registro. O que a
+      consulta prova é o vínculo do profissional com aquele hospital.
+    - **O CNS do paciente é conferido só pelo dígito verificador.** A base
+      nacional (CADSUS) tem barramento próprio, com cadastro de cessionário e
+      autorização — não é aberta.
+20. **Nenhum dado clínico por e-mail.** A fila de e-mail entregue na fatia
+    anterior não é usada aqui. O papel coleta e-mail do paciente; ele serve
+    para contato administrativo futuro, não para mandar resultado de exame.
+
+### Modelo de dados (esboço para aprovação)
+
+```
+paciente                 orgao_id, prontuario, nome, nome_mae, data_nascimento,
+                         sexo, cns, cpf, nis, cnh, rg, endereco, cidade, uf,
+                         telefone, email, criado_em          (únicos parciais por documento)
+paciente_condicao        paciente_id, tipo (HAS|DM|ALERGIA|OUTRO), descricao, registrado_por
+
+atendimento              orgao_id, unidade_id, paciente_id (nullable p/ não identificado),
+                         numero, aberto_em, aberto_por, identificacao_pendente,
+                         status (EM_ANDAMENTO|ENCERRADO), arquivado_em
+triagem                  atendimento_id 1:1, glicemia, pa_sistolica, pa_diastolica,
+                         pulso, saturacao, temperatura, queixa, conduta,
+                         prioridade, fechado_por, fechado_em
+avaliacao_medica         atendimento_id 1:1, queixa_clinica, fechado_por, fechado_em
+exame                    atendimento_id, descricao, resultado, solicitado_por, resultado_em
+prescricao               atendimento_id, orientacoes, fechado_por, fechado_em
+prescricao_item          prescricao_id, medicamento, dose, via, frequencia
+administracao            prescricao_item_id, horario, executado_por, observacao
+evolucao                 atendimento_id, tipo (ENFERMAGEM|MEDICA), texto, autor, fechado_em
+procedimento             atendimento_id, tipo (URGENCIA_SO|URGENCIA_CO|SUTURA|CURATIVO|
+                         NEBULIZACAO|CIRURGIA_AMB|OUTRO), descricao, executado_por
+desfecho                 atendimento_id 1:1, tipo (ALTA|ENCAMINHAMENTO|OBITO), destino,
+                         horario, fechado_por
+retificacao              tabela_origem, registro_id, texto, autor, criado_em
+```
+
+Todo filho alcança o órgão por join em `atendimento` ou `paciente`, como o resto
+do sistema.
+
+### Ordem das fatias
+
+1. **A ficha, ponta a ponta** — cadastro de paciente, atendimento, triagem,
+   avaliação, exames, prescrição com administrações, evoluções, procedimento,
+   desfecho, ficha impressa, os quatro papéis e a validação CNES. Substitui o
+   papel inteiro: meia ficha digital e meia no papel é pior que tudo no papel.
+2. **Observação e leitos** — a ficha já prevê "urgência com observação"; falta
+   saber quem está ocupando leito, desde quando e como evoluiu.
+3. **Agenda e consultas na UBS** — o outro lado do "encaminhado para UBS".
+4. **Relatórios epidemiológicos e de produção** — atendimentos por período,
+   procedimento, motivo e desfecho. É o que a série histórica em papel não
+   permite e o que motivou o módulo; vem depois porque precisa de meses de dado
+   dentro do sistema para dizer alguma coisa.
+
+### O que fica fora, e por quê
+
+- **Assinatura digital ICP-Brasil.** O fecho pelo usuário logado é o que
+  substitui o carimbo agora. Prontuário 100% eletrônico com descarte do papel
+  exige certificação SBIS/CFM e certificado por profissional — custo e atrito
+  reais numa prefeitura pequena. O modelo reserva o lugar; a fatia é outra.
+- **Farmácia e dispensação.** O almoxarifado já faz lote, validade, FEFO e
+  reserva de saldo, então ligar a prescrição ao estoque é ligação e não
+  construção — mas não entrou no horizonte escolhido.
+- **Envio de produção ao e-SUS.** Pronto atendimento hospitalar não produz
+  ficha de APS; o formato correto (BPA/SIA ou e-SUS APS) depende de como o
+  estabelecimento está classificado no CNES, e isso se decide com o dado do
+  CNES em mãos — depois da fatia 1.
+- **Faturamento SUS e regulação de vagas.** Outro sistema, outro levantamento.
+- **Expurgo automático de prontuário.** Vinte anos é mais longo que a vida
+  deste código; quando chegar a hora, o descarte tem de ser formalizado,
+  sigiloso e rastreável, e isso é um procedimento com ata, não um `DELETE`
+  agendado.

@@ -18,6 +18,13 @@ export const PAPEIS = [
   "UNIDADE",
   "PATRIMONIO",
   "FROTAS",
+  // Saúde: os quatro da ficha do pronto atendimento. A divisão é a do papel
+  // impresso — a recepção identifica, o enfermeiro tria e dá a saída, o
+  // técnico carimba o horário da medicação, o médico avalia e prescreve.
+  "SAUDE_RECEPCAO",
+  "SAUDE_TECNICO",
+  "SAUDE_ENFERMEIRO",
+  "SAUDE_MEDICO",
 ] as const;
 
 export type Papel = (typeof PAPEIS)[number];

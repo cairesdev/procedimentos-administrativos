@@ -1,8 +1,10 @@
 import { hash } from "bcryptjs";
 import { Conflito, ErroDeNegocio } from "../../domain/shared/ErroDeNegocio";
-import type { NovaLotacao, UsuarioRepository } from "../ports/UsuarioRepository";
+import type {
+  ConselhoProfissional, NovaLotacao, UsuarioRepository,
+} from "../ports/UsuarioRepository";
 
-export type CriarUsuarioEntrada = {
+export type CriarUsuarioEntrada = ConselhoProfissional & {
   orgaoId: string;
   nome: string;
   email: string;
@@ -34,6 +36,11 @@ export class CriarUsuario {
       username: dados.username,
       senhaHash,
       papelBase: dados.papelBase,
+      // O carimbo de quem vai assinar prontuário. Só os papéis clínicos
+      // preenchem, e sem ele a ficha não fecha bloco nenhum.
+      conselhoTipo: dados.conselhoTipo ?? null,
+      conselhoNumero: dados.conselhoNumero ?? null,
+      conselhoUf: dados.conselhoUf ?? null,
     });
     for (const lotacao of dados.lotacoes) {
       await this.usuarios.criarLotacao({ ...lotacao, usuarioId: id });

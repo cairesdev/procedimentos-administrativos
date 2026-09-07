@@ -70,6 +70,23 @@ export const AUDIT_EVENTS = [
   "ADMIN_ENTIDADE_REATIVADO",
   "EMAIL_CONFIGURADO",
   "EMAIL_CONFIGURACAO_REMOVIDA",
+  // Saúde. `PRONTUARIO_LIDO` é a primeira **leitura** que esta trilha
+  // registra: o histórico clínico ficou aberto a todo profissional clínico
+  // porque continuidade do cuidado depende disso, e a trilha é a
+  // contrapartida.
+  "PRONTUARIO_LIDO",
+  "FICHA_ABERTA",
+  "FICHA_IDENTIFICADA",
+  "TRIAGEM_REGISTRADA",
+  "AVALIACAO_MEDICA_REGISTRADA",
+  "EXAME_SOLICITADO",
+  "RESULTADO_DE_EXAME_INFORMADO",
+  "PRESCRICAO_REGISTRADA",
+  "MEDICACAO_ADMINISTRADA",
+  "EVOLUCAO_REGISTRADA",
+  "PROCEDIMENTO_REGISTRADO",
+  "ATENDIMENTO_ENCERRADO",
+  "REGISTRO_CLINICO_RETIFICADO",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -167,6 +184,17 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
       "EMAIL_CONFIGURADO", "EMAIL_CONFIGURACAO_REMOVIDA",
     ],
   },
+  {
+    group: "Saúde",
+    events: [
+      "PRONTUARIO_LIDO", "FICHA_ABERTA", "FICHA_IDENTIFICADA",
+      "TRIAGEM_REGISTRADA", "AVALIACAO_MEDICA_REGISTRADA",
+      "EXAME_SOLICITADO", "RESULTADO_DE_EXAME_INFORMADO",
+      "PRESCRICAO_REGISTRADA", "MEDICACAO_ADMINISTRADA",
+      "EVOLUCAO_REGISTRADA", "PROCEDIMENTO_REGISTRADO",
+      "ATENDIMENTO_ENCERRADO", "REGISTRO_CLINICO_RETIFICADO",
+    ],
+  },
 ];
 
 /** Frase no lugar do enum cru: a trilha é lida por gestor, não por dev. */
@@ -241,4 +269,20 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   ADMIN_ENTIDADE_REATIVADO: "Administrador reativado",
   EMAIL_CONFIGURADO: "Servidor de e-mail configurado",
   EMAIL_CONFIGURACAO_REMOVIDA: "Servidor de e-mail removido",
+  // "Consultou o histórico" e não "leu o prontuário": a frase precisa dizer o
+  // que a pessoa fez, porque é o gestor que vai ler esta linha para decidir se
+  // aquele acesso tinha motivo.
+  PRONTUARIO_LIDO: "Consultou o histórico clínico de um paciente",
+  FICHA_ABERTA: "Atendimento aberto",
+  FICHA_IDENTIFICADA: "Paciente identificado no atendimento",
+  TRIAGEM_REGISTRADA: "Triagem de enfermagem registrada",
+  AVALIACAO_MEDICA_REGISTRADA: "Avaliação médica registrada",
+  EXAME_SOLICITADO: "Exame solicitado",
+  RESULTADO_DE_EXAME_INFORMADO: "Resultado de exame registrado",
+  PRESCRICAO_REGISTRADA: "Prescrição registrada",
+  MEDICACAO_ADMINISTRADA: "Medicação administrada",
+  EVOLUCAO_REGISTRADA: "Evolução registrada",
+  PROCEDIMENTO_REGISTRADO: "Procedimento registrado",
+  ATENDIMENTO_ENCERRADO: "Saída do paciente registrada",
+  REGISTRO_CLINICO_RETIFICADO: "Registro clínico retificado",
 };

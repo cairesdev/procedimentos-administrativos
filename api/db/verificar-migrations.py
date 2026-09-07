@@ -915,6 +915,210 @@ CASOS: list[tuple[str, str, bool]] = [
      "('c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2', repeat('c',64), 'Engenheiro', "
      "'Engenheiro da obra', now() + interval '7 days')",
      False),
+
+    # ------------------------------------------------------------------
+    # 0048 — a ficha hospitalar.
+    #
+    # A maioria destes CHECKs protege contra digitacao, e nao contra codigo:
+    # temperatura 368 e pressao invertida entram por um dedo que escorregou no
+    # teclado, e ficariam no prontuario para sempre.
+    ("a unidade de saude entra, com o CNES do hospital",
+     "INSERT INTO unidade_saude (id, orgao_id, nome, codigo_cnes, tipo_unidade) VALUES "
+     "('5a000000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',"
+     "'Hospital Municipal','7572883',5)",
+     True),
+    ("CNES com menos de sete digitos e recusado",
+     "INSERT INTO unidade_saude (orgao_id, nome, codigo_cnes) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Posto do Centro','75728')",
+     False),
+    ("o mesmo CNES duas vezes partiria a serie historica, e e recusado",
+     "INSERT INTO unidade_saude (orgao_id, nome, codigo_cnes) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Hospital (de novo)','7572883')",
+     False),
+    ("duas unidades sem CNES convivem",
+     "INSERT INTO unidade_saude (orgao_id, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Posto A'),"
+     "('11111111-1111-1111-1111-111111111111','Posto B')",
+     True),
+
+    ("o paciente entra, com prontuario e nome da mae",
+     "INSERT INTO paciente (id, orgao_id, prontuario, nome, nome_mae, cns, cpf) VALUES "
+     "('5a000000-0000-0000-0000-000000000010','11111111-1111-1111-1111-111111111111',"
+     "1,'JOSE DA SILVA','MARIA DA SILVA','123456789012345','12345678901')",
+     True),
+    ("prontuario repetido na mesma prefeitura e recusado",
+     "INSERT INTO paciente (orgao_id, prontuario, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111',1,'OUTRO JOSE')",
+     False),
+    ("o mesmo CNS em dois pacientes e recusado",
+     "INSERT INTO paciente (orgao_id, prontuario, nome, cns) VALUES "
+     "('11111111-1111-1111-1111-111111111111',2,'HOMONIMO','123456789012345')",
+     False),
+    ("dois pacientes sem documento nenhum convivem",
+     "INSERT INTO paciente (orgao_id, prontuario, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111',2,'NAO IDENTIFICADO A'),"
+     "('11111111-1111-1111-1111-111111111111',3,'NAO IDENTIFICADO B')",
+     True),
+    ("CPF com letra e recusado",
+     "INSERT INTO paciente (orgao_id, prontuario, nome, cpf) VALUES "
+     "('11111111-1111-1111-1111-111111111111',4,'FULANO','1234567890X')",
+     False),
+    ("alergia sem dizer a que e recusada",
+     "INSERT INTO paciente_condicao (paciente_id, tipo) VALUES "
+     "('5a000000-0000-0000-0000-000000000010','ALERGIA')",
+     False),
+    ("alergia com o agente entra",
+     "INSERT INTO paciente_condicao (paciente_id, tipo, descricao) VALUES "
+     "('5a000000-0000-0000-0000-000000000010','ALERGIA','dipirona')",
+     True),
+
+    ("o papel do medico e aceito no usuario",
+     "INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username, "
+     "conselho_tipo, conselho_numero, conselho_uf) VALUES "
+     "('5a000000-0000-0000-0000-000000000020','11111111-1111-1111-1111-111111111111',"
+     "'Dra. Ana','ana@teste.gov.br','x','SAUDE_MEDICO','ana','CRM','12345','MA')",
+     True),
+    ("conselho sem UF nao identifica ninguem, e e recusado",
+     "INSERT INTO usuario (orgao_id, nome, email, senha_hash, papel_base, username, "
+     "conselho_tipo, conselho_numero) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Enf. Joao','joao@teste.gov.br','x',"
+     "'SAUDE_ENFERMEIRO','joao','COREN','999')",
+     False),
+
+    # O inconsciente sem documento: a ficha abre assim mesmo.
+    ("atendimento abre sem paciente identificado",
+     "INSERT INTO atendimento (id, orgao_id, unidade_saude_id, numero, aberto_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000030','11111111-1111-1111-1111-111111111111',"
+     "'5a000000-0000-0000-0000-000000000001','000001/2026',"
+     "'88888888-8888-8888-8888-888888888888')",
+     True),
+    ("encerrar sem identificar o paciente e recusado",
+     "UPDATE atendimento SET status = 'ENCERRADO' "
+     "WHERE id = '5a000000-0000-0000-0000-000000000030'",
+     False),
+    ("numero de atendimento repetido na prefeitura e recusado",
+     "INSERT INTO atendimento (orgao_id, unidade_saude_id, numero, aberto_por) VALUES "
+     "('11111111-1111-1111-1111-111111111111','5a000000-0000-0000-0000-000000000001',"
+     "'000001/2026','88888888-8888-8888-8888-888888888888')",
+     False),
+    ("identificado o paciente, o atendimento encerra",
+     "UPDATE atendimento SET paciente_id = '5a000000-0000-0000-0000-000000000010' "
+     "WHERE id = '5a000000-0000-0000-0000-000000000030'",
+     True),
+
+    ("temperatura de 368 graus e dedo no teclado, e e recusada",
+     "INSERT INTO triagem (atendimento_id, temperatura, fechado_por, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000030',368,"
+     "'5a000000-0000-0000-0000-000000000020',now())",
+     False),
+    ("pulso de 800 e recusado",
+     "INSERT INTO triagem (atendimento_id, pulso, fechado_por, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000030',800,"
+     "'5a000000-0000-0000-0000-000000000020',now())",
+     False),
+    ("diastolica maior que sistolica sao os campos trocados, e e recusado",
+     "INSERT INTO triagem (atendimento_id, pa_sistolica, pa_diastolica, fechado_por, "
+     "fechado_em) VALUES ('5a000000-0000-0000-0000-000000000030',80,120,"
+     "'5a000000-0000-0000-0000-000000000020',now())",
+     False),
+    ("fechar a triagem sem dizer quem assinou e recusado",
+     "INSERT INTO triagem (atendimento_id, temperatura, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000030',37,now())",
+     False),
+    # Grave, verdadeiro, e tem de entrar: um formulario que recusasse isto
+    # obrigaria o enfermeiro a escrever um valor falso para conseguir salvar.
+    ("saturacao 71 e temperatura 41,5 sao graves e entram",
+     "INSERT INTO triagem (atendimento_id, saturacao, temperatura, pa_sistolica, "
+     "pa_diastolica, queixa, conduta, prioridade, fechado_por, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000030',71,41.5,180,100,'Falta de ar',"
+     "'URGENCIA',TRUE,'5a000000-0000-0000-0000-000000000020',now())",
+     True),
+    ("triagem assinada nao se altera",
+     "UPDATE triagem SET temperatura = 36.5 "
+     "WHERE atendimento_id = '5a000000-0000-0000-0000-000000000030'",
+     False),
+    ("duas triagens no mesmo atendimento sao recusadas",
+     "INSERT INTO triagem (atendimento_id, temperatura, fechado_por, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000030',37,"
+     "'5a000000-0000-0000-0000-000000000020',now())",
+     False),
+
+    ("a evolucao de enfermagem entra",
+     "INSERT INTO evolucao (id, atendimento_id, tipo, texto, fechado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000040','5a000000-0000-0000-0000-000000000030',"
+     "'ENFERMAGEM','Paciente em observacao, consciente.',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+    ("evolucao nao se altera nem se apaga o que foi escrito",
+     "UPDATE evolucao SET texto = 'outra coisa' "
+     "WHERE id = '5a000000-0000-0000-0000-000000000040'",
+     False),
+    ("a retificacao e a rasura datada, e entra",
+     "INSERT INTO retificacao (atendimento_id, tabela_origem, registro_id, texto, autor_id) "
+     "VALUES ('5a000000-0000-0000-0000-000000000030','evolucao',"
+     "'5a000000-0000-0000-0000-000000000040','Onde se le consciente, leia-se sonolento.',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+    ("retificacao sobre tabela que o modulo nao conhece e recusada",
+     "INSERT INTO retificacao (atendimento_id, tabela_origem, registro_id, texto, autor_id) "
+     "VALUES ('5a000000-0000-0000-0000-000000000030','contrato',"
+     "'5a000000-0000-0000-0000-000000000040','x',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     False),
+
+    ("procedimento OUTRO sem dizer qual e recusado",
+     "INSERT INTO procedimento (atendimento_id, tipo, executado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000030','OUTRO',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     False),
+    ("procedimento da lista entra sem descricao",
+     "INSERT INTO procedimento (atendimento_id, tipo, executado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000030','NEBULIZACAO',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+
+    ("a prescricao e o item entram",
+     "INSERT INTO prescricao (id, atendimento_id, fechado_por, fechado_em) VALUES "
+     "('5a000000-0000-0000-0000-000000000050','5a000000-0000-0000-0000-000000000030',"
+     "'5a000000-0000-0000-0000-000000000020',now()); "
+     "INSERT INTO prescricao_item (id, prescricao_id, medicamento, dose, via, frequencia) "
+     "VALUES ('5a000000-0000-0000-0000-000000000051',"
+     "'5a000000-0000-0000-0000-000000000050','Dipirona','500mg','IV','6/6h')",
+     True),
+    ("via que o modulo nao conhece e recusada",
+     "INSERT INTO prescricao_item (prescricao_id, medicamento, dose, via, frequencia) "
+     "VALUES ('5a000000-0000-0000-0000-000000000050','Soro','500ml','INTRATECAL','1x')",
+     False),
+    ("o horario da administracao e o do relogio de quem deu o remedio",
+     "INSERT INTO administracao (prescricao_item_id, horario, executado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000051', now() - interval '2 hours',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+    ("a mesma medicacao entra duas vezes: sao dois horarios, nao duplicidade",
+     "INSERT INTO administracao (prescricao_item_id, horario, executado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000051', now() - interval '1 hour',"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+
+    ("encaminhamento sem destino nao encaminha ninguem, e e recusado",
+     "INSERT INTO desfecho (atendimento_id, tipo, horario, fechado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000030','ENCAMINHAMENTO',now(),"
+     "'5a000000-0000-0000-0000-000000000020')",
+     False),
+    ("a alta entra e assina",
+     "INSERT INTO desfecho (atendimento_id, tipo, horario, fechado_por) VALUES "
+     "('5a000000-0000-0000-0000-000000000030','ALTA',now(),"
+     "'5a000000-0000-0000-0000-000000000020')",
+     True),
+    ("o desfecho nao se altera depois de assinado",
+     "UPDATE desfecho SET tipo = 'OBITO' "
+     "WHERE atendimento_id = '5a000000-0000-0000-0000-000000000030'",
+     False),
+    ("o modulo SAUDE e contratavel",
+     "INSERT INTO orgao_modulo (orgao_id, modulo, ativo) VALUES "
+     "('11111111-1111-1111-1111-111111111111','SAUDE',TRUE) "
+     "ON CONFLICT (orgao_id, modulo) DO UPDATE SET ativo = TRUE",
+     True),
 ]
 
 
