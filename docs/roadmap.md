@@ -1748,10 +1748,87 @@ escrevendo "estou vivo" pode estar vivo e sem conseguir mandar nada.
 - **Recuperação de senha continua fora**, e segue sendo o único caso sem
   alternativa manual.
 
-## Ficha hospitalar — levantamento consolidado, código não iniciado
+## Ficha hospitalar — 1ª fatia entregue
 
-Levantamento aprovado em `docs/decisoes.md`, seção "Ficha hospitalar". Nenhuma
-migration, nenhum arquivo de código. O que está decidido:
+Migration **0048**, o módulo `SAUDE` e a esteira inteira do papel: recepção
+identifica → enfermeiro tria → médico avalia, pede exame, prescreve e executa
+procedimento → técnico carimba o horário de cada medicação → enfermeiro dá a
+saída. Levantamento em `docs/decisoes.md`, seção "Ficha hospitalar";
+integração em `docs/integracao-cnes.md`.
+
+### O que entrou
+
+- **Migration 0048**: `unidade_saude` (com código CNES), `paciente` (cinco
+  documentos, todos opcionais, cada um único na prefeitura), `paciente_condicao`,
+  `atendimento`, `triagem`, `avaliacao_medica`, `exame`, `prescricao` +
+  `prescricao_item` + `administracao`, `evolucao`, `procedimento`, `desfecho`,
+  `retificacao`. Mais os gatilhos de imutabilidade e a peça `FICHA_ATENDIMENTO`.
+- **Quatro papéis novos**, com separação estrita de atos, e o **ADMIN perdendo
+  as permissões clínicas** — a primeira vez no projeto em que ele não recebe a
+  lista inteira.
+- **`PRONTUARIO_LIDO`**: a primeira leitura que a auditoria registra.
+- **Telas** em `/saude`: fila do plantão, ficha, pacientes com histórico e
+  cadastro de unidades com busca no CNES.
+- **Conselho profissional (CRM/COREN)** no cadastro de usuário, cobrado de
+  médico e enfermeiro na criação — não descoberto às três da manhã.
+
+### Como foi verificado
+
+- 891 testes na API, 34 no web, typecheck limpo nos dois pacotes.
+- `db/verificar-migrations.py`: 180 invariantes num Postgres de verdade
+  (38 novos, do CHECK da temperatura ao gatilho da triagem assinada) e
+  501 consultas preparadas.
+- **`db/palco-saude.py`** (novo, e agora versionado): sobe Postgres + API e
+  caminha a ficha inteira por HTTP com **cinco tokens diferentes** — recepção,
+  enfermeiro, médico, técnico e admin. É a única prova de que a separação de
+  atos vale de verdade, e é a que pegaria uma rota sem guarda.
+- Cada guarda nova foi **quebrada de propósito** para provar que acusa: médico
+  recebendo `health:nursing`, ADMIN voltando a `[...PERMISSOES]`, a rota da
+  triagem sem middleware, a faixa de saturação virando trava, o guarda da ficha
+  deixando de conferir o conselho e o atendimento encerrado voltando a aceitar
+  escrita. As seis acusaram.
+
+### O build que passou em tudo e quebrou no CI
+
+`tsc --noEmit` limpo, 891 testes verdes, e o `next build` do CI caiu com **51
+erros**: *"Server Actions must be async functions"*. Em arquivo `"use server"`,
+o Next exige a palavra `async` **literal** — `export const salvar = () =>
+runAction(...)` devolve uma promise e mesmo assim é recusado.
+
+Nada que roda antes do `next build` enxerga isso: para o TypeScript as duas
+formas têm o mesmo tipo. O `next build` é a coisa mais lenta do ciclo, e era o
+único lugar onde o defeito aparecia.
+
+O conserto foi uma palavra em dezessete linhas. O que ficou é
+`web/tests/server-actions.test.ts`: varre todo arquivo `"use server"` e exige
+que cada export seja função `async` — provado quebrando de volta um dos
+dezessete. Custa milissegundos e evita dez minutos de CI.
+
+### O que ficou de fora desta fatia
+
+Assinatura digital ICP-Brasil, farmácia ligada ao estoque, envio de produção ao
+e-SUS, observação e leitos, agenda da UBS e os relatórios epidemiológicos —
+todos registrados em `docs/decisoes.md` com o motivo.
+
+### Antes de ir a produção
+
+- **O backup diário passa a carregar prontuário.** Hoje é um bind mount em
+  disco da VPS, sem cifra. Isto precisa ser resolvido **antes** do primeiro
+  atendimento real, e não depois.
+- **Confirmar o barramento SOAP do CNES a partir da VPS.** É o único caminho
+  para dados de profissional, e a especificação é de 2019 — meus testes ao WSDL
+  voltaram vazios. Se não responder, o CBO e o vínculo ficam digitados.
+- **Duas divergências para o cliente**: o nome oficial do hospital ("MORAES" no
+  CNES, "MORAIS" na ficha) e qual CNPJ vai no timbre — o da Prefeitura, que
+  consta no CNES (01.612.347/0001-58), ou o do cabeçalho da ficha
+  (11.629.135/0001-37).
+- **Faixas de plausibilidade dos sinais vitais revisadas por alguém da
+  enfermagem.** As de hoje recusam só o impossível e avisam no improvável, mas
+  os números saíram de mim, não de quem mede.
+
+## O levantamento que originou a fatia
+
+O que estava decidido antes de a primeira linha ser escrita:
 
 - Módulo `SAUDE` em `orgao_modulo`; paciente com `orgao_id`, nunca global.
 - Prontuário vitalício do paciente + número de atendimento por ano.

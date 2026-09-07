@@ -2197,6 +2197,8 @@ do sistema.
 
 ### Ordem das fatias
 
+*A fatia 1 foi entregue na migration 0048 — ver `docs/roadmap.md`.*
+
 1. **A ficha, ponta a ponta** — cadastro de paciente, atendimento, triagem,
    avaliação, exames, prescrição com administrações, evoluções, procedimento,
    desfecho, ficha impressa, os quatro papéis e a validação CNES. Substitui o
@@ -2208,6 +2210,24 @@ do sistema.
    procedimento, motivo e desfecho. É o que a série histórica em papel não
    permite e o que motivou o módulo; vem depois porque precisa de meses de dado
    dentro do sistema para dizer alguma coisa.
+
+### Decidido durante a implementação
+
+21. **O ADMIN da prefeitura não lê prontuário.** É a primeira vez no projeto
+    em que ele não recebe a lista inteira de permissões, e é deliberado: dado
+    de saúde é categoria especial na LGPD, e a decisão 17 abriu o histórico a
+    *profissional clínico* — o administrador de TI não é um. Ele continua
+    administrando o módulo (`health:manage`: cadastrar a unidade e o CNES) e
+    criando os usuários clínicos. Se a prefeitura quiser o contrário, é uma
+    exceção nominal em `usuario_permissao`, com autor e motivo, e não um poder
+    que vem de graça com o cargo. **Isto altera o alcance do papel ADMIN e
+    pode ser revertido em uma linha se o cliente discordar.**
+22. **O corte de doze meses é uma conta, não uma coluna.** A decisão 8 pedia
+    arquivamento aos doze meses; a implementação não gravou `arquivado_em`.
+    Uma coluna precisaria de uma rotina noturna para preenchê-la, e no dia em
+    que ela falhasse a ficha de ontem apareceria "arquivada" ou a de 2019
+    "ativa", sem ninguém perceber. Este projeto já ficou 22 horas com um worker
+    morto e uma tela dizendo que estava tudo bem. Data não precisa de vigia.
 
 ### O que fica fora, e por quê
 

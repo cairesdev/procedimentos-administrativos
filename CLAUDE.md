@@ -16,6 +16,10 @@ Uma base de dados atende várias prefeituras. Módulos implementados:
   aquisição, foto/QR no bem e termo de responsável.
 - **Frotas** — duas fatias: veículos, motoristas, ciclo da viagem, manutenção, abastecimento,
   agenda semanal e relatório de uso.
+- **Saúde** — 1ª fatia: a ficha do pronto atendimento, ponta a ponta (paciente com prontuário
+  vitalício, atendimento, triagem, avaliação, exames, prescrição com horários da enfermagem,
+  evolução, procedimento e saída), quatro papéis clínicos com separação estrita de atos,
+  retificação em vez de edição, e leitura de prontuário na auditoria.
 
 ## Leitura obrigatória antes de codar
 
@@ -59,11 +63,12 @@ npm install
 npm run typecheck    # tsc --noEmit (src, scripts e tests) — rodar sempre antes de entregar
 npm test             # node --test + tsx; sem banco e sem rede
 npm run migrate      # migrations pendentes (tabela schema_migrations)
-python3 db/verificar-migrations.py   # antes de subir migration nova: aplica as 21 num
+python3 db/verificar-migrations.py   # antes de subir migration nova: aplica todas num
                                      # Postgres descartável e confere os CHECKs de verdade
                                      # (pip install --break-system-packages pgserver)
 npm run dev          # tsx watch
 npm run build
+python3 db/palco-saude.py            # a ficha hospitalar inteira por HTTP, com cinco papéis
 
 # ou tudo de uma vez:
 cp .env.example .env && docker compose up --build

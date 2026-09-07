@@ -41,7 +41,7 @@ export const lookupCnesMunicipalities = async (nome: string) => {
   );
 };
 
-export const lookupCnesEstablishments = (codigoMunicipio: string) =>
+export const lookupCnesEstablishments = async (codigoMunicipio: string) =>
   apiRequest<CnesEstablishment[]>(endpoints.cnesByMunicipality(codigoMunicipio));
 
 /** Campo de texto vazio é ausência, não string vazia. */
@@ -69,7 +69,7 @@ const recarregar = (id?: string) => {
 // ---------------------------------------------------------------------------
 // Unidades de saúde
 
-export const saveHealthUnit = (values: HealthUnitInput, id?: string) =>
+export const saveHealthUnit = async (values: HealthUnitInput, id?: string) =>
   runAction(async () => {
     const dados = healthUnitSchema.parse(values);
     const corpo = {
@@ -90,7 +90,7 @@ export const saveHealthUnit = (values: HealthUnitInput, id?: string) =>
 // ---------------------------------------------------------------------------
 // Pacientes
 
-export const savePatient = (values: PatientInput, id?: string) =>
+export const savePatient = async (values: PatientInput, id?: string) =>
   runAction(async () => {
     const dados = patientSchema.parse(values);
     const corpo = {
@@ -118,7 +118,7 @@ export const savePatient = (values: PatientInput, id?: string) =>
     return resposta;
   }, id ? "Cadastro atualizado" : "Paciente cadastrado");
 
-export const addPatientCondition = (pacienteId: string, values: ConditionInput) =>
+export const addPatientCondition = async (pacienteId: string, values: ConditionInput) =>
   runAction(async () => {
     const dados = conditionSchema.parse(values);
     const resposta = await apiRequest(endpoints.patientConditions(pacienteId), {
@@ -129,7 +129,7 @@ export const addPatientCondition = (pacienteId: string, values: ConditionInput) 
     return resposta;
   }, "Registrado");
 
-export const removePatientCondition = (pacienteId: string, condicaoId: string) =>
+export const removePatientCondition = async (pacienteId: string, condicaoId: string) =>
   runAction(async () => {
     const resposta = await apiRequest(
       endpoints.patientCondition(pacienteId, condicaoId), { method: "DELETE" },
@@ -141,7 +141,7 @@ export const removePatientCondition = (pacienteId: string, condicaoId: string) =
 // ---------------------------------------------------------------------------
 // O atendimento e os blocos da ficha
 
-export const openVisit = (values: OpenVisitInput) =>
+export const openVisit = async (values: OpenVisitInput) =>
   runAction(async () => {
     const dados = openVisitSchema.parse(values);
     const resposta = await apiRequest(endpoints.visits, {
@@ -155,7 +155,7 @@ export const openVisit = (values: OpenVisitInput) =>
     return resposta;
   }, "Atendimento aberto");
 
-export const identifyPatient = (visitaId: string, pacienteId: string) =>
+export const identifyPatient = async (visitaId: string, pacienteId: string) =>
   runAction(async () => {
     const resposta = await apiRequest(
       endpoints.visitBlock(visitaId, "identificar"),
@@ -172,7 +172,7 @@ export const identifyPatient = (visitaId: string, pacienteId: string) =>
  * exatamente o paciente que o pronto atendimento precisa registrar depressa.
  * O sistema diz "confere esse número?" e deixa passar.
  */
-export const registerTriage = (visitaId: string, values: TriageInput) =>
+export const registerTriage = async (visitaId: string, values: TriageInput) =>
   runAction(async () => {
     const dados = triageSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "triagem"), {
@@ -193,7 +193,7 @@ export const registerTriage = (visitaId: string, values: TriageInput) =>
     return resposta;
   }, "Triagem registrada e assinada");
 
-export const registerAssessment = (visitaId: string, values: AssessmentInput) =>
+export const registerAssessment = async (visitaId: string, values: AssessmentInput) =>
   runAction(async () => {
     const dados = assessmentSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "avaliacao"), {
@@ -204,7 +204,7 @@ export const registerAssessment = (visitaId: string, values: AssessmentInput) =>
     return resposta;
   }, "Avaliação registrada e assinada");
 
-export const requestExam = (visitaId: string, values: ExamInput) =>
+export const requestExam = async (visitaId: string, values: ExamInput) =>
   runAction(async () => {
     const dados = examSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "exames"), {
@@ -215,7 +215,7 @@ export const requestExam = (visitaId: string, values: ExamInput) =>
     return resposta;
   }, "Exame solicitado");
 
-export const registerExamResult = (
+export const registerExamResult = async (
   visitaId: string, exameId: string, values: ExamResultInput,
 ) =>
   runAction(async () => {
@@ -228,7 +228,7 @@ export const registerExamResult = (
     return resposta;
   }, "Resultado registrado");
 
-export const registerPrescription = (visitaId: string, values: PrescriptionInput) =>
+export const registerPrescription = async (visitaId: string, values: PrescriptionInput) =>
   runAction(async () => {
     const dados = prescriptionSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "prescricoes"), {
@@ -245,7 +245,7 @@ export const registerPrescription = (visitaId: string, values: PrescriptionInput
     return resposta;
   }, "Prescrição registrada e assinada");
 
-export const registerAdministration = (
+export const registerAdministration = async (
   visitaId: string, itemId: string, values: AdministrationInput,
 ) =>
   runAction(async () => {
@@ -261,7 +261,7 @@ export const registerAdministration = (
     return resposta;
   }, "Horário registrado");
 
-export const registerEvolution = (visitaId: string, values: EvolutionInput) =>
+export const registerEvolution = async (visitaId: string, values: EvolutionInput) =>
   runAction(async () => {
     const dados = evolutionSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "evolucoes"), {
@@ -272,7 +272,7 @@ export const registerEvolution = (visitaId: string, values: EvolutionInput) =>
     return resposta;
   }, "Evolução registrada");
 
-export const registerProcedure = (visitaId: string, values: ProcedureInput) =>
+export const registerProcedure = async (visitaId: string, values: ProcedureInput) =>
   runAction(async () => {
     const dados = procedureSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "procedimentos"), {
@@ -283,7 +283,7 @@ export const registerProcedure = (visitaId: string, values: ProcedureInput) =>
     return resposta;
   }, "Procedimento registrado");
 
-export const registerOutcome = (visitaId: string, values: OutcomeInput) =>
+export const registerOutcome = async (visitaId: string, values: OutcomeInput) =>
   runAction(async () => {
     const dados = outcomeSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "desfecho"), {
@@ -305,7 +305,7 @@ export const registerOutcome = (visitaId: string, values: OutcomeInput) =>
  * permanece, a correção entra ao lado com autor e hora próprios, e a ficha
  * impressa mostra as duas.
  */
-export const amendRecord = (visitaId: string, values: AmendmentInput) =>
+export const amendRecord = async (visitaId: string, values: AmendmentInput) =>
   runAction(async () => {
     const dados = amendmentSchema.parse(values);
     const resposta = await apiRequest(endpoints.visitBlock(visitaId, "retificacoes"), {
