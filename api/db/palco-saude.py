@@ -110,13 +110,20 @@ class Palco:
             raise RuntimeError(resultado.stderr.strip()[-2000:])
 
     def migrar(self) -> None:
-        for arquivo in sorted(MIGRATIONS.glob("*.sql")):
-            sql = arquivo.read_text(encoding="utf-8")
-            # O pgcrypto nao vem no pacote do pip, e `gen_random_uuid()` e
-            # nativo desde o Postgres 13 — mesma exclusao de
-            # `verificar-migrations.py`.
-            sql = re.sub(r"CREATE EXTENSION[^;]*pgcrypto[^;]*;", "", sql, flags=re.I)
-            self.sql(sql)
+        """
+        As migrations vao numa chamada so.
+
+        Uma por arquivo seriam quase cinquenta processos `psql`, e o palco
+        passaria mais tempo abrindo conexao do que encenando. A ordem continua
+        sendo a do nome do arquivo, que e o que o `npm run migrate` faz.
+        """
+        # O pgcrypto nao vem no pacote do pip, e `gen_random_uuid()` e nativo
+        # desde o Postgres 13 — mesma exclusao de `verificar-migrations.py`.
+        tudo = "\n".join(
+            re.sub(r"CREATE EXTENSION[^;]*pgcrypto[^;]*;", "", arquivo.read_text(encoding="utf-8"), flags=re.I)
+            for arquivo in sorted(MIGRATIONS.glob("*.sql"))
+        )
+        self.sql(tudo)
 
     def subir_api(self) -> None:
         ambiente = {
