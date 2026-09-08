@@ -109,18 +109,19 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "fleet:read",
     "fleet:write",
     /**
-     * O ADMIN administra o módulo de saúde e **não lê prontuário**.
+     * O ADMIN responde pelo serviço de saúde — e não executa ato clínico.
      *
-     * É a primeira vez que ele não recebe tudo, e é deliberado: prontuário é
-     * dado de saúde, categoria especial na LGPD, e o histórico clínico ficou
-     * aberto a *profissional clínico* — o administrador de TI da prefeitura
-     * não é um. Se ela quiser o contrário, é exceção nominal em
-     * `usuario_permissao`, com autor e motivo.
+     * Lê a ficha e o histórico, administra unidades e programas, acompanha a
+     * fila e emite o relatório do Ministério Público. Não abre atendimento,
+     * não tria, não avalia, não medica e não lança sessão: esses são atos de
+     * quem assina com conselho. Toda leitura de prontuário entra na auditoria,
+     * inclusive a dele.
      */
     "health:manage",
-    // O catálogo, e não os inscritos: a inscrição carrega situação e CID de
-    // uma pessoa, e sai do ADMIN pela mesma razão que o prontuário saiu.
+    "health:read",
+    "health:records",
     "programs:setup",
+    "programs:read",
     "orders:invoice",
     "processes:dispatch",
     "processes:opinion",
@@ -149,6 +150,17 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "workflows:write",
   ],
   GESTOR: [
+    /**
+     * O secretário de saúde é GESTOR, e é ele quem a Promotoria intima.
+     *
+     * Mesma divisão do ADMIN: lê tudo, administra os cadastros, e os atos
+     * clínicos continuam de quem os assina.
+     */
+    "health:read",
+    "health:records",
+    "health:manage",
+    "programs:read",
+    "programs:setup",
     "checklists:read",
     "checklists:manage",
     "checklists:fulfill",

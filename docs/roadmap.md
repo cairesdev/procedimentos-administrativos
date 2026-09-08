@@ -2047,3 +2047,31 @@ A suíte agora roda igual em `America/Sao_Paulo`, `UTC`, `Asia/Tokyo`,
 - **`next build` não roda neste ambiente** (sem acesso a `fonts.googleapis.com`
   para o next/font). Typecheck, lint e o guarda de server actions passam; o
   build de verdade é o do CI.
+
+## Os quatro defeitos que a primeira leitura do módulo pegou
+
+Todos do mesmo tipo: cada lista estava certa sozinha, e nenhuma conferia a
+outra.
+
+- **`ROLE_GROUPS` nunca recebeu os dois papéis novos.** `SAUDE_COORDENACAO` e
+  `SAUDE_TERAPEUTA` existiam na matriz de permissões, em `ROLES`, no `CHECK` do
+  banco e na API — e não no único lugar que a tela de cadastro desenha.
+  Ninguém conseguia criar um terapeuta. Ficou o guarda "todo papel aparece na
+  tela que cria usuário".
+- **O conselho parou em CRM e COREN.** O banco aceita seis desde a 0049; o
+  schema HTTP, o tipo do port e o formulário aceitavam dois. O fonoaudiólogo
+  levava 400 por um valor que o `CHECK` aprovava. Agora o campo aparece
+  também para terapeuta e coordenação, **sem travar** o cadastro — é o registro
+  que vai no ofício, não o carimbo que a ficha exige.
+- **A direção estava barrada do módulo** — ver a decisão em `docs/decisoes.md`.
+- **A saída no mesmo minuto da abertura era recusada.** A abertura vem do banco
+  com milissegundos, a saída vem de um formulário com hora e minuto: quem
+  chegava, era triado e dispensado no mesmo minuto não conseguia encerrar a
+  ficha. A comparação passou a ser por minuto. O palco pegou.
+
+### Como foi verificado
+
+958 testes na API, 118 no web, typecheck e lint limpos, 208 invariantes e 530
+consultas no Postgres real, e os **dois palcos** por HTTP — a ficha inteira e
+o programa do catálogo ao ofício. Cada guarda novo foi quebrado de propósito e
+acusou.

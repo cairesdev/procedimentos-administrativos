@@ -135,23 +135,33 @@ const CONDUZ_CONTRATACAO: Permissao[] = [
 ];
 
 /**
- * O que só quem atende paciente pode.
+ * O que só quem **executa o ato** pode — e que por isso é subtraído do ADMIN.
  *
- * Existe para ser **subtraído** do ADMIN logo abaixo. Prontuário não é
- * "tudo que a prefeitura contratou": é dado de saúde, categoria especial na
- * LGPD, e o levantamento decidiu (decisão 17) que o histórico clínico fica
- * aberto a *profissional clínico*, com a leitura registrada. O administrador
- * de TI da prefeitura não é profissional clínico.
+ * A lista já foi maior: incluía `health:read`, `health:records` e as três de
+ * programa, e o efeito prático foi barrar a direção do módulo inteiro. O
+ * secretário de saúde e o administrador da prefeitura respondem pelo serviço,
+ * são cobrados pelo Ministério Público por ele, e não conseguiam abrir a tela
+ * para ver a fila que estavam sendo obrigados a explicar. A leitura voltou;
+ * a **execução** não.
+ *
+ * O que continua fora é abrir ficha, triar, avaliar, medicar e atender sessão.
+ * São atos de profissional, assinados com conselho — e o guarda da ficha
+ * recusaria a assinatura de quem não tem, mesmo com a permissão. Deixá-los
+ * aqui é dizer a mesma coisa duas vezes, no lugar onde ela se lê.
+ *
+ * A leitura do prontuário continua **registrada na auditoria**, e agora ela é
+ * a contrapartida que importa: quem olhou o histórico de quem fica no papel,
+ * seja enfermeiro ou secretário.
  */
 const ATOS_CLINICOS: Permissao[] = [
-  "health:read", "health:records", "health:admit",
-  "health:nursing", "health:medical", "health:medicate",
+  "health:admit", "health:nursing", "health:medical", "health:medicate",
   /**
-   * A inscrição num programa carrega situação e CID de uma pessoa — é dado de
-   * saúde como o prontuário, e sai do ADMIN pela mesma razão. O catálogo
-   * (`programs:setup`) fica com ele; quem está inscrito, não.
+   * Inscrever, indicar terapia e iniciar são atos da coordenação do programa,
+   * e `programs:attend` é a sessão de quem atendeu. A direção lê a fila —
+   * inclusive para responder ao Ministério Público — e não a mexe: quem
+   * decide quem entra e quando começa é quem acompanha a família.
    */
-  "programs:read", "programs:manage", "programs:attend",
+  "programs:manage", "programs:attend",
 ];
 
 /**
@@ -160,15 +170,16 @@ const ATOS_CLINICOS: Permissao[] = [
  */
 export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   /**
-   * O administrador da prefeitura responde por tudo que ela contratou —
-   * **menos o prontuário**.
+   * O administrador da prefeitura responde por tudo que ela contratou,
+   * inclusive pelo serviço de saúde — **e não executa ato clínico**.
    *
-   * Esta é a primeira vez que o ADMIN não recebe a lista inteira, e é
-   * deliberado. Ele continua administrando o módulo de saúde (`health:manage`:
-   * cadastrar a unidade, o código CNES), continua criando os usuários
-   * clínicos, e não lê a ficha de ninguém. Se a prefeitura quiser o contrário,
-   * é uma exceção em `usuario_permissao` — nominal, com autor e motivo — e não
-   * um poder que vem de graça com o cargo.
+   * Ele lê a ficha e o histórico, administra unidades e programas, acompanha a
+   * fila e emite o relatório do Ministério Público. O que não faz é abrir
+   * atendimento, triar, avaliar, medicar ou lançar sessão: esses são atos de
+   * quem assina com conselho, e a ficha impressa diz o nome de quem assinou.
+   *
+   * Toda leitura de prontuário entra na auditoria — inclusive a dele. É a
+   * contrapartida de o histórico estar aberto a quem responde pelo serviço.
    */
   ADMIN: PERMISSOES.filter((permissao) => !ATOS_CLINICOS.includes(permissao)),
 
@@ -184,6 +195,16 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
     "protocol:read", "protocol:serve", "protocol:manage",
     "stock:read", "stock:request", "stock:receive", "stock:manage",
     "reports:read",
+    /**
+     * O secretário de saúde é GESTOR, e é ele quem o Ministério Público
+     * intima.
+     *
+     * Lê a ficha, o histórico, a fila e o relatório; administra unidades e
+     * programas. Não abre atendimento, não tria, não avalia, não medica e não
+     * lança sessão — os atos continuam de quem os assina com conselho.
+     */
+    "health:read", "health:records", "health:manage",
+    "programs:read", "programs:setup",
   ],
 
   // Setor de compras: emite a ordem e cuida de fornecedor e contrato.

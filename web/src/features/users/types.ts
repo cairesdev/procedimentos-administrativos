@@ -91,13 +91,27 @@ export const ROLE_GROUPS: { label: string; roles: Role[] }[] = [
   { label: "Patrimônio", roles: ["PATRIMONIO"] },
   { label: "Frotas", roles: ["FROTAS"] },
   {
-    label: "Saúde",
+    label: "Saúde — pronto atendimento",
     roles: [
       "SAUDE_RECEPCAO",
       "SAUDE_TECNICO",
       "SAUDE_ENFERMEIRO",
       "SAUDE_MEDICO",
     ],
+  },
+  /**
+   * Os dois do cuidado continuado.
+   *
+   * Grupo próprio, e não junto do plantão, porque é outro serviço: quem
+   * coordena o programa não abre ficha, e quem atende a sessão não passa pelo
+   * pronto atendimento. Ficaram de fora desta lista quando o módulo nasceu — a
+   * matriz de permissões os conhecia, a API os aceitava, e a tela de cadastro
+   * simplesmente não os oferecia. Nenhum teste acusava, porque nenhum
+   * conferia que todo papel tem onde ser criado. Agora confere.
+   */
+  {
+    label: "Saúde — cuidado continuado",
+    roles: ["SAUDE_COORDENACAO", "SAUDE_TERAPEUTA"],
   },
 ];
 

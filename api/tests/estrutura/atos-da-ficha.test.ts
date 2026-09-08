@@ -124,32 +124,53 @@ describe("a separação de atos que o papel impresso encoda", () => {
   });
 });
 
-describe("prontuário não é coisa de administrador", () => {
+describe("ato clínico não é coisa de administrador", () => {
   /**
-   * O ADMIN da prefeitura deixou de receber a lista inteira de permissões, e
-   * é a primeira vez no projeto. Dado de saúde é categoria especial na LGPD, e
-   * o levantamento abriu o histórico a *profissional clínico* — o
-   * administrador de TI não é um.
+   * A direção **lê** o serviço de saúde e **não o executa**.
    *
-   * Se alguém devolver `ADMIN: [...PERMISSOES]` por conveniência, este teste
-   * acusa.
+   * A regra já foi mais fechada: o ADMIN não tinha nem `health:read`, e o
+   * efeito prático foi barrar do módulo justamente quem responde por ele. O
+   * secretário de saúde é intimado pelo Ministério Público a explicar a fila e
+   * não conseguia abrir a tela que a mostra.
+   *
+   * O que continua fora é o **ato**: abrir ficha, triar, avaliar, medicar e
+   * lançar sessão. São assinados com conselho, e a ficha impressa diz o nome
+   * de quem assinou — um secretário não assina triagem de enfermagem.
+   *
+   * A contrapartida da leitura é a auditoria: `PRONTUARIO_LIDO` registra quem
+   * abriu o histórico de quem, seja enfermeiro ou secretário.
    */
-  it("o ADMIN administra o módulo e não lê a ficha de ninguém", () => {
-    const admin = permissoesDe("ADMIN");
-    assert.ok(admin.has("health:manage"), "o ADMIN precisa cadastrar a unidade de saúde");
-    for (const permissao of [
-      "health:read", "health:records", "health:admit",
-      "health:nursing", "health:medical", "health:medicate",
-    ]) {
-      assert.ok(!admin.has(permissao), `o ADMIN não devia ter ${permissao}`);
-    }
-  });
+  const ATOS_DE_QUEM_ATENDE = [
+    "health:admit", "health:nursing", "health:medical", "health:medicate",
+    // Inscrever e indicar terapia são da coordenação, e lançar sessão é de
+    // quem atendeu. A direção lê a fila e não a mexe.
+    "programs:manage", "programs:attend",
+  ];
 
-  it("o GESTOR também não alcança prontuário", () => {
-    const gestor = permissoesDe("GESTOR");
-    assert.ok(!gestor.has("health:records"));
-    assert.ok(!gestor.has("health:read"));
-  });
+  for (const papel of ["ADMIN", "GESTOR"]) {
+    it(`o ${papel} lê o serviço de saúde`, () => {
+      const permissoes = permissoesDe(papel);
+      for (const permissao of [
+        "health:manage", "health:read", "health:records",
+        "programs:read", "programs:setup",
+      ]) {
+        assert.ok(
+          permissoes.has(permissao),
+          `o ${papel} responde pelo serviço e precisa de ${permissao}`,
+        );
+      }
+    });
+
+    it(`o ${papel} não executa ato clínico`, () => {
+      const permissoes = permissoesDe(papel);
+      for (const permissao of ATOS_DE_QUEM_ATENDE) {
+        assert.ok(
+          !permissoes.has(permissao),
+          `${permissao} é ato assinado com conselho — o ${papel} não o executa`,
+        );
+      }
+    });
+  }
 });
 
 describe("o conselho profissional é o carimbo", () => {

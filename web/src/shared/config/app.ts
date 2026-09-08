@@ -2,7 +2,7 @@
 // Client Components, precisa do prefixo NEXT_PUBLIC_ — as variáveis são lidas
 // literalmente aqui porque o Next só substitui `process.env.X` estático.
 export const app = {
-  name: process.env.NEXT_PUBLIC_APP_NAME || "Procedimentos administrativos",
+  name: process.env.NEXT_PUBLIC_APP_NAME || "Gestão 360",
   shortName: process.env.NEXT_PUBLIC_APP_SHORT_NAME || "Procedimentos",
   description:
     process.env.NEXT_PUBLIC_APP_DESCRIPTION ||

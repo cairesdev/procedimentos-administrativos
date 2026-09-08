@@ -25,12 +25,51 @@ import type { Role } from "@/features/auth/types";
  */
 export const ROLES_COM_CONSELHO: Role[] = ["SAUDE_ENFERMEIRO", "SAUDE_MEDICO"];
 
+/**
+ * Papéis a quem o conselho é **oferecido**, sem travar o cadastro.
+ *
+ * O terapeuta do programa — fono, TO, psicólogo, fisio — tem registro, e o
+ * ofício do Ministério Público pede o de cada profissional. Mas ele não assina
+ * bloco de prontuário, então a falta não quebra atendimento nenhum: cobrar na
+ * criação atrasaria o cadastro de quem não está com a carteirinha na mão. A
+ * coordenação entra pelo mesmo motivo — às vezes é uma psicóloga, às vezes
+ * não é profissional de saúde nenhum.
+ */
+export const ROLES_COM_CONSELHO_OPCIONAL: Role[] = [
+  "SAUDE_TERAPEUTA",
+  "SAUDE_COORDENACAO",
+];
+
 export const assinaProntuario = (papel: string): boolean =>
   (ROLES_COM_CONSELHO as string[]).includes(papel);
 
+/** Mostra os campos: para quem assina, e para quem só informa. */
+export const temConselho = (papel: string): boolean =>
+  assinaProntuario(papel)
+  || (ROLES_COM_CONSELHO_OPCIONAL as string[]).includes(papel);
+
+/**
+ * Os conselhos que o sistema conhece — os mesmos do `CHECK` da tabela.
+ *
+ * `OUTRO` existe porque a lista fechada envelhece: musicoterapeuta e
+ * psicopedagogo aparecem em programa de TEA e não têm conselho próprio em
+ * todo estado.
+ */
+export const CONSELHOS = [
+  { valor: "CRM", rotulo: "CRM (medicina)" },
+  { valor: "COREN", rotulo: "COREN (enfermagem)" },
+  { valor: "CRFA", rotulo: "CRFa (fonoaudiologia)" },
+  { valor: "CREFITO", rotulo: "CREFITO (fisioterapia e terapia ocupacional)" },
+  { valor: "CRP", rotulo: "CRP (psicologia)" },
+  { valor: "OUTRO", rotulo: "Outro" },
+] as const;
+
 /** Os três campos, como chegam do formulário. */
 export const camposDoConselho = {
-  conselhoTipo: z.enum(["CRM", "COREN"]).or(z.literal("")).optional(),
+  conselhoTipo: z
+    .enum(["CRM", "COREN", "CRFA", "CREFITO", "CRP", "OUTRO"])
+    .or(z.literal(""))
+    .optional(),
   conselhoNumero: z.string().trim().max(20).optional(),
   conselhoUf: z.string().trim().max(2).optional(),
 };

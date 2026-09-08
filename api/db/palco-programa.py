@@ -232,11 +232,20 @@ def encenar() -> None:
     conferir("a segunda terapia entra", status == 201, str(ocupacional))
     fono_id, to_id = fonoterapia["id"], ocupacional["id"]
 
-    print("\nO sigilo do outro lado")
+    print("\nQuem le e quem executa")
+    # A direcao responde pelo servico e le a fila que o Ministerio Publico
+    # cobra; o que ela nao faz e o ato — inscrever, indicar, lancar sessao.
     status, _ = chamar("GET", "/saude/programas/inscritos", admin)
-    conferir("o ADMIN nao alcanca os inscritos", status == 403, str(status))
+    conferir("o ADMIN acompanha os inscritos", status == 200, str(status))
+
+    status, negado = chamar("POST", "/saude/programas/inscritos", admin, {
+        "programaId": programa_id, "pacienteId": PESSOAS[0],
+    })
+    conferir("o ADMIN nao inscreve ninguem", status == 403, str(negado))
+
+    # O plantao do hospital continua fora do programa inteiro: nem le.
     status, _ = chamar("GET", "/saude/programas/inscritos", medico)
-    conferir("o medico do plantao tambem nao", status == 403, str(status))
+    conferir("o medico do plantao nao entra no programa", status == 403, str(status))
     status, catalogo = chamar("GET", "/saude/programas/catalogo", coord)
     conferir("a coordenacao le o catalogo para inscrever", status == 200, str(status))
 

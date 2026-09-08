@@ -226,3 +226,55 @@ describe("os dois cadastros usam a mesma peça", () => {
     }
   });
 });
+
+/**
+ * Todo papel que existe tem onde ser criado.
+ *
+ * `SAUDE_COORDENACAO` e `SAUDE_TERAPEUTA` nasceram na matriz de permissões, na
+ * lista `ROLES`, no `CHECK` do banco e na API — e não entraram no
+ * `ROLE_GROUPS`, que é a única lista que a tela de cadastro desenha. O papel
+ * existia em todo lugar, menos no único lugar em que alguém precisava dele: o
+ * select da criação de usuário. Ninguém conseguia criar um terapeuta, e nada
+ * acusava, porque cada lista estava certa sozinha.
+ */
+describe("todo papel aparece na tela que cria usuário", () => {
+  const arquivo = ler("src", "features", "users", "types.ts");
+
+  /**
+   * O bloco de um array, do colchete que abre ao que fecha.
+   *
+   * O fim é dado por quem chama porque as duas listas terminam diferente:
+   * `ROLES` fecha em `] as const;` e `ROLE_GROUPS` em `\n];`. Fatiar até o
+   * `];` mais próximo engolia o `ROLE_DESCRIPTIONS` inteiro — e as descrições
+   * citam "CRM" e "COREN", que viravam papéis inexistentes na conferência.
+   */
+  const bloco = (marca: string, fim: string): string => {
+    const inicio = arquivo.indexOf(marca);
+    assert.notEqual(inicio, -1, `${marca} sumiu de types.ts`);
+    const abre = arquivo.indexOf("[", inicio);
+    const fecha = arquivo.indexOf(fim, abre);
+    assert.notEqual(fecha, -1, `${marca} não fecha com "${fim}"`);
+    return arquivo.slice(abre, fecha);
+  };
+
+  const nomes = (texto: string) =>
+    [...texto.matchAll(/"([A-Z][A-Z_]+)"/g)].map((achado) => achado[1]!);
+
+  const declarados = nomes(bloco("export const ROLES =", "] as const;"));
+  const oferecidos = new Set(nomes(bloco("export const ROLE_GROUPS", "\n];")));
+
+  it("acha as duas listas", () => {
+    assert.ok(declarados.length > 10, `só ${declarados.length} papéis declarados`);
+    assert.ok(oferecidos.size > 10, `só ${oferecidos.size} papéis oferecidos`);
+  });
+
+  for (const papel of new Set(declarados)) {
+    it(`${papel} está em algum grupo do formulário`, () => {
+      assert.ok(
+        oferecidos.has(papel),
+        `${papel} existe em ROLES e não aparece em ROLE_GROUPS — a tela de `
+        + "cadastro não oferece esse papel, e ninguém consegue criar o usuário.",
+      );
+    });
+  }
+});

@@ -182,7 +182,17 @@ export class FichaDeAtendimento {
     if (dados.tipo === "ENCAMINHAMENTO" && !dados.destino?.trim()) {
       throw new ErroDeNegocio("Informe para onde o paciente foi encaminhado");
     }
-    if (dados.horario < new Date(atendimento.abertoEm)) {
+    /**
+     * A comparação é por **minuto**, e não por milissegundo.
+     *
+     * A abertura vem do banco com precisão de milissegundo; a saída vem do
+     * formulário, que oferece hora e minuto. Comparar as duas cruas recusa a
+     * ficha aberta às 18:07:44,753 e encerrada "às 18:07" — que é o caso real
+     * de quem chega, é triado e é dispensado no mesmo minuto, e foi o que o
+     * palco pegou. Precisões diferentes comparadas de frente sempre erram para
+     * o mesmo lado: contra quem registrou certo.
+     */
+    if (dados.horario < inicioDoMinuto(new Date(atendimento.abertoEm))) {
       throw new ErroDeNegocio("A saída não pode ser anterior à abertura do atendimento");
     }
 
@@ -226,3 +236,7 @@ export class FichaDeAtendimento {
     return { id };
   };
 }
+
+/** O instante, truncado ao começo do seu minuto. */
+const inicioDoMinuto = (momento: Date): Date =>
+  new Date(Math.floor(momento.getTime() / 60_000) * 60_000);

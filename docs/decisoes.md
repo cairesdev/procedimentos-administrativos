@@ -2513,15 +2513,38 @@ deixa o nascimento para depois, e sem ele a pessoa cai na linha "sem data de
 nascimento" do relatório. Quem corrige é a coordenação, não o balcão — que
 nunca viu essa família.
 
+### A direção lê o serviço, e não executa o ato
+
+**Revoga em parte a decisão 17 da ficha hospitalar**, com aval do cliente. A
+regra anterior tirava `health:read` e `health:records` do ADMIN e nunca os deu
+ao GESTOR, e o efeito prático foi barrar do módulo justamente quem responde por
+ele: o secretário de saúde é quem a Promotoria intima, e não conseguia abrir a
+tela que mostra a fila que ele é obrigado a explicar.
+
+O corte novo é entre **ler** e **executar**:
+
+- ADMIN e GESTOR passam a ter `health:read`, `health:records`, `health:manage`,
+  `programs:read` e `programs:setup`. Leem a ficha, o histórico, a fila e o
+  relatório; administram unidades e o catálogo de programas.
+- Continuam **sem** `health:admit`, `health:nursing`, `health:medical`,
+  `health:medicate`, `programs:manage` e `programs:attend`. Abrir ficha, triar,
+  avaliar, medicar, inscrever, indicar terapia e lançar sessão são atos de quem
+  assina — e a ficha impressa diz o nome de quem assinou. O guarda da ficha
+  recusaria a assinatura de quem não tem conselho, mas a permissão não deve
+  chegar perto: o registro tem que dizer a verdade sobre quem fez o quê.
+- A contrapartida continua sendo a auditoria: `PRONTUARIO_LIDO` registra quem
+  abriu o histórico de quem — agora inclusive o secretário.
+
 ### Quem alcança o quê
 
 | | Catálogo | Inscritos | Fila | Sessão | Equipe | Relatório |
 |---|---|---|---|---|---|---|
-| ADMIN | monta | — | — | — | — | — |
+| ADMIN e GESTOR | montam | leem | leem | leem | leem | apuram e emitem |
 | Coordenação | lê | cadastra a pessoa e inscreve | indica e inicia | registra | monta | apura e emite |
 | Terapeuta | lê | lê | lê | registra | lê | lê |
 | Médico/enfermeiro do plantão | — | — | — | — | — | — |
 
-O plantão do hospital fica de fora inteiro, e a coordenação não lê prontuário.
+O plantão do hospital fica de fora do programa, e a coordenação não lê
+prontuário. A direção lê os dois lados e não executa ato em nenhum.
 São dois módulos no mesmo sistema porque a pessoa é a mesma; as permissões não
 se encontram em lugar nenhum.

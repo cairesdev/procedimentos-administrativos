@@ -66,7 +66,15 @@ export const lotacoesDoUsuarioSchema = z.object({
  * Conselho sem UF não identifica ninguém: CRM 1234 existe em 27 estados.
  */
 const conselhoSchema = {
-  conselhoTipo: z.enum(["CRM", "COREN"]).nullish(),
+  /**
+   * Os seis conselhos que o banco aceita desde a 0049.
+   *
+   * O schema tinha ficado em CRM e COREN, de quando o módulo só conhecia o
+   * pronto atendimento: o fonoaudiólogo do programa levava 400 na camada HTTP
+   * por um valor que o `CHECK` da tabela aprovava. Divergência entre schema e
+   * banco só aparece no dia em que alguém tenta usar o que o banco permite.
+   */
+  conselhoTipo: z.enum(["CRM", "COREN", "CRFA", "CREFITO", "CRP", "OUTRO"]).nullish(),
   conselhoNumero: z.string().trim().max(20).nullish(),
   conselhoUf: z.string().trim().length(2).nullish(),
 };

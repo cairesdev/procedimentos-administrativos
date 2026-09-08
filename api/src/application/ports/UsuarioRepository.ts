@@ -16,8 +16,18 @@ export type UsuarioAutenticavel = {
  * fecham bloco nenhum da ficha. Os três campos andam juntos: conselho sem UF
  * não identifica ninguém, porque CRM 1234 existe em 27 estados.
  */
+/**
+ * Os seis conselhos que o banco aceita desde a 0049.
+ *
+ * Eram dois, de quando a saúde só conhecia o pronto atendimento. O programa de
+ * cuidado continuado trouxe fonoaudiólogo, terapeuta ocupacional, psicólogo e
+ * fisioterapeuta — e o `CHECK` da tabela já os aceitava enquanto o tipo aqui
+ * ainda dizia que não existiam.
+ */
+export type TipoDeConselho = "CRM" | "COREN" | "CRFA" | "CREFITO" | "CRP" | "OUTRO";
+
 export type ConselhoProfissional = {
-  conselhoTipo?: "CRM" | "COREN" | null;
+  conselhoTipo?: TipoDeConselho | null;
   conselhoNumero?: string | null;
   conselhoUf?: string | null;
 };

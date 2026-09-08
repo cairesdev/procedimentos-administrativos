@@ -204,10 +204,15 @@ def encenar() -> None:
     conferir("o mesmo CNES duas vezes partiria a serie historica, e e recusado",
              status == 409, str(status))
 
-    # O ADMIN administra o modulo e nao le a ficha de ninguem. E a primeira vez
-    # no projeto que ele nao recebe tudo, e o palco confere de verdade.
-    status, negado = chamar("GET", "/saude/atendimentos", admin)
-    conferir("o ADMIN nao le prontuario", status == 403, str(status))
+    # A direcao le o servico e nao executa ato clinico. O ADMIN acompanha a
+    # fila do plantao — e nao abre ficha, que e assinatura de quem atende.
+    status, _ = chamar("GET", "/saude/atendimentos", admin)
+    conferir("o ADMIN acompanha o plantao", status == 200, str(status))
+
+    status, negado = chamar("POST", "/saude/atendimentos", admin,
+                            {"unidadeSaudeId": unidade_id})
+    conferir("mas nao abre atendimento: isso e ato de quem atende",
+             status == 403, str(negado))
 
     status, unidades = chamar("GET", "/saude/unidades", recepcao)
     conferir("a recepcao le as unidades", status == 200, str(status))
@@ -353,9 +358,13 @@ def encenar() -> None:
                        {"tipo": "ENCAMINHAMENTO", "horario": agora})
     conferir("encaminhamento sem destino e recusado", status == 422, str(status))
 
+    # De proposito no mesmo minuto da abertura: e o caso de quem chega, e
+    # triado e e dispensado — e a comparacao de milissegundo contra minuto
+    # recusava a ficha inteira.
     status, saida = chamar("POST", f"/saude/atendimentos/{ficha_id}/desfecho", enfermeiro,
                            {"tipo": "ALTA", "horario": agora})
-    conferir("o enfermeiro assina a saida", status == 201, str(saida))
+    conferir("o enfermeiro assina a saida no mesmo minuto da abertura",
+             status == 201, str(saida))
 
     print("\nDepois da alta")
     status, tarde = chamar("POST", f"/saude/atendimentos/{ficha_id}/evolucoes", enfermeiro,

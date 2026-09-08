@@ -3,7 +3,7 @@
 import { useWatch, type FieldValues, type Path, type UseFormReturn } from "react-hook-form";
 import { InputField, SelectField } from "@/shared/ui/form-field";
 import { FieldGrid } from "@/shared/ui/layout";
-import { assinaProntuario } from "../conselho";
+import { CONSELHOS, assinaProntuario, temConselho } from "../conselho";
 
 /**
  * Os três campos do conselho, para as **duas** telas que criam usuário.
@@ -30,7 +30,13 @@ export const ConselhoFields = <T extends FieldValues>({
     name: "papelBase" as Path<T>,
   }) as string | undefined;
 
-  if (!assinaProntuario(papelBase ?? "")) return null;
+  const papel = papelBase ?? "";
+  if (!temConselho(papel)) return null;
+
+  // Obrigatório só para quem assina bloco de prontuário. Para o terapeuta o
+  // campo aparece e não trava: ele informa o registro que vai no relatório do
+  // Ministério Público, e não um carimbo que a ficha exige.
+  const obrigatorio = assinaProntuario(papel);
 
   const { errors } = form.formState;
   const campo = (nome: string) => form.register(nome as Path<T>);
@@ -41,25 +47,29 @@ export const ConselhoFields = <T extends FieldValues>({
     <FieldGrid>
       <SelectField
         label="Conselho"
-        required
+        required={obrigatorio}
         options={[
-          { value: "", label: "Selecione" },
-          { value: "CRM", label: "CRM (medicina)" },
-          { value: "COREN", label: "COREN (enfermagem)" },
+          { value: "", label: obrigatorio ? "Selecione" : "Não informado" },
+          ...CONSELHOS.map((conselho) => ({
+            value: conselho.valor,
+            label: conselho.rotulo,
+          })),
         ]}
         error={erro("conselhoTipo")}
         {...campo("conselhoTipo")}
       />
       <InputField
         label="Número"
-        required
-        hint="É o carimbo impresso na ficha de atendimento."
+        required={obrigatorio}
+        hint={obrigatorio
+          ? "É o carimbo impresso na ficha de atendimento."
+          : "Vai no relatório que responde a requisições do Ministério Público."}
         error={erro("conselhoNumero")}
         {...campo("conselhoNumero")}
       />
       <InputField
         label="UF do conselho"
-        required
+        required={obrigatorio}
         maxLength={2}
         error={erro("conselhoUf")}
         {...campo("conselhoUf")}
