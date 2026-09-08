@@ -81,19 +81,8 @@ export const ROLE_GROUPS: { label: string; roles: Role[] }[] = [
   },
 ];
 
-/**
- * Papéis que assinam registro clínico e, por isso, precisam de conselho.
- *
- * O CRM/COREN é o carimbo: é o que vai impresso na ficha e o que identifica o
- * responsável perante o conselho. Sem ele, o profissional não consegue fechar
- * triagem, avaliação, prescrição, evolução, procedimento nem saída — e
- * descobrir isso no meio do plantão é tarde demais.
- *
- * A recepção fica de fora (não tem conselho) e o técnico também: o auxiliar de
- * enfermagem nem sempre está inscrito, e travar aí impediria o registro do
- * horário da medicação.
- */
-export const ROLES_COM_CONSELHO: Role[] = ["SAUDE_ENFERMEIRO", "SAUDE_MEDICO"];
+// `ROLES_COM_CONSELHO` mora em `./conselho.ts`, junto do schema e do formato
+// que a API espera — as duas telas que criam usuário consomem de lá.
 
 /**
  * Papéis cujo trabalho é de uma escola só.

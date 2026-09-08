@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { apiBaseUrl, apiRequest, ApiError } from "@/shared/api/http-client";
 import { runAction } from "@/shared/api/action-result";
+import { conselhoParaApi } from "@/features/users/conselho";
 import { clearAdminToken, readAdminToken, writeAdminToken } from "./session";
 import {
   adminLoginSchema, firstAdminSchema, letterheadSchema, promoteSchema, resetPasswordSchema,
@@ -275,7 +276,9 @@ export const deleteTenantSector = async (tenantId: string, sectorId: string) =>
 export const createTenantUser = async (tenantId: string, input: TenantUserInput) =>
   runAction(async () => {
     const body = tenantUserSchema.parse(input);
-    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios`, "POST", { ...body, lotacoes: [] });
+    await withAdminToken(`/admin/orgaos/${tenantId}/usuarios`, "POST", {
+      ...body, ...conselhoParaApi(body), lotacoes: [],
+    });
     revalidarPrefeitura(tenantId);
   }, "Usuário cadastrado");
 

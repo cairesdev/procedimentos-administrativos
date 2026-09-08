@@ -11,6 +11,7 @@ import { Modal } from "@/shared/ui/Modal";
 import { humanize } from "@/shared/ui/labels";
 import { useResourceForm, type ActionResult } from "@/shared/ui/use-resource-form";
 import { ROLES } from "@/features/users/types";
+import { ConselhoFields } from "@/features/users/components/ConselhoFields";
 import {
   createTenantSector, createTenantUnit, createTenantUser, deleteTenantSector, deleteTenantUnit,
   deleteTenantUser, resetTenantUserPassword, setTenantSectorActive, setTenantUnitActive,
@@ -396,7 +397,10 @@ const SectorForm = ({
 const UserForm = ({ tenantId, onDone }: { tenantId: string; onDone: () => void }) => {
   const { form, onSubmit, isSubmitting } = useResourceForm<TenantUserInput>({
     schema: tenantUserSchema,
-    defaultValues: { nome: "", email: "", username: "", senha: "", papelBase: "SERVIDOR" },
+    defaultValues: {
+      nome: "", email: "", username: "", senha: "", papelBase: "SERVIDOR",
+      conselhoTipo: "", conselhoNumero: "", conselhoUf: "",
+    },
     action: (values) => createTenantUser(tenantId, values),
     onDone,
   });
@@ -447,6 +451,13 @@ const UserForm = ({ tenantId, onDone }: { tenantId: string; onDone: () => void }
           {...form.register("senha")}
         />
       </FieldGrid>
+
+      {/*
+        Mesma peça da tela da prefeitura. É aqui que nascem os primeiros
+        usuários de um município recém-ligado, e o médico criado sem CRM não
+        fecharia bloco nenhum da ficha.
+      */}
+      <ConselhoFields form={form} papelBase={form.watch("papelBase")} />
 
       <div>
         <Button type="submit" disabled={isSubmitting}>

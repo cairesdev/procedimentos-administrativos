@@ -5,6 +5,7 @@ import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
 import { userSchema, type UserInput } from "./schemas";
+import { conselhoParaApi } from "./conselho";
 
 /**
  * `"escola:<uuid>"` vira `{ localId }`, e assim por diante.
@@ -20,27 +21,12 @@ const lotacaoDe = (destino?: string) => {
   return [{ setorId: id }];
 };
 
-/**
- * O conselho, no formato que a API entende.
- *
- * Campo em branco vira `null`, e não some do corpo: `null` é "apague" e
- * ausência é "não mexa". Quem trocou de função e deixou de assinar prontuário
- * precisa conseguir limpar o CRM pela tela.
- */
-const conselhoDe = (dados: {
-  conselhoTipo?: string; conselhoNumero?: string; conselhoUf?: string;
-}) => ({
-  conselhoTipo: dados.conselhoTipo?.trim() || null,
-  conselhoNumero: dados.conselhoNumero?.trim() || null,
-  conselhoUf: dados.conselhoUf?.trim().toUpperCase() || null,
-});
-
 export const createUser = async (input: UserInput) =>
   runAction(async () => {
     const { destino, ...user } = userSchema.parse(input);
     await apiRequest(endpoints.users, {
       method: "POST",
-      body: { ...user, ...conselhoDe(user), lotacoes: lotacaoDe(destino) },
+      body: { ...user, ...conselhoParaApi(user), lotacoes: lotacaoDe(destino) },
     });
     revalidatePath("/administracao/usuarios");
   }, "Usuário cadastrado");
@@ -49,7 +35,7 @@ export const updateUser = async (id: string, input: UserInput) =>
   runAction(async () => {
     const parsed = userSchema.parse(input);
     const { destino, username: _username, senha, ...user } = parsed;
-    const corpo = { ...user, ...conselhoDe(user) };
+    const corpo = { ...user, ...conselhoParaApi(user) };
     await apiRequest(`${endpoints.users}/${id}`, {
       method: "PATCH",
       body: senha ? { ...corpo, senha } : corpo,

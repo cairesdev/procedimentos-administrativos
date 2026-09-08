@@ -1836,6 +1836,29 @@ E dois guardas, porque nenhum dos existentes pegava isto:
 
 Os três foram provados quebrando de propósito.
 
+### O médico que nascia sem CRM
+
+Segunda pergunta do cliente, segundo buraco. **Duas telas criam usuário**: a da
+prefeitura (`/administracao/usuarios`) e a do painel do produto
+(`/admin/prefeituras/[id]`, que cria os primeiros usuários de um município
+recém-ligado). O campo do conselho entrou só na primeira.
+
+O médico criado pelo painel nascia sem CRM e só descobria no plantão — a
+triagem recusando o fecho, com a saída noutra tela e outra permissão. Nada
+acusava: as duas passam pela mesma rota da API, que aceitava o conselho de boa
+vontade; o typecheck não compara schemas entre si; e formulário que esquece um
+campo continua compilando.
+
+Regra, schema e formatação foram para `features/users/conselho.ts`, e os campos
+para `ConselhoFields`. As duas telas consomem de lá — compartilhado, e não
+copiado: duas cópias são o começo de dois comportamentos, e a que fica para
+trás é sempre a que ninguém abre com frequência.
+
+`web/tests/cadastro-de-usuario.test.ts` executa a regra e confere, no texto, que
+os dois schemas espalham `camposDoConselho`, que os dois formulários desenham
+`ConselhoFields` e que as duas actions chamam `conselhoParaApi`. Provado
+tirando o campo de volta do painel — acusou nominalmente.
+
 ### O que ficou de fora desta fatia
 
 Assinatura digital ICP-Brasil, farmácia ligada ao estoque, envio de produção ao

@@ -1,3 +1,4 @@
+import { camposDoConselho, comConselho } from "@/features/users/conselho";
 import { z } from "zod";
 import { MODULES } from "./types";
 
@@ -50,13 +51,21 @@ export const tenantSectorSchema = z.object({
   tipo: z.string().min(1, "Escolha o tipo"),
 });
 
-export const tenantUserSchema = z.object({
+/**
+ * O usuário criado pelo painel do produto.
+ *
+ * Mesmo cadastro da tela da prefeitura, e por isso o conselho vem da mesma
+ * peça: é aqui que nascem os primeiros usuários de um município recém-ligado,
+ * e o médico criado sem CRM não conseguiria fechar bloco nenhum da ficha.
+ */
+export const tenantUserSchema = comConselho(z.object({
   nome: z.string().min(1, "Informe o nome").max(150),
   email: z.email("E-mail inválido"),
   username: z.string().regex(/^[a-z0-9._-]{3,40}$/, "Minúsculas, números, ponto, hífen e underline"),
   senha: z.string().min(8, "Mínimo de 8 caracteres"),
   papelBase: z.string().min(1, "Escolha o papel"),
-});
+  ...camposDoConselho,
+}));
 
 export const adminLoginSchema = z.object({
   email: z.email("E-mail inválido"),
