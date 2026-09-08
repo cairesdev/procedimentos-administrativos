@@ -13,28 +13,42 @@ import {
 export const saudeRouter = Router();
 
 /**
- * Piso do módulo: quem não lê a ficha não passa daqui.
+ * O cadastro dos estabelecimentos é router próprio, montado em
+ * `/saude/unidades` — e não é acaso.
  *
- * Cada rota abaixo exige, além disso, a permissão do **ato** que ela realiza —
- * e a exigência vem de `ATOS`, a mesma tabela que a ficha impressa usa para
- * dizer quem assina cada bloco. Escrever a permissão à mão em cada rota daria
- * dois lugares para discordarem, e o lugar que discordasse em silêncio seria
- * este.
+ * Quem cadastra unidade é o ADMIN, que **não** tem permissão clínica nenhuma:
+ * não lê prontuário e não abre ficha. Sob o piso `health:read` do resto do
+ * módulo, ele abriria a tela de cadastro e levaria 403 na primeira consulta —
+ * foi assim que a tela nasceu, inalcançável para a única pessoa que podia
+ * usá-la. Baixar o piso do módulo inteiro seria o conserto errado: abriria a
+ * lista de atendimentos ao ADMIN junto.
+ *
+ * O piso aqui aceita as duas: o profissional precisa saber em qual unidade
+ * está abrindo a ficha; o administrador precisa cadastrá-la. Escrever é
+ * separado, e continua só de quem administra.
  */
-saudeRouter.use(exigirPermissao("health:read"));
+export const unidadesSaudeRouter = Router();
 
-const podeAbrir = exigirPermissao(ATOS.ABRIR.permissao);
-const podeTriar = exigirPermissao(ATOS.TRIAR.permissao);
-const podeAtenderComoMedico = exigirPermissao(ATOS.AVALIAR.permissao);
-const podeMedicar = exigirPermissao(ATOS.ADMINISTRAR.permissao);
-const podeTranscreverResultado = exigirPermissao(ATOS.RESULTADO_DE_EXAME.permissao);
-const podeLerHistorico = exigirPermissao("health:records");
+unidadesSaudeRouter.use(exigirPermissao("health:read", "health:manage"));
+
 const administraUnidades = exigirPermissao("health:manage");
 
+/**
+ * As unidades de saúde ficam **antes** do piso, e é de propósito.
+ *
+ * Quem cadastra estabelecimento é o ADMIN, que não tem permissão clínica
+ * nenhuma — não lê prontuário e não abre ficha. Se estas rotas ficassem
+ * abaixo de `health:read`, ele abriria a tela de cadastro e levaria 403 na
+ * primeira consulta; foi assim que a tela nasceu, inalcançável para a única
+ * pessoa que podia usá-la.
+ *
+ * Baixar o piso do módulo inteiro para `health:read OU health:manage` seria o
+ * conserto errado: abriria a lista de atendimentos ao ADMIN junto.
+ */
 // ---------------------------------------------------------------------------
 // Unidades de saúde — o cadastro, e a única porta para o CNES
 
-saudeRouter.get("/unidades", async (req, res, next) => {
+unidadesSaudeRouter.get("/", async (req, res, next) => {
   try {
     res.json(await container.unidadesDeSaude.listar(req.sessao!.orgaoId));
   } catch (error) {
@@ -49,7 +63,7 @@ saudeRouter.get("/unidades", async (req, res, next) => {
  * a palavra "cnes" se a ordem fosse outra — o defeito que o guarda de rotas
  * desta suíte existe para pegar.
  */
-saudeRouter.get("/unidades/cnes/municipios", administraUnidades, async (req, res, next) => {
+unidadesSaudeRouter.get("/cnes/municipios", administraUnidades, async (req, res, next) => {
   try {
     res.json(await container.unidadesDeSaude.municipios(String(req.query.nome ?? "")));
   } catch (error) {
@@ -57,8 +71,8 @@ saudeRouter.get("/unidades/cnes/municipios", administraUnidades, async (req, res
   }
 });
 
-saudeRouter.get(
-  "/unidades/cnes/municipios/:codigo",
+unidadesSaudeRouter.get(
+  "/cnes/municipios/:codigo",
   administraUnidades,
   async (req, res, next) => {
     try {
@@ -71,8 +85,8 @@ saudeRouter.get(
   },
 );
 
-saudeRouter.get(
-  "/unidades/cnes/estabelecimento/:codigo",
+unidadesSaudeRouter.get(
+  "/cnes/estabelecimento/:codigo",
   administraUnidades,
   async (req, res, next) => {
     try {
@@ -83,7 +97,7 @@ saudeRouter.get(
   },
 );
 
-saudeRouter.get("/unidades/:id", async (req, res, next) => {
+unidadesSaudeRouter.get("/:id", async (req, res, next) => {
   try {
     res.json(await container.unidadesDeSaude.ver(req.sessao!.orgaoId, req.params.id!));
   } catch (error) {
@@ -91,7 +105,7 @@ saudeRouter.get("/unidades/:id", async (req, res, next) => {
   }
 });
 
-saudeRouter.post("/unidades", administraUnidades, async (req, res, next) => {
+unidadesSaudeRouter.post("/", administraUnidades, async (req, res, next) => {
   try {
     const dados = unidadeSaudeSchema.parse(req.body);
     const criada = await container.unidadesDeSaude.criar(req.sessao!.orgaoId, {
@@ -105,7 +119,7 @@ saudeRouter.post("/unidades", administraUnidades, async (req, res, next) => {
   }
 });
 
-saudeRouter.put("/unidades/:id", administraUnidades, async (req, res, next) => {
+unidadesSaudeRouter.put("/:id", administraUnidades, async (req, res, next) => {
   try {
     const dados = unidadeSaudeSchema.parse(req.body);
     await container.unidadesDeSaude.atualizar(req.sessao!.orgaoId, req.params.id!, {
@@ -118,6 +132,23 @@ saudeRouter.put("/unidades/:id", administraUnidades, async (req, res, next) => {
     next(error);
   }
 });
+
+// ---------------------------------------------------------------------------
+// A ficha. Piso do módulo: quem não lê prontuário não passa daqui.
+//
+// Cada rota abaixo exige, além disso, a permissão do **ato** que ela realiza —
+// e a exigência vem de `ATOS`, a mesma tabela que a ficha impressa usa para
+// dizer quem assina cada bloco. Escrever a permissão à mão em cada rota daria
+// dois lugares para discordarem, e o que discordasse em silêncio seria este.
+
+saudeRouter.use(exigirPermissao("health:read"));
+
+const podeAbrir = exigirPermissao(ATOS.ABRIR.permissao);
+const podeTriar = exigirPermissao(ATOS.TRIAR.permissao);
+const podeAtenderComoMedico = exigirPermissao(ATOS.AVALIAR.permissao);
+const podeMedicar = exigirPermissao(ATOS.ADMINISTRAR.permissao);
+const podeTranscreverResultado = exigirPermissao(ATOS.RESULTADO_DE_EXAME.permissao);
+const podeLerHistorico = exigirPermissao("health:records");
 
 // ---------------------------------------------------------------------------
 // Pacientes

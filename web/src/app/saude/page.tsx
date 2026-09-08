@@ -58,8 +58,8 @@ export default async function SaudePage({ searchParams }: PageProps) {
         {semUnidade ? (
           <Alert tone="error">
             Nenhuma unidade de saúde cadastrada ainda. Sem ela não há onde abrir
-            atendimento — peça ao administrador para cadastrar o hospital em{" "}
-            <Link href="/saude/unidades">Unidades</Link>.
+            atendimento. Quem cadastra é o administrador da prefeitura, em
+            Administração → Unidades de saúde.
           </Alert>
         ) : null}
 

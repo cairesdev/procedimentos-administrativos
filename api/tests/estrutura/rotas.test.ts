@@ -15,10 +15,26 @@ const ROTAS = path.join(__dirname, "..", "..", "src", "interface", "http", "rout
 
 type Rota = { metodo: string; caminho: string };
 
-const rotasDe = (arquivo: string): Rota[] =>
-  [...readFileSync(path.join(ROTAS, arquivo), "utf8")
-    .matchAll(/Router\.(get|post|put|patch|delete)\(\s*"([^"]+)"/g)]
-    .map((achado) => ({ metodo: achado[1]!.toUpperCase(), caminho: achado[2]! }));
+/**
+ * As rotas de um arquivo, **agrupadas por router**.
+ *
+ * Um arquivo pode declarar mais de um: `organizacao.ts` tem unidades e
+ * setores; `saude.ts` tem a ficha e o cadastro de unidades, montados em
+ * prefixos diferentes. Ler o arquivo como um router só faz a paramétrica de um
+ * parecer que engole a literal do outro — um alarme falso que, pior, ensina a
+ * ignorar o alarme.
+ */
+const routersDe = (arquivo: string): Map<string, Rota[]> => {
+  const routers = new Map<string, Rota[]>();
+  for (const achado of readFileSync(path.join(ROTAS, arquivo), "utf8")
+    .matchAll(/(\w+Router)\.(get|post|put|patch|delete)\(\s*"([^"]+)"/g)) {
+    const nome = achado[1]!;
+    const lista = routers.get(nome) ?? [];
+    lista.push({ metodo: achado[2]!.toUpperCase(), caminho: achado[3]! });
+    routers.set(nome, lista);
+  }
+  return routers;
+};
 
 /**
  * O padrão da rota como o Express o compara: `:param` casa um segmento, e o
@@ -58,10 +74,16 @@ describe("ordem das rotas", () => {
     assert.ok(arquivos.length > 10, `só ${arquivos.length} arquivos de rota`);
   });
 
-  for (const arquivo of arquivos) {
-    it(`${arquivo}: nenhuma literal é engolida por paramétrica`, () => {
-      const registradas = rotasDe(arquivo);
+  it("cada arquivo tem ao menos um router", () => {
+    // Uma regex quebrada faria todos os arquivos virem vazios, e o teste
+    // passaria sem olhar rota nenhuma.
+    const total = arquivos.reduce((soma, arquivo) => soma + routersDe(arquivo).size, 0);
+    assert.ok(total >= arquivos.length, `só ${total} routers em ${arquivos.length} arquivos`);
+  });
 
+  for (const arquivo of arquivos) {
+    for (const [router, registradas] of routersDe(arquivo)) {
+    it(`${arquivo} → ${router}: nenhuma literal é engolida por paramétrica`, () => {
       registradas.forEach(({ metodo, caminho }, posicao) => {
         if (!ehLiteral(caminho)) return;
 
@@ -77,6 +99,7 @@ describe("ordem das rotas", () => {
         );
       });
     });
+    }
   }
 });
 

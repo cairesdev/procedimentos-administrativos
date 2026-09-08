@@ -23,23 +23,46 @@ const raizApi = path.join(__dirname, "..", "..");
 const raizWeb = path.join(raizApi, "..", "web", "src");
 const ler = (...partes: string[]) => readFileSync(path.join(...partes), "utf8");
 
-const raizDoCaminho = (caminho: string) => `/${caminho.replace(/^\//, "").split("/")[0]}`;
+/**
+ * O prefixo **mais específico** que o Express casaria.
+ *
+ * Antes era sempre o primeiro segmento, e isso bastava enquanto cada sistema
+ * tinha um router só. `/saude/unidades` tem o seu, com piso diferente do resto
+ * de `/saude`: pegar só a raiz atribuiria a ele o piso do vizinho, e o teste
+ * cobraria uma permissão que a rota não exige.
+ */
+const prefixoDoCaminho = (caminho: string, registrados: string[]): string => {
+  const candidatos = registrados
+    .filter((prefixo) => caminho === prefixo || caminho.startsWith(`${prefixo}/`))
+    .sort((a, b) => b.length - a.length);
+  return candidatos[0] ?? `/${caminho.replace(/^\//, "").split("/")[0]}`;
+};
 
-/** Prefixo da API → permissão do piso daquele router. */
-const permissaoPorPrefixo = (): Map<string, string> => {
+/**
+ * Prefixo da API → permissões do piso daquele router.
+ *
+ * **Plural**, porque `exigirPermissao` aceita mais de uma e basta ter qualquer
+ * delas. A versão anterior lia só o piso de um argumento, e um router com dois
+ * simplesmente não entrava no mapa — sumia da conferência em silêncio, que é a
+ * pior forma de um guarda falhar. O de `/saude/unidades` é o primeiro do
+ * projeto: quem cadastra estabelecimento é o administrador, que não lê
+ * prontuário, e quem consulta a lista é o profissional, que não administra.
+ */
+const permissoesPorPrefixo = (): Map<string, string[]> => {
   const app = ler(raizApi, "src", "interface", "http", "app.ts");
-  const pisos = new Map<string, string>();
+  const pisos = new Map<string, string[]>();
 
   for (const arquivo of readdirSync(path.join(raizApi, "src", "interface", "http", "routes"))) {
     const conteudo = ler(raizApi, "src", "interface", "http", "routes", arquivo);
     for (const achado of conteudo.matchAll(
-      /(\w+Router)\.use\(exigirPermissao\("([^"]+)"\)\)/g,
+      /(\w+Router)\.use\(exigirPermissao\(([^)]+)\)\)/g,
     )) {
-      pisos.set(achado[1]!, achado[2]!);
+      const permissoes = [...achado[2]!.matchAll(/"([^"]+)"/g)].map((item) => item[1]!);
+      if (permissoes.length > 0) pisos.set(achado[1]!, permissoes);
     }
   }
 
-  const mapa = new Map<string, string>();
+  const mapa = new Map<string, string[]>();
   for (const achado of app.matchAll(/app\.use\("([^"]+)"[^\n]*?(\w+Router)\)/g)) {
     const piso = pisos.get(achado[2]!);
     if (piso) mapa.set(achado[1]!, piso);
@@ -48,7 +71,7 @@ const permissaoPorPrefixo = (): Map<string, string> => {
 };
 
 /** Função de query do web → prefixos da API que ela chama. */
-const prefixosPorFuncao = (): Map<string, string[]> => {
+const prefixosPorFuncao = (registrados: string[]): Map<string, string[]> => {
   const endpoints = ler(raizWeb, "shared", "api", "endpoints.ts");
   const alvo = new Map<string, string>();
   for (const achado of endpoints.matchAll(/(\w+):\s*"(\/[^"]*)"/g)) {
@@ -79,11 +102,11 @@ const prefixosPorFuncao = (): Map<string, string[]> => {
 
       const prefixos = new Set<string>();
       for (const literal of corpo.matchAll(/apiRequest<[^>]*>\(\s*[`"](\/[^`"$]*)/g)) {
-        prefixos.add(raizDoCaminho(literal[1]!));
+        prefixos.add(prefixoDoCaminho(literal[1]!, registrados));
       }
       for (const referencia of corpo.matchAll(/endpoints\.(\w+)/g)) {
         const caminho = alvo.get(referencia[1]!);
-        if (caminho) prefixos.add(raizDoCaminho(caminho));
+        if (caminho) prefixos.add(prefixoDoCaminho(caminho, registrados));
       }
       if (prefixos.size > 0) funcoes.set(marca[1]!, [...prefixos]);
     });
@@ -102,19 +125,27 @@ const paginas = (pasta: string, encontradas: string[] = []): string[] => {
 };
 
 describe("toda tela abre inteira para quem a alcança", () => {
-  const prefixoParaPermissao = permissaoPorPrefixo();
-  const funcaoParaPrefixos = prefixosPorFuncao();
+  const prefixoParaPermissoes = permissoesPorPrefixo();
+  const funcaoParaPrefixos = prefixosPorFuncao([...prefixoParaPermissoes.keys()]);
   const app = path.join(raizWeb, "app");
   const todas = paginas(app);
 
   it("os três mapas foram construídos", () => {
     // Sem esta guarda, uma regex quebrada faria o teste passar vazio — e é
     // exatamente o teste que não pode passar sem olhar nada.
-    assert.ok(prefixoParaPermissao.size >= 14, `só ${prefixoParaPermissao.size} prefixos`);
+    assert.ok(prefixoParaPermissoes.size >= 14, `só ${prefixoParaPermissoes.size} prefixos`);
     assert.ok(funcaoParaPrefixos.size >= 50, `só ${funcaoParaPrefixos.size} queries`);
     assert.ok(todas.length >= 40, `só ${todas.length} páginas`);
-    assert.equal(prefixoParaPermissao.get("/setores"), "sectors:read");
+    assert.deepEqual(prefixoParaPermissoes.get("/setores"), ["sectors:read"]);
+    // O piso de duas permissões precisa entrar no mapa, e não ser pulado.
+    assert.deepEqual(
+      prefixoParaPermissoes.get("/saude/unidades"),
+      ["health:read", "health:manage"],
+    );
     assert.deepEqual(funcaoParaPrefixos.get("listSectors"), ["/setores"]);
+    // O prefixo mais específico ganha do vizinho de raiz igual.
+    assert.deepEqual(funcaoParaPrefixos.get("listHealthUnits"), ["/saude/unidades"]);
+    assert.deepEqual(funcaoParaPrefixos.get("listVisits"), ["/saude"]);
   });
 
   for (const arquivo of todas) {
@@ -153,16 +184,21 @@ describe("toda tela abre inteira para quem a alcança", () => {
       return chamada.test(conteudo) || condicional.test(conteudo);
     };
 
-    const necessarias = new Set<string>([exigida]);
+    /**
+     * Cada exigência é uma **lista de alternativas**: basta ter uma delas,
+     * porque é assim que `exigirPermissao` decide. Piso de uma permissão vira
+     * lista de um item, e a conta continua a mesma.
+     */
+    const necessarias: string[][] = [[exigida]];
     for (const funcao of importadas) {
       if (acessoria(funcao)) continue;
       for (const prefixo of funcaoParaPrefixos.get(funcao) ?? []) {
-        const permissao = prefixoParaPermissao.get(prefixo);
-        if (permissao) necessarias.add(permissao);
+        const permissoes = prefixoParaPermissoes.get(prefixo);
+        if (permissoes) necessarias.push(permissoes);
       }
     }
 
-    if (necessarias.size <= 1) continue;
+    if (necessarias.length <= 1) continue;
 
     it(`${nome} não pede mais do que quem a abre tem`, () => {
       /**
@@ -174,7 +210,9 @@ describe("toda tela abre inteira para quem a alcança", () => {
         const tem = permissoesDe(papel);
         if (!tem.has(exigida)) continue;
 
-        const faltando = [...necessarias].filter((permissao) => !tem.has(permissao));
+        const faltando = necessarias
+          .filter((alternativas) => !alternativas.some((permissao) => tem.has(permissao)))
+          .map((alternativas) => alternativas.join(" ou "));
         assert.deepEqual(
           faltando,
           [],

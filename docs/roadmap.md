@@ -1804,6 +1804,38 @@ O conserto foi uma palavra em dezessete linhas. O que ficou é
 que cada export seja função `async` — provado quebrando de volta um dos
 dezessete. Custa milissegundos e evita dez minutos de CI.
 
+### A tela que ninguém alcançava
+
+Logo depois do build, a pergunta certa: *"onde cadastro as unidades de saúde?"*
+Em lugar nenhum. A tela morava em `/saude`, cuja porta é `health:read`, e a
+única permissão que a abre é `health:manage` — do ADMIN, que a decisão 21
+deixou sem permissão clínica. A tela existia, a rota existia, e não havia quem
+chegasse nela.
+
+Três coisas nasceram do conserto:
+
+- **O cadastro mudou de sistema**: foi para Administração → Unidades de saúde,
+  ao lado de Usuários e Modelos de documento, que é onde o ADMIN já trabalha.
+- **`NavLink` ganhou `module`**: o link some para quem não contratou o módulo,
+  em vez de levar a "módulo indisponível".
+- **`/saude/unidades` virou router próprio**, com piso `health:read` **ou**
+  `health:manage` — o profissional precisa saber em qual unidade abre a ficha,
+  o administrador precisa cadastrá-la. Baixar o piso do módulo inteiro seria o
+  conserto errado: abriria a lista de atendimentos ao ADMIN junto.
+
+E dois guardas, porque nenhum dos existentes pegava isto:
+
+- **`web/tests/menu-alcancavel.test.ts`**: todo link de menu precisa de um papel
+  que tenha, ao mesmo tempo, a permissão do sistema e a do link.
+- **O guarda de telas da API aprendeu piso com duas permissões.** Ele lia só
+  `exigirPermissao("x")` de um argumento; com dois, o router sumia do mapa em
+  silêncio — a pior forma de um guarda falhar. Junto veio o casamento por
+  prefixo mais específico: `/saude/unidades` não herda mais o piso de `/saude`.
+- **O guarda de ordem de rotas passou a agrupar por router**, e não por
+  arquivo. `organizacao.ts` já corria o risco de alarme falso desde sempre.
+
+Os três foram provados quebrando de propósito.
+
 ### O que ficou de fora desta fatia
 
 Assinatura digital ICP-Brasil, farmácia ligada ao estoque, envio de produção ao

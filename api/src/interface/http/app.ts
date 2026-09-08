@@ -6,7 +6,7 @@ import { checklistsRouter } from "./routes/checklists";
 import { relatoriosRouter } from "./routes/relatorios";
 import { almoxarifadoRouter } from "./routes/almoxarifado";
 import { frotasRouter } from "./routes/frotas";
-import { saudeRouter } from "./routes/saude";
+import { saudeRouter, unidadesSaudeRouter } from "./routes/saude";
 import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
 import { atasRouter } from "./routes/atas";
@@ -102,6 +102,7 @@ export const criarApp = () => {
    * outros módulos: prontuário é o dado mais sensível que o produto guarda, e
    * prefeitura que não contratou o módulo não alcança rota nenhuma daqui.
    */
+  app.use("/saude/unidades", ...sessao, resolveTenant("SAUDE"), unidadesSaudeRouter);
   app.use("/saude", ...sessao, resolveTenant("SAUDE"), saudeRouter);
 
   app.use(errorHandler);

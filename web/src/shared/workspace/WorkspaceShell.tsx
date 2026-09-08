@@ -34,7 +34,11 @@ export const WorkspaceShell = async ({
   const sections = workspace.sections
     .map((section) => ({
       ...section,
-      links: section.links.filter((link) => viewer.can(link.permission)),
+      // Permissão **e** módulo: um link de módulo não contratado levaria a
+      // uma tela que redireciona para "módulo indisponível".
+      links: section.links.filter(
+        (link) => viewer.can(link.permission) && hasModule(viewer.modules, link.module),
+      ),
     }))
     .filter((section) => section.links.length > 0);
 

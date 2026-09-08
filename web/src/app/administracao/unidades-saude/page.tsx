@@ -6,16 +6,21 @@ import { toDate } from "@/shared/ui/labels";
 import { Alert, Card, EmptyState, PageHeader, Stack, Table } from "@/shared/ui/layout";
 
 /**
- * As unidades de saúde da prefeitura.
+ * As unidades de saúde da prefeitura — hospital, UBS, postos.
  *
  * Tabela própria, e não a `unidade` administrativa: `unidade` é secretaria que
  * consome contrato e faz solicitação; isto aqui é o que o CNES conhece, com
  * código, tipo e endereço vindos do cadastro nacional.
+ *
+ * **Mora na administração, e não em `/saude`.** Quem cadastra é o ADMIN, e o
+ * ADMIN não tem permissão clínica nenhuma — não lê prontuário nem abre ficha.
+ * A tela dentro do sistema de saúde seria inalcançável justamente para a única
+ * pessoa que pode usá-la, que foi como ela nasceu.
  */
 export default async function UnidadesDeSaudePage() {
-  const viewer = await requirePermission("health:read", "SAUDE");
+  await requirePermission("health:manage", "SAUDE");
   const unidades = await listHealthUnits();
-  const podeAdministrar = viewer.can("health:manage");
+  const podeAdministrar = true;
 
   return (
     <>

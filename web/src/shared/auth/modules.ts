@@ -21,6 +21,16 @@ export type NavLink = {
   href: string;
   label: string;
   permission: Permission;
+  /**
+   * Módulo que a prefeitura precisa ter contratado para o link aparecer.
+   *
+   * Existe porque nem todo link mora no sistema do seu módulo: o cadastro das
+   * unidades de saúde é administração da prefeitura — quem o faz é o ADMIN,
+   * que não tem permissão clínica nenhuma —, mas some para quem não contratou
+   * o módulo de saúde. Sem isto, o menu levaria a uma tela que redireciona
+   * para "módulo indisponível".
+   */
+  module?: ModuleName;
 };
 
 export type NavSection = {
@@ -291,22 +301,6 @@ export const workspaces: Workspace[] = [
           { href: "/saude/pacientes", label: "Pacientes", permission: "health:read" },
         ],
       },
-      {
-        group: "Cadastros",
-        icon: "building",
-        links: [
-          {
-            href: "/saude/unidades",
-            label: "Unidades de saúde",
-            /**
-             * `health:read` e não `health:manage`: a recepção precisa saber em
-             * qual unidade está abrindo a ficha, e o botão de cadastrar dentro
-             * da tela é que exige a permissão de administrar.
-             */
-            permission: "health:read",
-          },
-        ],
-      },
     ],
   },
   {
@@ -363,6 +357,20 @@ export const workspaces: Workspace[] = [
           { href: "/administracao/unidades", label: "Unidades", permission: "units:read" },
           { href: "/administracao/setores", label: "Setores", permission: "sectors:read" },
           { href: "/administracao/usuarios", label: "Usuários", permission: "users:read" },
+          /**
+           * O cadastro das unidades de saúde mora aqui, e não em `/saude`.
+           *
+           * Quem o faz é o ADMIN, e o ADMIN não tem permissão clínica nenhuma
+           * — não lê prontuário, não abre ficha, não entra no sistema de
+           * saúde. Deixar a tela lá dentro a tornava inalcançável justamente
+           * para a única pessoa que pode usá-la.
+           */
+          {
+            href: "/administracao/unidades-saude",
+            label: "Unidades de saúde",
+            permission: "health:manage",
+            module: "SAUDE",
+          },
         ],
       },
       {
