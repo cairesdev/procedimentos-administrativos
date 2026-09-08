@@ -20,7 +20,8 @@ export type NavIcon =
 export type NavLink = {
   href: string;
   label: string;
-  permission: Permission;
+  /** Uma permissão ou várias — basta uma, como na API. */
+  permission: Permission | Permission[];
   /**
    * Módulo que a prefeitura precisa ter contratado para o link aparecer.
    *
@@ -61,8 +62,13 @@ export type Workspace = {
   accentSoft: string;
   /** Sem módulo definido, basta estar autenticado (caso da administração). */
   module?: ModuleName;
-  /** Sem esta permissão, o sistema nem aparece no seletor. */
-  permission: Permission;
+  /**
+   * Sem esta permissão, o sistema nem aparece no seletor. Aceita lista quando
+   * o sistema tem duas portas: a saúde abre para quem atende no hospital
+   * (`health:read`) e para quem coordena os programas (`programs:read`), e
+   * essas duas pessoas não compartilham permissão nenhuma.
+   */
+  permission: Permission | Permission[];
   sections: NavSection[];
 };
 
@@ -291,7 +297,7 @@ export const workspaces: Workspace[] = [
     accent: "#0b7a5b",
     accentSoft: "#e6f4ef",
     module: "SAUDE",
-    permission: "health:read",
+    permission: ["health:read", "programs:read"],
     sections: [
       {
         group: "Atendimento",
@@ -299,6 +305,21 @@ export const workspaces: Workspace[] = [
         links: [
           { href: "/saude", label: "Atendimentos", permission: "health:read" },
           { href: "/saude/pacientes", label: "Pacientes", permission: "health:read" },
+        ],
+      },
+      /**
+       * O programa de cuidado continuado mora no mesmo sistema do pronto
+       * atendimento e não se mistura com ele: a coordenação não abre ficha e
+       * não lê prontuário, e o plantão não mexe na fila do programa. É o menu
+       * mostrando a separação que a matriz de permissões já faz.
+       */
+      {
+        group: "Cuidado continuado",
+        icon: "listChecks",
+        links: [
+          { href: "/saude/programas", label: "Inscritos", permission: "programs:read" },
+          { href: "/saude/programas/equipe", label: "Equipe", permission: "programs:read" },
+          { href: "/saude/programas/relatorio", label: "Relatório", permission: "programs:read" },
         ],
       },
     ],
@@ -369,6 +390,18 @@ export const workspaces: Workspace[] = [
             href: "/administracao/unidades-saude",
             label: "Unidades de saúde",
             permission: "health:manage",
+            module: "SAUDE",
+          },
+          /**
+           * O catálogo dos programas mora aqui pela mesma razão, e nem de
+           * longe pela mesma permissão: montar programa e terapia é cadastro
+           * sem pessoa nenhuma dentro, e por isso é do administrador. A lista
+           * de inscritos, que carrega situação e CID, fica do outro lado.
+           */
+          {
+            href: "/administracao/programas",
+            label: "Programas de cuidado",
+            permission: "programs:setup",
             module: "SAUDE",
           },
         ],

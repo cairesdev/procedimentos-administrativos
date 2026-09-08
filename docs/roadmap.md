@@ -1950,3 +1950,76 @@ O que estava decidido antes de a primeira linha ser escrita:
 - **Queda de energia e de rede num hospital não é hipótese.** A ficha impressa
   pelo motor de documentos é a contingência assumida nesta fatia; qualquer
   coisa além disso (modo offline) é projeto próprio e não está no horizonte.
+
+## Programas de cuidado continuado — a fatia do ofício
+
+Migration **0049**. Nasceu de uma requisição da Promotoria de Justiça a Bela
+Vista do Maranhão: número de pessoas com TEA por faixa etária, fila de espera
+com tempo médio e periodicidade, e carga horária, local e vínculo dos
+profissionais — dizendo se atuam exclusiva ou parcialmente. Levantamento em
+`docs/decisoes.md`, seção "Programas de cuidado continuado".
+
+O módulo é genérico. O primeiro programa é o TEA porque foi ele que a
+requisição cobrou, mas nada no modelo fala de autismo: saúde mental, gestante
+de risco e reabilitação entram sem tabela nova.
+
+### O que entrou
+
+- **Migration 0049**: `programa`, `terapia`, `inscricao`, `indicacao`, `sessao`,
+  `profissional_programa`, `recorte_de_programa`, mais a peça
+  `RELATORIO_PROGRAMA` — os três itens do ofício, na ordem em que ele os pediu,
+  com código de conferência.
+- **Dois papéis novos**: `SAUDE_COORDENACAO` (inscreve, indica, inicia, monta a
+  equipe e emite o relatório) e `SAUDE_TERAPEUTA` (registra só a sessão que
+  atendeu). Nenhum dos dois lê prontuário, e o ADMIN não alcança inscrito
+  nenhum — a inscrição carrega situação e CID.
+- **As contas moram no domínio**: média, mediana, faixa etária e aderência em
+  `domain/programa/`, testadas sem banco. O SQL não calcula média de propósito
+  — seria uma segunda implementação das mesmas regras, e no dia em que
+  divergissem a tela diria um número e o ofício diria outro.
+- **Nada derivado é guardado**: idade, dias de espera e exclusividade são
+  conta na hora. Guardar a resposta faria o sistema responder à pergunta de
+  hoje e a nenhuma outra.
+- **Telas** em `/saude/programas`: inscritos, ficha com a fila da pessoa,
+  equipe, relatório com período livre e o recorte que vira documento. O
+  catálogo (programa e terapia, sem pessoa nenhuma) fica em
+  **Administração → Programas de cuidado**, pela mesma razão das unidades de
+  saúde.
+- **O piso do sistema de saúde virou lista**: `health:read` **ou**
+  `programs:read`. O médico do plantão e a coordenação do programa não
+  compartilham permissão nenhuma, e exigir uma só deixaria metade do módulo
+  sem dono.
+
+### Como foi verificado
+
+- 956 testes na API, 101 no web, typecheck e lint limpos nos dois pacotes.
+- `db/verificar-migrations.py`: 208 invariantes num Postgres de verdade e 530
+  consultas preparadas.
+- **`db/palco-programa.py`** (novo): sobe Postgres + API e caminha do catálogo
+  ao ofício por HTTP com **cinco tokens** — admin, coordenação, dois terapeutas
+  e o médico do plantão que não pode entrar. Confere os três itens contra o que
+  foi lançado, emite a peça e lê o corpo dela de volta.
+- Guardas quebrados de propósito, e os quatro acusaram: a lista de escopos do
+  web sem `RELATORIO_PROGRAMA`, o escopo sem tela que o emita, o piso de
+  três permissões escrito em várias linhas (o router sumia do mapa em
+  silêncio) e a matriz do web divergindo da API.
+
+### Dois defeitos que só o palco pegou
+
+- **Duas sessões no mesmo dia devolviam 500.** O `UNIQUE (indicacao_id, data)`
+  existe para pegar digitação repetida e chegava ao terapeuta como "Erro
+  interno". Virou `ON CONFLICT DO NOTHING` + frase que explica o que houve, com
+  teste de aplicação próprio.
+- **A data de diagnóstico é exigida** quando a situação é "diagnosticado" — o
+  palco tentou inscrever sem ela e levou a recusa. Está certo: sem a data, o
+  número de diagnosticados não tem como ser auditado, e é o primeiro que a
+  Promotoria confere.
+
+### O que ainda depende de gente, não de código
+
+- **A fila só existe se alguém a lançar.** O sistema mede honestamente o que
+  for registrado; se as indicações de terapia não forem digitadas, o relatório
+  dirá que não há fila — e essa é a pior resposta possível a um promotor.
+- **`next build` não roda neste ambiente** (sem acesso a `fonts.googleapis.com`
+  para o next/font). Typecheck, lint e o guarda de server actions passam; o
+  build de verdade é o do CI.

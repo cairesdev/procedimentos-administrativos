@@ -79,6 +79,18 @@ export const PERMISSOES = [
   "health:read", "health:records", "health:admit",
   "health:nursing", "health:medical", "health:medicate",
   "health:manage",
+  /**
+   * Programas de cuidado continuado — TEA, saúde mental, gestante de risco.
+   *
+   * `programs:setup` é o catálogo: programa e terapia, que não têm pessoa
+   * nenhuma. É por isso que o administrador pode mexer nele sem alcançar
+   * inscrito — a mesma separação que `health:manage` faz com a unidade de
+   * saúde.
+   *
+   * As outras três seguem quem faz o quê: a coordenação inscreve e indica
+   * terapia, o terapeuta registra a sessão que atendeu.
+   */
+  "programs:setup", "programs:read", "programs:manage", "programs:attend",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
@@ -134,6 +146,12 @@ const CONDUZ_CONTRATACAO: Permissao[] = [
 const ATOS_CLINICOS: Permissao[] = [
   "health:read", "health:records", "health:admit",
   "health:nursing", "health:medical", "health:medicate",
+  /**
+   * A inscrição num programa carrega situação e CID de uma pessoa — é dado de
+   * saúde como o prontuário, e sai do ADMIN pela mesma razão. O catálogo
+   * (`programs:setup`) fica com ele; quem está inscrito, não.
+   */
+  "programs:read", "programs:manage", "programs:attend",
 ];
 
 /**
@@ -304,6 +322,31 @@ export const PERMISSOES_DO_PAPEL: Record<string, Permissao[]> = {
   SAUDE_MEDICO: [
     "health:read", "health:records", "health:medical",
     "documents:read", "documents:issue",
+  ],
+
+  /**
+   * Coordenação do programa de cuidado continuado: inscreve, indica terapia,
+   * monta a equipe e responde ao Ministério Público.
+   *
+   * Não atende no pronto atendimento e não lê ficha — é outro trabalho, na
+   * mesma secretaria. `documents:issue` porque é ela que emite o relatório
+   * oficial que vai anexado ao ofício.
+   */
+  SAUDE_COORDENACAO: [
+    "programs:read", "programs:manage", "programs:attend",
+    "documents:read", "documents:issue",
+  ],
+
+  /**
+   * Fonoaudiólogo, terapeuta ocupacional, psicólogo, fisioterapeuta.
+   *
+   * Vê quem está no programa e registra a sessão que atendeu. **Não inscreve e
+   * não indica terapia**: indicar é decidir quem entra na fila, e isso é da
+   * coordenação, que responde pela fila inteira.
+   */
+  SAUDE_TERAPEUTA: [
+    "programs:read", "programs:attend",
+    "documents:read",
   ],
 };
 

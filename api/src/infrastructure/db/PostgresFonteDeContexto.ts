@@ -9,6 +9,8 @@ import {
 import type { FiltrosDoRelatorio } from "../../application/ports/RelatorioProcessoRepository";
 import { percentualDeAgriculturaFamiliar } from "../../application/almoxarifado/ApurarConsumo";
 import { PostgresRelatorioConsumoRepository } from "./PostgresRelatorioConsumoRepository";
+import { PostgresProgramaRepository } from "./PostgresProgramaRepository";
+import { ApurarRelatorio } from "../../application/programa/ApurarRelatorio";
 import type { FonteDeContexto } from "../../application/documento/EmitirDocumento";
 import type { ContextoDeDocumento } from "../../domain/documento/Marcadores";
 
@@ -672,12 +674,56 @@ const contratoParaContexto = (linha: Record<string, unknown>) => ({
   },
 });
 
+/**
+ * O recorte do relatório de programa: programa e período, nada mais.
+ *
+ * Os números não estão guardados — são reapurados na emissão, pelo mesmo caso
+ * de uso que a tela usa. É o que garante que o papel e a tela nunca digam
+ * coisas diferentes sobre a mesma fila.
+ */
+const RECORTE_DE_PROGRAMA = `
+  SELECT r.programa_id AS "programaId",
+         to_char(r.periodo_inicio, 'YYYY-MM-DD') AS "desde",
+         to_char(r.periodo_fim, 'YYYY-MM-DD') AS "ate"
+    FROM recorte_de_programa r
+   WHERE r.orgao_id = $1 AND r.id = $2`;
+
+/** O vocabulário do ofício, e não o do banco. */
+const SITUACAO_POR_EXTENSO: Record<string, string> = {
+  EM_INVESTIGACAO: "Em investigação diagnóstica",
+  DIAGNOSTICADO: "Com diagnóstico confirmado",
+  ALTA: "Alta",
+  TRANSFERIDO: "Transferido",
+  ABANDONO: "Abandono de tratamento",
+};
+
+const VINCULO_POR_EXTENSO: Record<string, string> = {
+  EFETIVO: "Efetivo",
+  CONTRATO: "Contrato temporário",
+  CEDIDO: "Cedido",
+  TERCEIRIZADO: "Terceirizado",
+  OUTRO: "Outro",
+};
+
 export class PostgresFonteDeContexto implements FonteDeContexto {
   // A apuração do relatório é a mesma que a tela mostra: se a peça a
   // recalculasse por outro caminho, o papel e a tela poderiam divergir.
   private readonly relatorios = new PostgresRelatorioConsumoRepository();
   private readonly processos = new PostgresRelatorioProcessoRepository();
   private readonly recortes = new PostgresRecorteRepository();
+
+  /**
+   * A apuração do programa é a mesma que a tela mostra.
+   *
+   * Média, mediana e faixa etária moram no domínio e são chamadas daqui pelo
+   * mesmo caso de uso — não há uma segunda conta para o papel. Auditoria
+   * silenciosa: a emissão já registra `DOCUMENTO_EMITIDO`, e um segundo
+   * evento por peça emitida seria ruído.
+   */
+  private readonly relatorioDePrograma = new ApurarRelatorio(
+    new PostgresProgramaRepository(),
+    { registrar: async () => {}, listar: async () => ({ itens: [] } as never) },
+  );
 
   /**
    * O escopo do modelo decide o que buscar e o que o `referenciaId` significa.
@@ -717,6 +763,9 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     if (escopo === "RELATORIO_CONSUMO") return this.doRelatorio(orgaoId, referenciaId, orgao);
     if (escopo === "CHECKLIST") return this.doChecklist(orgaoId, referenciaId, orgao);
     if (escopo === "FICHA_ATENDIMENTO") return this.daFicha(orgaoId, referenciaId, orgao);
+    if (escopo === "RELATORIO_PROGRAMA") {
+      return this.doRelatorioDePrograma(orgaoId, referenciaId, orgao);
+    }
     if (escopo === "RELATORIO_PANORAMA" || escopo === "RELATORIO_SETOR") {
       return this.doRelatorioDeProcessos(escopo, orgaoId, referenciaId, orgao);
     }
@@ -1234,6 +1283,87 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
    * abertura, e o documento, que vai para uma prestação de contas dizendo o que
    * se via naquela data.
    */
+  /**
+   * O relatório do programa, congelado no papel.
+   *
+   * A peça reapura na emissão e imprime a data: é assim que o ofício leva um
+   * retrato datado enquanto a fila continua andando na tela, sem que os dois
+   * se contradigam.
+   */
+  private doRelatorioDePrograma = async (
+    orgaoId: string,
+    recorteId: string,
+    orgao: Record<string, unknown>,
+  ): Promise<ContextoDeDocumento | null> => {
+    const recorte = (await pool.query(RECORTE_DE_PROGRAMA, [orgaoId, recorteId])).rows[0];
+    if (!recorte) return null;
+
+    const apurado = await this.relatorioDePrograma.apurar(
+      orgaoId, recorte.programaId, "", recorte.desde, recorte.ate,
+    );
+
+    const equipe = apurado.equipe.filter((membro) => !membro.encerradoEm);
+    const resumo = apurado.resumoDaEquipe;
+
+    return {
+      orgao,
+      programa: {
+        nome: apurado.programa.nome,
+        sigla: apurado.programa.sigla ?? "—",
+      },
+      relatorio: {
+        periodo: `${dataDoDocumento(recorte.desde)} a ${dataDoDocumento(recorte.ate)}`,
+        totalAtivos: String(apurado.pessoas.totalAtivos),
+        /**
+         * A frase pronta, e não campo por campo.
+         *
+         * É assim que ela aparece na peça, e montá-la no modelo obrigaria o
+         * administrador a acertar concordância de plural em HTML.
+         */
+        resumoDaEquipe:
+          `${resumo.profissionais} profissional(is) no programa, somando `
+          + `${resumo.horasNoPrograma}h semanais dedicadas de um total de `
+          + `${resumo.horasContratadas}h contratadas. `
+          + `${resumo.exclusivos} em dedicação integral ao programa e `
+          + `${resumo.parciais} em dedicação parcial.`,
+      },
+      situacoes: apurado.pessoas.porSituacao.map((linha) => ({
+        situacao: SITUACAO_POR_EXTENSO[linha.situacao] ?? linha.situacao,
+        quantidade: String(linha.quantidade),
+      })),
+      faixas: apurado.pessoas.porFaixa.map((linha) => ({
+        rotulo: linha.rotulo,
+        quantidade: String(linha.quantidade),
+      })),
+      fila: apurado.fila.map((linha) => ({
+        terapiaNome: linha.terapiaNome,
+        naFila: String(linha.naFila),
+        esperaMaisAntiga: String(linha.esperaMaisAntiga),
+        mediaNaFila: String(linha.mediaNaFila),
+        iniciados: String(linha.iniciados),
+        mediaAteIniciar: String(linha.mediaAteIniciar),
+        medianaAteIniciar: String(linha.medianaAteIniciar),
+        periodicidade: String(linha.periodicidadeApurada),
+        combinada: linha.periodicidadeCombinada === null
+          ? "não informada"
+          : String(linha.periodicidadeCombinada),
+        aderencia: linha.aderencia === null ? "—" : `${linha.aderencia}%`,
+      })),
+      equipe: equipe.map((membro) => ({
+        nome: membro.nome,
+        conselho: membro.conselho ?? "—",
+        terapia: membro.terapiaNome ?? "todas",
+        local: membro.unidadeSaudeNome ?? membro.localNome ?? "—",
+        vinculo: VINCULO_POR_EXTENSO[membro.tipoVinculo] ?? membro.tipoVinculo,
+        cargaHoraria: String(membro.cargaHorariaSemanal),
+        horasNoPrograma: String(membro.horasNoPrograma),
+        dedicacao: Number(membro.horasNoPrograma) >= Number(membro.cargaHorariaSemanal)
+          ? "integral"
+          : "parcial",
+      })),
+    };
+  };
+
   private doRelatorioDeProcessos = async (
     escopo: string,
     orgaoId: string,

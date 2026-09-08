@@ -2247,3 +2247,251 @@ do sistema.
   deste código; quando chegar a hora, o descarte tem de ser formalizado,
   sigiloso e rastreável, e isso é um procedimento com ata, não um `DELETE`
   agendado.
+
+## Ficha hospitalar, 2ª fatia — os documentos que o paciente leva
+
+A 1ª fatia entregou a ficha: o registro do que aconteceu dentro do hospital.
+Falta o que sai com o paciente na mão. São quatro papéis, e o pronto
+atendimento pede os quatro todo dia.
+
+**O ponto que organiza a fatia inteira: a receita não é a prescrição.** A
+prescrição da segunda folha do papel é intra-hospitalar — o médico escreve, a
+enfermagem carimba o horário de cada administração, e ela termina quando o
+paciente vai embora. A receita é o que ele leva para uma farmácia que este
+sistema nunca vai ver. Mesmo medicamento, atos diferentes, documentos
+diferentes, e nenhum dos dois é rascunho do outro.
+
+### Decisões
+
+1. **A receita é registro próprio**, ao lado da prescrição e não dentro dela.
+   Remédio de uso interno não vai na receita; remédio de casa não tem horário
+   carimbado. Um campo só faria a enfermagem procurar horário de administração
+   em item que ela nunca vai dar, e faria o médico separar na cabeça o que a
+   tabela devia separar.
+2. **Só receita comum nesta fatia.** Antimicrobiano exige duas vias com a
+   segunda retida na farmácia e validade de dez dias (RDC 20/2011); controlado
+   exige receituário próprio, numeração e — desde a RDC 1.000/2025 — autorização
+   sanitária do município para o hospital imprimir. Nada disso cabe aqui.
+3. **O sistema recusa emitir receita comum para item marcado como especial, e
+   diz por quê.** Emitir mesmo assim entregaria ao paciente um papel que a
+   farmácia vai recusar no balcão — e a culpa cairia no sistema, não em quem
+   prescreveu.
+4. **Quem marca é o médico, item a item.** Não há base de medicamentos no
+   sistema, e não vai haver nesta fatia: comparar nome por texto erra nos dois
+   sentidos — nome comercial fora da lista passa, e um princípio ativo contido
+   no nome de outro barra sem motivo. O sistema não finge saber farmacologia;
+   quem sabe é quem prescreve.
+5. **O encaminhamento vira registro próprio, assinado pelo médico.** Hoje é uma
+   linha de texto em `desfecho.destino`, escrita pelo enfermeiro. Quem indica
+   encaminhamento é o médico, e quem recebe o paciente na UBS precisa do resumo
+   clínico — sem ele, o encaminhamento diz para onde e não diz por quê.
+6. **O desfecho continua como está, e não passa a exigir o documento.** O
+   enfermeiro registra *que* o paciente saiu encaminhado; o documento diz *para
+   onde e por quê*. Amarrar os dois travaria a ficha quando o médico já foi
+   embora e o enfermeiro precisa fechar.
+7. **Atestado médico entra; declaração de comparecimento, não.** Escolha do
+   cliente. Fica registrado que a declaração — que não tem dado clínico nenhum
+   e poderia até sair pela recepção — continua sendo pedida no balcão e feita à
+   mão.
+8. **O CID só sai do atestado com autorização do paciente, e a autorização
+   fica registrada.** O CID revela a doença a quem receber o papel — patrão,
+   escola —, e o sigilo médico diz que ele só sai a pedido de quem é dono da
+   informação. O formulário pergunta; o sistema guarda quem autorizou e quando.
+9. **A solicitação de exame sai numa folha só**, com tudo que foi pedido na
+   visita. É como o papel funciona hoje, e é menos coisa para o paciente
+   perder no caminho do laboratório.
+10. **Depois da alta: reimprimir sim, criar não.** Quem perdeu a receita
+    reimprime a mesma peça, com o mesmo código de conferência. Criar receita ou
+    atestado novo depois da alta seria prescrever para alguém que não está mais
+    sendo atendido — isso é atendimento novo, e a ficha existe para dizer isso.
+11. **Os quatro documentos usam o motor que já existe.** Escopo, modelo com o
+    timbre da prefeitura, `documento_emitido` com código pesquisável e
+    conferência pública por QR. A farmácia confere a receita pelo celular sem
+    ninguém programar nada para isso — é o que o motor já fazia para o resto do
+    sistema.
+
+### Modelo de dados (esboço para aprovação)
+
+```
+receita              atendimento_id, orientacoes, fechado_por, fechado_em
+receita_item         receita_id, medicamento, apresentacao, posologia,
+                     quantidade, uso_continuo, exige_receituario_especial
+encaminhamento       atendimento_id, destino, especialidade, motivo,
+                     urgencia (ROTINA|PRIORIDADE|URGENCIA),
+                     resumo_clinico, fechado_por, fechado_em
+atestado             atendimento_id, dias_afastamento, inicio,
+                     cid, cid_autorizado_por_paciente, cid_autorizado_em,
+                     observacao, fechado_por, fechado_em
+```
+
+Os quatro escopos novos no catálogo: `RECEITA`, `ENCAMINHAMENTO`, `ATESTADO`,
+`SOLICITACAO_DE_EXAME` — este último sem tabela, porque os exames já estão na
+ficha e a peça só os reúne.
+
+Todos alcançam a prefeitura por join em `atendimento`, e todos nascem fechados:
+receita, encaminhamento e atestado são assinados no ato, como os blocos da 1ª
+fatia. Correção continua sendo retificação.
+
+### O que fica fora, e por quê
+
+- **Antimicrobianos e controlados**, pelo item 2. Voltam quando houver a
+  autorização sanitária em mãos e a numeração controlada modelada.
+- **Declaração de comparecimento**, pelo item 7.
+- **Relatório de alta.** O paciente que quer levar o que houve leva a ficha
+  impressa, que já existe.
+- **Contrarreferência** — a UBS devolvendo o que fez com o paciente
+  encaminhado. Depende de a UBS estar no sistema, que é a fatia da agenda.
+- **Assinatura digital ICP-Brasil**, como na 1ª fatia. O fecho pelo usuário
+  logado, com CRM impresso, é o que substitui o carimbo.
+
+## Programas de cuidado continuado — levantamento consolidado
+
+Nasceu de uma intimação: a Promotoria de Justiça requisitou de Bela Vista do
+Maranhão, em dez dias úteis, o número de pessoas com TEA por faixa etária, a
+fila de espera com tempo médio e periodicidade das terapias, e a carga horária,
+o local e o vínculo dos profissionais — dizendo se atuam exclusiva ou
+parcialmente no atendimento.
+
+**Aquela resposta não saiu do sistema, e não tinha como sair**: o dado nunca
+foi coletado ali. Ela foi montada com o que a Secretaria tinha. O que este
+módulo resolve é a **próxima** requisição, e o padrão diz que vem: só em 2026 o
+MPMS instaurou inquérito sobre fila de TEA em Campo Grande, o MPBA abriu
+procedimento em Salvador e o MPSC obteve plano de ação de Balneário Camboriú.
+Requisição vira inquérito civil, que vira TAC com relatório periódico.
+
+**O que este módulo mede, ele mede de verdade.** Quem entrou na fila, quando, e
+quanto esperou até a primeira sessão. Se a fila for ruim, o número vai ser ruim
+e vai estar datado. Nada aqui foi desenhado para suavizar: dado de fila que
+mente é o que transforma requisição em ação civil pública.
+
+### Decisões
+
+1. **Programa de cuidado continuado, e não um módulo de TEA.** A estrutura —
+   pessoa inscrita, fila por terapia, sessões, profissionais com carga horária —
+   é a mesma para saúde mental, gestante de alto risco, hipertenso e diabético.
+   A próxima requisição provavelmente é sobre outro grupo, e refazer tudo seria
+   trabalho repetido. TEA é o primeiro programa cadastrado, não o único
+   possível.
+2. **Diagnosticado e em investigação são dois números, separados.** O ofício
+   pediu "diagnosticadas **ou** em acompanhamento". Somar os dois responderia
+   errado, e quem aguarda avaliação é justamente quem ocupa a fila que está
+   sendo investigada.
+3. **Uma fila por terapia, não uma por pessoa.** A criança pode estar em
+   fonoaudiologia e esperando terapia ocupacional há oito meses. Fila única
+   diria que ela "está atendida" e esconderia a espera — que é exatamente a
+   pergunta do promotor.
+4. **A sessão registra frequência, não evolução clínica.** Data, terapia,
+   profissional e falta: responde periodicidade e quem atendeu sem o aparato de
+   assinatura e imutabilidade da ficha hospitalar. A evolução de cada terapeuta
+   vem depois, junto com os conselhos das cinco categorias novas (CRFa,
+   CREFITO, CRP) que o sistema ainda não conhece.
+5. **O sistema registra o que aconteceu; não agenda.** A periodicidade sai do
+   histórico, que é mais honesto que a grade — grade cheia com sessão não
+   realizada engana os dois lados. Agenda com horário e sala é fatia própria, e
+   a resposta ao MP não depende dela.
+6. **A entrada na fila é cadastro direto pela equipe do programa.** É como a
+   secretaria trabalha hoje, e não depende de nenhum outro módulo estar em uso.
+   Exigir encaminhamento formal travaria quem chega com laudo de fora, que é a
+   maioria dos casos de TEA.
+7. **A carga horária e a dedicação ao programa ficam no cadastro do
+   profissional** — semanal, local, tipo de vínculo, e quantas horas são do
+   programa. É o item 3 do ofício, e sem isso a resposta continua sendo montada
+   à mão toda vez.
+8. **O relatório sai como peça oficial**, pelo motor de documentos: timbre,
+   data, autor e código de conferência. É o que se anexa ao ofício, e o
+   promotor confere a autenticidade pelo mesmo endereço público dos outros
+   documentos do sistema.
+9. **A pessoa é o `paciente` que já existe.** Mesmo cadastro do pronto
+   atendimento, mesmo prontuário vitalício, mesmos cinco documentos. Criar um
+   cadastro paralelo faria a mesma criança existir duas vezes no mesmo
+   município — e é justamente a duplicidade que o prontuário vitalício existe
+   para impedir.
+
+### Modelo de dados (esboço para aprovação)
+
+```
+programa              orgao_id, nome, sigla, descricao, ativo
+                      (o primeiro: "Atenção à Pessoa com TEA")
+terapia               programa_id, nome, conselho (CRFa|CREFITO|CRP|CRM|OUTRO)
+                      (fonoaudiologia, terapia ocupacional, psicologia…)
+
+inscricao             orgao_id, programa_id, paciente_id, inscrito_em,
+                      situacao (EM_INVESTIGACAO|DIAGNOSTICADO|ALTA|
+                                TRANSFERIDO|ABANDONO),
+                      diagnostico_em, cid, observacao
+                      UNIQUE (programa_id, paciente_id)
+
+indicacao             inscricao_id, terapia_id, indicada_em,
+                      periodicidade_semanal, iniciada_em, encerrada_em, motivo
+                      -- a fila: `indicada_em` até `iniciada_em` é a espera
+
+sessao                indicacao_id, data, profissional_id,
+                      compareceu, observacao
+
+profissional_programa usuario_id, programa_id, carga_horaria_semanal,
+                      horas_no_programa, local_id, tipo_vinculo
+                      (EFETIVO|CONTRATO|CEDIDO|TERCEIRIZADO)
+```
+
+A espera é `iniciada_em - indicada_em`, calculada na consulta. Quem ainda não
+começou tem `iniciada_em` nulo e espera até hoje — é a fila viva.
+
+Tudo alcança a prefeitura por `orgao_id` em `programa` e `inscricao`; sessão e
+indicação chegam por join, como no resto do sistema.
+
+### As três respostas, e de onde saem
+
+| Item do ofício | Consulta |
+|---|---|
+| Pessoas por faixa etária | `inscricao` + `paciente.data_nascimento`, separando situação |
+| Fila e tempo médio | `indicacao` sem `iniciada_em` (fila viva) e a média das que iniciaram |
+| Periodicidade ofertada | sessões por pessoa/terapia nos últimos 90 dias |
+| Profissionais | `profissional_programa`, com horas no programa vs. carga total |
+
+### O que fica fora, e por quê
+
+- **Evolução clínica das terapias**, pelo item 4. Precisa dos conselhos das
+  categorias novas, que é cadastro antes de ser tela.
+- **Agenda com horário e sala**, pelo item 5.
+- **CIPTEA** — a Carteira de Identificação da Pessoa com TEA (Lei 13.977/2020),
+  emitida pelo município com validade de cinco anos. O MP costuma perguntar por
+  ela na sequência, e o cadastro deste módulo é a base natural. Fatia própria.
+- **Integração com a regulação estadual.** A fila daqui é a do município; quem
+  foi regulado para fora não aparece.
+
+### O que a implementação decidiu por cima do levantamento
+
+Duas coisas mudaram entre o consolidado acima e o código, e as duas são
+correções de rumo, não escopo novo:
+
+- **A espera não é calculada na consulta, e sim no domínio.** O levantamento
+  dizia "calculada na consulta". Média e mediana no SQL seriam uma segunda
+  implementação das mesmas regras — a tela e o papel divergiriam no dia em que
+  uma das duas mudasse. As linhas cruas vêm do banco; a conta mora em
+  `domain/programa/Espera.ts`, é testada sem banco, e é a mesma para os dois.
+- **A periodicidade é por pessoa em atendimento, e não do serviço.** Dez
+  sessões entre cinco crianças são duas por criança, não dez. Da forma antiga o
+  número parecia excelente justamente quando a fila estava pior.
+
+E duas regras nasceram no palco, ao tentar usar o módulo:
+
+- **Data de diagnóstico é obrigatória quando a situação é "diagnosticado".**
+  Sem ela o número de diagnosticados não tem como ser auditado, e é o primeiro
+  que a Promotoria confere.
+- **Duas sessões da mesma terapia no mesmo dia são digitação repetida**, e a
+  recusa é uma frase, não um erro interno. Se houve mesmo dois atendimentos, o
+  segundo entra na observação do primeiro — contá-los dobraria a periodicidade
+  de quem foi atendido uma vez só.
+
+### Quem alcança o quê
+
+| | Catálogo | Inscritos | Fila | Sessão | Equipe | Relatório |
+|---|---|---|---|---|---|---|
+| ADMIN | monta | — | — | — | — | — |
+| Coordenação | lê | inscreve | indica e inicia | registra | monta | apura e emite |
+| Terapeuta | lê | lê | lê | registra | lê | lê |
+| Médico/enfermeiro do plantão | — | — | — | — | — | — |
+
+O plantão do hospital fica de fora inteiro, e a coordenação não lê prontuário.
+São dois módulos no mesmo sistema porque a pessoa é a mesma; as permissões não
+se encontram em lugar nenhum.

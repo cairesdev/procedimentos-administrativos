@@ -23,13 +23,19 @@ export const saudeRouter = Router();
  * usá-la. Baixar o piso do módulo inteiro seria o conserto errado: abriria a
  * lista de atendimentos ao ADMIN junto.
  *
- * O piso aqui aceita as duas: o profissional precisa saber em qual unidade
- * está abrindo a ficha; o administrador precisa cadastrá-la. Escrever é
- * separado, e continua só de quem administra.
+ * O piso aqui aceita as três: o profissional precisa saber em qual unidade
+ * está abrindo a ficha; o administrador precisa cadastrá-la; e a coordenação
+ * do programa precisa dizer em que unidade cada terapeuta atende — "local de
+ * atuação" é a pergunta literal do ofício. Nenhuma delas é dado clínico: é a
+ * lista dos prédios da prefeitura. Escrever é separado, e continua só de quem
+ * administra.
  */
 export const unidadesSaudeRouter = Router();
 
-unidadesSaudeRouter.use(exigirPermissao("health:read", "health:manage"));
+// Numa linha só: o guarda de telas lê este piso por regex, e a chamada
+// quebrada em várias linhas simplesmente não entrava no mapa — o router sumia
+// da conferência em silêncio, que é a pior forma de um guarda falhar.
+unidadesSaudeRouter.use(exigirPermissao("health:read", "health:manage", "programs:read"));
 
 const administraUnidades = exigirPermissao("health:manage");
 

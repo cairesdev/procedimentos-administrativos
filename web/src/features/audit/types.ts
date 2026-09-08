@@ -87,6 +87,17 @@ export const AUDIT_EVENTS = [
   "PROCEDIMENTO_REGISTRADO",
   "ATENDIMENTO_ENCERRADO",
   "REGISTRO_CLINICO_RETIFICADO",
+  // Programas de cuidado continuado. `RELATORIO_DE_PROGRAMA_APURADO` é a
+  // segunda leitura registrada nesta trilha: o relatório reúne situação e CID
+  // de todo mundo do programa numa página, e vai anexado ao ofício.
+  "INSCRICAO_EM_PROGRAMA",
+  "SITUACAO_NO_PROGRAMA_ALTERADA",
+  "TERAPIA_INDICADA",
+  "TERAPIA_INICIADA",
+  "TERAPIA_ENCERRADA",
+  "SESSAO_REGISTRADA",
+  "EQUIPE_DO_PROGRAMA_ALTERADA",
+  "RELATORIO_DE_PROGRAMA_APURADO",
 ] as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];
@@ -195,6 +206,15 @@ export const EVENT_GROUPS: { group: string; events: AuditEvent[] }[] = [
       "ATENDIMENTO_ENCERRADO", "REGISTRO_CLINICO_RETIFICADO",
     ],
   },
+  {
+    group: "Programas de cuidado continuado",
+    events: [
+      "INSCRICAO_EM_PROGRAMA", "SITUACAO_NO_PROGRAMA_ALTERADA",
+      "TERAPIA_INDICADA", "TERAPIA_INICIADA", "TERAPIA_ENCERRADA",
+      "SESSAO_REGISTRADA", "EQUIPE_DO_PROGRAMA_ALTERADA",
+      "RELATORIO_DE_PROGRAMA_APURADO",
+    ],
+  },
 ];
 
 /** Frase no lugar do enum cru: a trilha é lida por gestor, não por dev. */
@@ -285,4 +305,12 @@ export const EVENT_LABELS: Record<AuditEvent, string> = {
   PROCEDIMENTO_REGISTRADO: "Procedimento registrado",
   ATENDIMENTO_ENCERRADO: "Saída do paciente registrada",
   REGISTRO_CLINICO_RETIFICADO: "Registro clínico retificado",
+  INSCRICAO_EM_PROGRAMA: "Pessoa inscrita em programa",
+  SITUACAO_NO_PROGRAMA_ALTERADA: "Situação no programa alterada",
+  TERAPIA_INDICADA: "Terapia indicada (entrou na fila)",
+  TERAPIA_INICIADA: "Terapia iniciada (saiu da fila)",
+  TERAPIA_ENCERRADA: "Terapia encerrada",
+  SESSAO_REGISTRADA: "Sessão de terapia registrada",
+  EQUIPE_DO_PROGRAMA_ALTERADA: "Equipe do programa alterada",
+  RELATORIO_DE_PROGRAMA_APURADO: "Apurou o relatório do programa",
 };

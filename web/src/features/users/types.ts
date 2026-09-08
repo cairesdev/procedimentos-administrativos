@@ -15,6 +15,8 @@ export const ROLES = [
   "SAUDE_TECNICO",
   "SAUDE_ENFERMEIRO",
   "SAUDE_MEDICO",
+  "SAUDE_COORDENACAO",
+  "SAUDE_TERAPEUTA",
 ] as const;
 
 /**
@@ -45,6 +47,10 @@ export const ROLE_DESCRIPTIONS: Record<(typeof ROLES)[number], string> = {
   SAUDE_ENFERMEIRO:
     "Enfermeiro: faz a triagem, evolui e assina a saída do paciente",
   SAUDE_MEDICO: "Médico: avalia, pede exame, prescreve e executa procedimento",
+  SAUDE_COORDENACAO:
+    "Coordenação de programa (TEA e outros): inscreve, indica terapia e monta a equipe",
+  SAUDE_TERAPEUTA:
+    "Fonoaudiólogo, terapeuta ocupacional, psicólogo ou fisioterapeuta: registra a sessão",
 };
 
 export type User = {

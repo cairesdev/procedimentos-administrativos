@@ -33,6 +33,14 @@ export const ESCOPOS = [
    */
   "FICHA_ATENDIMENTO",
   /**
+   * A resposta a requisição do Ministério Público sobre um programa.
+   *
+   * Aponta para um **recorte** (programa + período), e não para o programa:
+   * o promotor pede um período, e a peça precisa congelar aquele retrato com
+   * data. É o mesmo desenho dos relatórios de processos.
+   */
+  "RELATORIO_PROGRAMA",
+  /**
    * `TERMO_RESPONSABILIDADE` e `DEVOLUCAO_RESPONSABILIDADE` entram aqui junto
    * com a tela que os emite, e não antes.
    *
@@ -65,6 +73,7 @@ export const MODULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   RELATORIO_PANORAMA: "PROCESSOS",
   RELATORIO_SETOR: "PROCESSOS",
   FICHA_ATENDIMENTO: "SAUDE",
+  RELATORIO_PROGRAMA: "SAUDE",
 };
 
 export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
@@ -87,6 +96,8 @@ export const ROTULO_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   RELATORIO_SETOR: "Tramitação por setor, com tempo e volume",
   FICHA_ATENDIMENTO:
     "Ficha de atendimento, com triagem, avaliação, prescrição e saída",
+  RELATORIO_PROGRAMA:
+    "Programa de cuidado continuado: pessoas, fila de espera e equipe",
 };
 
 /** O que a tela de emissão passa como referência em cada escopo. */
@@ -112,6 +123,7 @@ export const REFERENCIA_DO_ESCOPO: Record<EscopoDeDocumento, string> = {
   RELATORIO_PANORAMA: "relatório",
   RELATORIO_SETOR: "relatório",
   FICHA_ATENDIMENTO: "atendimento",
+  RELATORIO_PROGRAMA: "recorte do relatório",
 };
 
 export type CatalogoDeMarcadores = {
@@ -417,6 +429,31 @@ const PROCEDIMENTOS_DA_FICHA = ["tipo", "descricao", "autor", "quando"];
 
 const RETIFICACOES_DA_FICHA = ["sobre", "texto", "autor", "quando"];
 
+/**
+ * O relatório do programa — os três itens do ofício.
+ *
+ * `relatorio.resumoDaEquipe` sai como frase pronta ("7 profissionais, 3 em
+ * dedicação exclusiva") em vez de campo por campo: é assim que ela aparece na
+ * peça, e montar a frase no modelo obrigaria o administrador a saber
+ * concordância de plural em HTML.
+ */
+const RELATORIO_DE_PROGRAMA = [
+  "programa.nome", "programa.sigla",
+  "relatorio.periodo", "relatorio.totalAtivos", "relatorio.resumoDaEquipe",
+];
+
+const SITUACOES_DO_PROGRAMA = ["situacao", "quantidade"];
+const FAIXAS_DO_PROGRAMA = ["rotulo", "quantidade"];
+const FILA_DO_PROGRAMA = [
+  "terapiaNome", "naFila", "esperaMaisAntiga", "mediaNaFila",
+  "iniciados", "mediaAteIniciar", "medianaAteIniciar", "periodicidade",
+  "combinada", "aderencia",
+];
+const EQUIPE_DO_PROGRAMA = [
+  "nome", "conselho", "terapia", "local", "vinculo",
+  "cargaHoraria", "horasNoPrograma", "dedicacao",
+];
+
 export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores> = {
   PROCESSO: {
     valores: [...COMUNS, ...PROCESSO, ...TRAMITE],
@@ -511,6 +548,15 @@ export const CATALOGO_POR_ESCOPO: Record<EscopoDeDocumento, CatalogoDeMarcadores
    * procedimentos. As retificações são a quinta — as rasuras, que aparecem no
    * fim e nunca no lugar do que corrigem.
    */
+  RELATORIO_PROGRAMA: {
+    valores: [...COMUNS, ...RELATORIO_DE_PROGRAMA],
+    listas: {
+      situacoes: SITUACOES_DO_PROGRAMA,
+      faixas: FAIXAS_DO_PROGRAMA,
+      fila: FILA_DO_PROGRAMA,
+      equipe: EQUIPE_DO_PROGRAMA,
+    },
+  },
   FICHA_ATENDIMENTO: {
     valores: [...COMUNS, ...FICHA],
     listas: {

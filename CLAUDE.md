@@ -20,6 +20,11 @@ Uma base de dados atende várias prefeituras. Módulos implementados:
   vitalício, atendimento, triagem, avaliação, exames, prescrição com horários da enfermagem,
   evolução, procedimento e saída), quatro papéis clínicos com separação estrita de atos,
   retificação em vez de edição, e leitura de prontuário na auditoria.
+- **Programas de cuidado continuado** — genérico, com o TEA como primeiro programa: inscrição
+  (diagnosticado ou em investigação), fila por terapia, sessões com falta registrada, equipe com
+  carga horária/local/vínculo, e o relatório oficial que responde a requisição do Ministério
+  Público. Dois papéis: coordenação e terapeuta. Nada derivado é guardado — idade, dias de espera
+  e exclusividade são conta na hora, no domínio.
 
 ## Leitura obrigatória antes de codar
 
@@ -69,6 +74,7 @@ python3 db/verificar-migrations.py   # antes de subir migration nova: aplica tod
 npm run dev          # tsx watch
 npm run build
 python3 db/palco-saude.py            # a ficha hospitalar inteira por HTTP, com cinco papéis
+python3 db/palco-programa.py         # do catálogo ao ofício do MP, com cinco papéis
 
 # ou tudo de uma vez:
 cp .env.example .env && docker compose up --build

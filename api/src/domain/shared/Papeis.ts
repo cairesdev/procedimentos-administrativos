@@ -25,6 +25,11 @@ export const PAPEIS = [
   "SAUDE_TECNICO",
   "SAUDE_ENFERMEIRO",
   "SAUDE_MEDICO",
+  // Programas de cuidado continuado: quem coordena a fila e quem atende a
+  // sessão. Não são papéis do pronto atendimento — é outro trabalho, na mesma
+  // secretaria.
+  "SAUDE_COORDENACAO",
+  "SAUDE_TERAPEUTA",
 ] as const;
 
 export type Papel = (typeof PAPEIS)[number];

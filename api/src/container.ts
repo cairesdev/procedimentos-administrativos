@@ -1,5 +1,11 @@
 import { PostgresPacienteRepository } from "./infrastructure/db/PostgresPacienteRepository";
 import {
+  PostgresProgramaRepository,
+} from "./infrastructure/db/PostgresProgramaRepository";
+import { GerenciarPrograma } from "./application/programa/GerenciarPrograma";
+import { RegistrarSessao } from "./application/programa/RegistrarSessao";
+import { ApurarRelatorio } from "./application/programa/ApurarRelatorio";
+import {
   PostgresAtendimentoSaudeRepository,
 } from "./infrastructure/db/PostgresAtendimentoSaudeRepository";
 import {
@@ -127,6 +133,9 @@ const pacientes = new PostgresPacienteRepository();
 const atendimentosSaude = new PostgresAtendimentoSaudeRepository();
 const unidadesSaude = new PostgresUnidadeSaudeRepository();
 const guardaDaFicha = new GuardaDaFicha(atendimentosSaude);
+
+// Programas de cuidado continuado — TEA e o que vier depois.
+const programas = new PostgresProgramaRepository();
 
 export const container = {
   almoxarifado,
@@ -263,4 +272,8 @@ export const container = {
   prescricaoEExames: new PrescricaoEExames(
     atendimentosSaude, pacientes, guardaDaFicha, auditoria, executarEmTransacao,
   ),
+
+  gerenciarPrograma: new GerenciarPrograma(programas, auditoria),
+  registrarSessao: new RegistrarSessao(programas, auditoria),
+  apurarRelatorio: new ApurarRelatorio(programas, auditoria),
 };

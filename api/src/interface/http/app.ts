@@ -7,6 +7,7 @@ import { relatoriosRouter } from "./routes/relatorios";
 import { almoxarifadoRouter } from "./routes/almoxarifado";
 import { frotasRouter } from "./routes/frotas";
 import { saudeRouter, unidadesSaudeRouter } from "./routes/saude";
+import { catalogoProgramasRouter, programasRouter } from "./routes/programas";
 import { licitacoesRouter } from "./routes/licitacoes";
 import { contratosRouter } from "./routes/contratos";
 import { atasRouter } from "./routes/atas";
@@ -103,6 +104,20 @@ export const criarApp = () => {
    * prefeitura que não contratou o módulo não alcança rota nenhuma daqui.
    */
   app.use("/saude/unidades", ...sessao, resolveTenant("SAUDE"), unidadesSaudeRouter);
+
+  /**
+   * Programas de cuidado continuado, dentro do mesmo módulo.
+   *
+   * `SAUDE` e não um módulo próprio: a inscrição aponta para `paciente`, o
+   * cadastro mais sensível do produto. Duas portas para o mesmo dado é uma
+   * porta a mais para esquecer de trancar.
+   *
+   * O catálogo vem antes porque tem piso próprio — quem o administra não
+   * alcança inscrito nenhum.
+   */
+  app.use("/saude/programas/catalogo", ...sessao, resolveTenant("SAUDE"), catalogoProgramasRouter);
+  app.use("/saude/programas", ...sessao, resolveTenant("SAUDE"), programasRouter);
+
   app.use("/saude", ...sessao, resolveTenant("SAUDE"), saudeRouter);
 
   app.use(errorHandler);

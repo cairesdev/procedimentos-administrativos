@@ -37,7 +37,11 @@ export type Role =
   | "SAUDE_RECEPCAO"
   | "SAUDE_TECNICO"
   | "SAUDE_ENFERMEIRO"
-  | "SAUDE_MEDICO";
+  | "SAUDE_MEDICO"
+  // Programas de cuidado continuado: quem coordena a fila e quem atende a
+  // sessão. Outro trabalho, na mesma secretaria.
+  | "SAUDE_COORDENACAO"
+  | "SAUDE_TERAPEUTA";
 
 export type ModuleName =
   | "PROCESSOS"

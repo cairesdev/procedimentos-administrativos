@@ -23,6 +23,7 @@ export const DOCUMENT_SCOPES = [
   "RELATORIO_PANORAMA",
   "RELATORIO_SETOR",
   "FICHA_ATENDIMENTO",
+  "RELATORIO_PROGRAMA",
 ] as const;
 
 export type DocumentScope = (typeof DOCUMENT_SCOPES)[number];

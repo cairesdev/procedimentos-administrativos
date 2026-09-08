@@ -1119,6 +1119,164 @@ CASOS: list[tuple[str, str, bool]] = [
      "('11111111-1111-1111-1111-111111111111','SAUDE',TRUE) "
      "ON CONFLICT (orgao_id, modulo) DO UPDATE SET ativo = TRUE",
      True),
+
+    # ------------------------------------------------------------------
+    # 0049 — programas de cuidado continuado.
+    #
+    # As travas aqui protegem o **numero**, e nao o cadastro: a resposta ao
+    # Ministerio Publico e feita destas linhas, e cada CHECK abaixo impede uma
+    # forma de o numero sair errado sem ninguem perceber.
+    ("o programa entra no catalogo",
+     "INSERT INTO programa (id, orgao_id, nome, sigla) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',"
+     "'Atencao a Pessoa com TEA','TEA')",
+     True),
+    ("dois programas com o mesmo nome na prefeitura sao recusados",
+     "INSERT INTO programa (orgao_id, nome) VALUES "
+     "('11111111-1111-1111-1111-111111111111','Atencao a Pessoa com TEA')",
+     False),
+    ("as terapias entram",
+     "INSERT INTO terapia (id, programa_id, nome, conselho) VALUES "
+     "('9a000000-0000-0000-0000-000000000010','9a000000-0000-0000-0000-000000000001',"
+     "'Fonoaudiologia','CRFA'),"
+     "('9a000000-0000-0000-0000-000000000011','9a000000-0000-0000-0000-000000000001',"
+     "'Terapia Ocupacional','CREFITO')",
+     True),
+    ("conselho que nao existe e recusado",
+     "INSERT INTO terapia (programa_id, nome, conselho) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','Musicoterapia','CRMV')",
+     False),
+
+    ("o papel de coordenacao e aceito",
+     "INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username) "
+     "VALUES ('9a000000-0000-0000-0000-000000000020',"
+     "'11111111-1111-1111-1111-111111111111','Coord. Rita','rita@teste.gov.br','x',"
+     "'SAUDE_COORDENACAO','rita')",
+     True),
+    ("o fonoaudiologo entra com CRFa",
+     "INSERT INTO usuario (id, orgao_id, nome, email, senha_hash, papel_base, username, "
+     "conselho_tipo, conselho_numero, conselho_uf) VALUES "
+     "('9a000000-0000-0000-0000-000000000021',"
+     "'11111111-1111-1111-1111-111111111111','Fga. Paula','paula@teste.gov.br','x',"
+     "'SAUDE_TERAPEUTA','paula','CRFA','7777','MA')",
+     True),
+
+    ("a inscricao entra como em investigacao",
+     "INSERT INTO inscricao (id, orgao_id, programa_id, paciente_id, inscrito_em) VALUES "
+     "('9a000000-0000-0000-0000-000000000030','11111111-1111-1111-1111-111111111111',"
+     "'9a000000-0000-0000-0000-000000000001','5a000000-0000-0000-0000-000000000010',"
+     "current_date - 200)",
+     True),
+    ("a mesma pessoa nao entra duas vezes no mesmo programa",
+     "INSERT INTO inscricao (orgao_id, programa_id, paciente_id) VALUES "
+     "('11111111-1111-1111-1111-111111111111','9a000000-0000-0000-0000-000000000001',"
+     "'5a000000-0000-0000-0000-000000000010')",
+     False),
+    ("diagnosticado sem data de diagnostico e recusado",
+     "UPDATE inscricao SET situacao = 'DIAGNOSTICADO' "
+     "WHERE id = '9a000000-0000-0000-0000-000000000030'",
+     False),
+    ("diagnostico anterior a inscricao e recusado",
+     "UPDATE inscricao SET situacao = 'DIAGNOSTICADO', diagnostico_em = current_date - 300 "
+     "WHERE id = '9a000000-0000-0000-0000-000000000030'",
+     False),
+    ("diagnosticado com data entra",
+     "UPDATE inscricao SET situacao = 'DIAGNOSTICADO', diagnostico_em = current_date - 150, "
+     "cid = 'F84.0' WHERE id = '9a000000-0000-0000-0000-000000000030'",
+     True),
+    ("alta sem data de encerramento e recusada",
+     "UPDATE inscricao SET situacao = 'ALTA' "
+     "WHERE id = '9a000000-0000-0000-0000-000000000030'",
+     False),
+
+    ("a indicacao entra e a pessoa fica na fila",
+     "INSERT INTO indicacao (id, inscricao_id, terapia_id, indicada_em, "
+     "periodicidade_semanal) VALUES "
+     "('9a000000-0000-0000-0000-000000000040','9a000000-0000-0000-0000-000000000030',"
+     "'9a000000-0000-0000-0000-000000000010', current_date - 120, 2)",
+     True),
+    ("a mesma terapia indicada de novo, sem encerrar a anterior, e recusada",
+     "INSERT INTO indicacao (inscricao_id, terapia_id) VALUES "
+     "('9a000000-0000-0000-0000-000000000030','9a000000-0000-0000-0000-000000000010')",
+     False),
+    ("outra terapia entra: a fila e por terapia, nao por pessoa",
+     "INSERT INTO indicacao (id, inscricao_id, terapia_id, indicada_em) VALUES "
+     "('9a000000-0000-0000-0000-000000000041','9a000000-0000-0000-0000-000000000030',"
+     "'9a000000-0000-0000-0000-000000000011', current_date - 90)",
+     True),
+    ("iniciar antes de indicar e recusado",
+     "UPDATE indicacao SET iniciada_em = current_date - 200 "
+     "WHERE id = '9a000000-0000-0000-0000-000000000040'",
+     False),
+    ("periodicidade zero e recusada",
+     "UPDATE indicacao SET periodicidade_semanal = 0 "
+     "WHERE id = '9a000000-0000-0000-0000-000000000040'",
+     False),
+    ("a terapia comeca, e a espera fica registrada",
+     "UPDATE indicacao SET iniciada_em = current_date - 60 "
+     "WHERE id = '9a000000-0000-0000-0000-000000000040'",
+     True),
+    ("encerrar terapia que nunca comecou e recusado",
+     "UPDATE indicacao SET encerrada_em = current_date "
+     "WHERE id = '9a000000-0000-0000-0000-000000000041'",
+     False),
+
+    ("a sessao entra",
+     "INSERT INTO sessao (indicacao_id, data, profissional_id) VALUES "
+     "('9a000000-0000-0000-0000-000000000040', current_date - 7,"
+     "'9a000000-0000-0000-0000-000000000021')",
+     True),
+    ("a falta tambem e registrada, e nao apagada",
+     "INSERT INTO sessao (indicacao_id, data, profissional_id, compareceu) VALUES "
+     "('9a000000-0000-0000-0000-000000000040', current_date - 4,"
+     "'9a000000-0000-0000-0000-000000000021', FALSE)",
+     True),
+    ("duas sessoes da mesma terapia no mesmo dia sao digitacao repetida",
+     "INSERT INTO sessao (indicacao_id, data, profissional_id) VALUES "
+     "('9a000000-0000-0000-0000-000000000040', current_date - 7,"
+     "'9a000000-0000-0000-0000-000000000021')",
+     False),
+
+    ("o profissional entra na equipe com as horas do programa",
+     "INSERT INTO profissional_programa (programa_id, usuario_id, terapia_id, "
+     "carga_horaria_semanal, horas_no_programa, tipo_vinculo) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000021',"
+     "'9a000000-0000-0000-0000-000000000010', 40, 20, 'EFETIVO')",
+     True),
+    ("dedicar ao programa mais horas do que se tem e recusado",
+     "INSERT INTO profissional_programa (programa_id, usuario_id, "
+     "carga_horaria_semanal, horas_no_programa, tipo_vinculo) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000020',"
+     "20, 40, 'EFETIVO')",
+     False),
+    ("carga horaria de 80 horas semanais e recusada",
+     "INSERT INTO profissional_programa (programa_id, usuario_id, "
+     "carga_horaria_semanal, horas_no_programa, tipo_vinculo) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000020',"
+     "80, 40, 'EFETIVO')",
+     False),
+    ("vinculo que o modulo nao conhece e recusado",
+     "INSERT INTO profissional_programa (programa_id, usuario_id, "
+     "carga_horaria_semanal, horas_no_programa, tipo_vinculo) VALUES "
+     "('9a000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000020',"
+     "20, 10, 'ESTAGIO')",
+     False),
+
+    ("o recorte do oficio guarda o periodo perguntado",
+     "INSERT INTO recorte_de_programa (orgao_id, programa_id, periodo_inicio, "
+     "periodo_fim) VALUES "
+     "('11111111-1111-1111-1111-111111111111',"
+     "'9a000000-0000-0000-0000-000000000001','2026-01-01','2026-03-31')",
+     True),
+    # Período invertido devolve relatório vazio, e quem lê conclui que o
+    # município não atende ninguém. Num papel que vai para a Promotoria, é o
+    # pior jeito possível de errar.
+    ("periodo invertido no recorte e recusado",
+     "INSERT INTO recorte_de_programa (orgao_id, programa_id, periodo_inicio, "
+     "periodo_fim) VALUES "
+     "('11111111-1111-1111-1111-111111111111',"
+     "'9a000000-0000-0000-0000-000000000001','2026-03-31','2026-01-01')",
+     False),
 ]
 
 

@@ -140,7 +140,7 @@ describe("toda tela abre inteira para quem a alcança", () => {
     // O piso de duas permissões precisa entrar no mapa, e não ser pulado.
     assert.deepEqual(
       prefixoParaPermissoes.get("/saude/unidades"),
-      ["health:read", "health:manage"],
+      ["health:read", "health:manage", "programs:read"],
     );
     assert.deepEqual(funcaoParaPrefixos.get("listSectors"), ["/setores"]);
     // O prefixo mais específico ganha do vizinho de raiz igual.

@@ -10,7 +10,7 @@ export type Viewer = {
   orgId: string;
   orgName: string;
   modules: ModuleName[];
-  can: (permission: Permission) => boolean;
+  can: (permission: Permission | Permission[]) => boolean;
 };
 
 export const getViewer = async (): Promise<Viewer> => {
@@ -27,7 +27,7 @@ export const getViewer = async (): Promise<Viewer> => {
 
 // Página só renderiza se o papel tiver a permissão e o módulo estiver habilitado.
 export const requirePermission = async (
-  permission: Permission,
+  permission: Permission | Permission[],
   module?: ModuleName,
 ): Promise<Viewer> => {
   const viewer = await getViewer();

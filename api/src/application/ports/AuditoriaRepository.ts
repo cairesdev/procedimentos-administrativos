@@ -106,7 +106,23 @@ export type TipoEvento =
   | "EVOLUCAO_REGISTRADA"
   | "PROCEDIMENTO_REGISTRADO"
   | "ATENDIMENTO_ENCERRADO"
-  | "REGISTRO_CLINICO_RETIFICADO";
+  | "REGISTRO_CLINICO_RETIFICADO"
+  /**
+   * Programas de cuidado continuado.
+   *
+   * `RELATORIO_DE_PROGRAMA_APURADO` é a segunda leitura que esta trilha
+   * registra, pelo mesmo motivo da primeira: o relatório reúne situação e CID
+   * de todo mundo do programa numa página só, e é ele que vai anexado ao
+   * ofício do Ministério Público. Quem o emitiu fica registrado.
+   */
+  | "INSCRICAO_EM_PROGRAMA"
+  | "SITUACAO_NO_PROGRAMA_ALTERADA"
+  | "TERAPIA_INDICADA"
+  | "TERAPIA_INICIADA"
+  | "TERAPIA_ENCERRADA"
+  | "SESSAO_REGISTRADA"
+  | "EQUIPE_DO_PROGRAMA_ALTERADA"
+  | "RELATORIO_DE_PROGRAMA_APURADO";
 
 export type EventoAuditoria = {
   orgaoId: string;

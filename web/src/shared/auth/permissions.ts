@@ -69,7 +69,15 @@ export type Permission =
   | "health:nursing"
   | "health:medical"
   | "health:medicate"
-  | "health:manage";
+  | "health:manage"
+  // Programas de cuidado continuado — TEA, saúde mental, gestante de risco.
+  // `programs:setup` é o catálogo (programa e terapia, sem pessoa nenhuma) e
+  // por isso fica com o administrador; as outras três são de quem coordena a
+  // fila e de quem atende a sessão.
+  | "programs:setup"
+  | "programs:read"
+  | "programs:manage"
+  | "programs:attend";
 
 /**
  * Espelho da matriz da API (`domain/shared/Permissoes.ts`), que é a
@@ -110,6 +118,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
      * `usuario_permissao`, com autor e motivo.
      */
     "health:manage",
+    // O catálogo, e não os inscritos: a inscrição carrega situação e CID de
+    // uma pessoa, e sai do ADMIN pela mesma razão que o prontuário saiu.
+    "programs:setup",
     "orders:invoice",
     "processes:dispatch",
     "processes:opinion",
@@ -327,10 +338,43 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "health:read",
     "health:records",
   ],
+
+  // Coordenação do programa: inscreve, indica terapia, monta a equipe e emite
+  // o relatório que vai anexado ao ofício do Ministério Público.
+  SAUDE_COORDENACAO: [
+    "documents:issue",
+    "documents:read",
+    "programs:attend",
+    "programs:manage",
+    "programs:read",
+  ],
+
+  // Fonoaudiólogo, terapeuta ocupacional, psicólogo, fisioterapeuta: registra
+  // a sessão que atendeu. Indicar terapia é decidir quem entra na fila, e isso
+  // é da coordenação.
+  SAUDE_TERAPEUTA: [
+    "documents:read",
+    "programs:attend",
+    "programs:read",
+  ],
 };
 
-export const hasPermission = (role: Role, permission: Permission): boolean =>
-  ROLE_PERMISSIONS[role].includes(permission);
+/**
+ * Uma permissão, ou várias — e basta uma.
+ *
+ * Espelha `exigirPermissao` da API, que aceita a lista pela mesma razão: há
+ * telas cuja porta abre por dois caminhos diferentes. O sistema de saúde é uma
+ * delas — o médico entra por `health:read`, a coordenação do programa entra
+ * por `programs:read`, e nenhuma das duas tem a permissão da outra. Exigir uma
+ * só deixaria metade do módulo sem dono.
+ */
+export const hasPermission = (
+  role: Role,
+  permission: Permission | Permission[],
+): boolean => {
+  const exigidas = Array.isArray(permission) ? permission : [permission];
+  return exigidas.some((uma) => ROLE_PERMISSIONS[role].includes(uma));
+};
 
 export const hasModule = (modules: ModuleName[], required?: ModuleName): boolean =>
   !required || modules.includes(required);

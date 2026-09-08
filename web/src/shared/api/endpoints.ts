@@ -84,4 +84,23 @@ export const endpoints = {
   examResult: (id: string, exameId: string) =>
     `/saude/atendimentos/${id}/exames/${exameId}`,
   administrations: (itemId: string) => `/saude/itens-prescritos/${itemId}/administracoes`,
+
+  // Programas de cuidado continuado. O catálogo tem endereço próprio porque
+  // tem porta própria: quem o monta é o administrador, que não alcança
+  // inscrito nenhum.
+  programCatalog: "/saude/programas/catalogo",
+  programTherapies: (id: string) => `/saude/programas/catalogo/${id}/terapias`,
+  programTherapy: (id: string, terapiaId: string) =>
+    `/saude/programas/catalogo/${id}/terapias/${terapiaId}`,
+  enrollments: "/saude/programas/inscritos",
+  enrollmentStatus: (id: string) => `/saude/programas/inscritos/${id}/situacao`,
+  indications: (id: string) => `/saude/programas/inscritos/${id}/indicacoes`,
+  startTherapy: (id: string) => `/saude/programas/indicacoes/${id}/iniciar`,
+  endTherapy: (id: string) => `/saude/programas/indicacoes/${id}/encerrar`,
+  therapySessions: (id: string) => `/saude/programas/indicacoes/${id}/sessoes`,
+  programTeam: (id: string) => `/saude/programas/${id}/equipe`,
+  endTeamMember: (membroId: string) => `/saude/programas/equipe/${membroId}/encerrar`,
+  programReport: (id: string) => `/saude/programas/${id}/relatorio`,
+  programCuts: (id: string) => `/saude/programas/${id}/recortes`,
+  programCut: (id: string) => `/saude/programas/recortes/${id}`,
 } as const;
