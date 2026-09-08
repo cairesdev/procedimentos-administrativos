@@ -14,11 +14,27 @@ import type { AuditoriaRepository } from "../../src/application/ports/AuditoriaR
  * dobraria a frequência de quem foi atendido uma só.
  */
 
-const HOJE = new Date().toISOString().slice(0, 10);
+/**
+ * O dia **local**, como o caso de uso o entende.
+ *
+ * `toISOString().slice(0, 10)` daria o dia em UTC, e a suíte passaria a
+ * depender do fuso da máquina: num servidor a leste de Greenwich, o "amanhã"
+ * em UTC ainda é hoje aqui, e o teste do futuro deixava de provar coisa
+ * alguma. É a mesma armadilha que `DataDoCalendario.ts` existe para fechar.
+ */
+const diaLocal = (deslocamento: number): string => {
+  const data = new Date();
+  data.setDate(data.getDate() + deslocamento);
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${data.getFullYear()}-${mes}-${dia}`;
+};
 
-const ONTEM = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+const HOJE = diaLocal(0);
 
-const AMANHA = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+const ONTEM = diaLocal(-1);
+
+const AMANHA = diaLocal(1);
 
 type Ajustes = {
   alcance?: { inscricaoId: string; iniciadaEm: string | null } | null;

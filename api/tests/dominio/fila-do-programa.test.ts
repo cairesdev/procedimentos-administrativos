@@ -15,7 +15,19 @@ import {
  * município parecer melhor do que é.
  */
 
-const EM = (texto: string) => new Date(`${texto}T12:00:00Z`);
+/**
+ * O meio-dia **local** daquela data — e não o meio-dia UTC.
+ *
+ * `new Date("2026-09-08T12:00:00Z")` parecia inofensivo e amarrava a suíte ao
+ * fuso da máquina: num servidor em UTC+14 esse instante já é dia 9, e a idade
+ * de todo mundo mudava. O módulo inteiro trabalha com o dia do calendário da
+ * prefeitura, e o teste precisa falar a mesma língua para valer em qualquer
+ * máquina — inclusive na do CI, que roda em UTC.
+ */
+const EM = (texto: string): Date => {
+  const [ano, mes, dia] = texto.split("-").map(Number);
+  return new Date(ano!, mes! - 1, dia!, 12, 0, 0);
+};
 
 describe("a média sozinha mente por omissão", () => {
   it("município que atende poucos rápido e deixa muitos parados", () => {
@@ -85,9 +97,13 @@ describe("dias entre datas, e o fuso", () => {
      * Brasília. A sessão das 20h de terça aconteceu na terça para todo mundo
      * que estava na sala — é esse dia que o relatório conta.
      */
-    const noiteDeUmDia = new Date("2026-09-01T23:00:00Z");
-    const madrugadaSeguinteEmUtc = new Date("2026-09-02T01:00:00Z");
-    assert.equal(diasEntre(noiteDeUmDia, madrugadaSeguinteEmUtc), 0);
+    const comecoDoDia = new Date(2026, 8, 1, 0, 30);
+    const fimDoMesmoDia = new Date(2026, 8, 1, 23, 30);
+    assert.equal(diasEntre(comecoDoDia, fimDoMesmoDia), 0);
+
+    // E a virada do dia continua sendo uma virada: 23h30 de terça para 0h30 de
+    // quarta é um dia, mesmo separadas por uma hora de relógio.
+    assert.equal(diasEntre(fimDoMesmoDia, new Date(2026, 8, 2, 0, 30)), 1);
   });
 
   it("data de calendário não anda um dia para trás", () => {
