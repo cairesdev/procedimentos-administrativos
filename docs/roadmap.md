@@ -1859,6 +1859,32 @@ os dois schemas espalham `camposDoConselho`, que os dois formulários desenham
 `ConselhoFields` e que as duas actions chamam `conselhoParaApi`. Provado
 tirando o campo de volta do painel — acusou nominalmente.
 
+### O campo que aparecia na edição e sumia na criação
+
+Terceira rodada no mesmo cadastro, e dois defeitos de uma vez.
+
+**O conselho dependia do formulário-pai.** `ConselhoFields` recebia `papelBase`
+por propriedade, e cabia a cada tela chamar `form.watch("papelBase")` para
+redesenhar quando o select mudasse. Na edição o papel já vem certo do banco e o
+campo aparece na primeira renderização; na criação ele só apareceria se o pai
+observasse — e um pai que esquecesse produziria exatamente o sintoma relatado.
+Agora o componente assina o controle com `useWatch` e reage sozinho: o pai não
+tem mais como errar.
+
+**Editar usuário estava quebrado para todo mundo.** O nome de usuário não é
+desenhado depois da criação — o identificador de login não se troca pela tela —
+mas `defaultValues` continuava mandando `username: ""`, e `userSchema` exigia o
+regex. Salvar qualquer edição devolvia *"Minúsculas, números, ponto, hífen e
+underline (3 a 40)"*, reclamando de um campo invisível. Não era defeito da
+saúde: era antigo, e o `.refine()` do conselho só o deixou barulhento.
+
+Agora há `userEditSchema`, com `username` opcional — e não um `optional()` no
+schema de criação, onde o username é obrigatório de verdade: afrouxá-lo para
+consertar a edição deixaria passar cadastro sem identificador de login.
+
+`web/tests/cadastro-de-usuario.test.ts` cobre os dois, e ambos foram provados
+desfazendo o conserto.
+
 ### O que ficou de fora desta fatia
 
 Assinatura digital ICP-Brasil, farmácia ligada ao estoque, envio de produção ao

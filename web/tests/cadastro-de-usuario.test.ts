@@ -104,6 +104,65 @@ describe("a regra do conselho", () => {
   });
 });
 
+/**
+ * A edição não desenha o nome de usuário, e o schema precisa saber disso.
+ *
+ * `defaultValues` mandava `username: ""` e o schema de criação reprovava com
+ * "Minúsculas, números, ponto, hífen e underline (3 a 40)" — um campo que a
+ * pessoa não vê na tela. **Salvar a edição de qualquer usuário estava
+ * quebrado**, e não só na saúde.
+ *
+ * Conferido no texto porque `schemas.ts` importa `./types` sem extensão, e
+ * esta suíte roda ESM cru.
+ */
+describe("editar usuário não cobra o nome de usuário", () => {
+  const schemas = ler("src", "features", "users", "schemas.ts");
+  const formulario = ler("src", "features", "users", "components", "UserForm.tsx");
+
+  it("existe um schema próprio para a edição", () => {
+    assert.match(
+      schemas,
+      /export const userEditSchema/,
+      "sem schema de edição, o username volta a ser cobrado numa tela que não o mostra",
+    );
+    assert.match(
+      schemas.slice(schemas.indexOf("export const userEditSchema")),
+      /username:\s*z\.string\(\)\.optional\(\)/,
+      "o schema de edição continua exigindo o username",
+    );
+  });
+
+  it("a criação continua exigindo o username de verdade", () => {
+    const criacao = schemas.slice(
+      schemas.indexOf("export const userSchema"),
+      schemas.indexOf("export const userEditSchema"),
+    );
+    assert.match(
+      criacao,
+      /username:\s*z\.string\(\)\.regex\(REGRA_DO_USERNAME/,
+      "afrouxar o username na criação deixaria passar cadastro sem login",
+    );
+  });
+
+  it("o formulário escolhe o schema pelo ato", () => {
+    assert.match(
+      formulario,
+      /isEditing \? userEditSchema : userSchema/,
+      "o formulário usa um schema só para criar e editar",
+    );
+  });
+
+  it("a action da edição valida com o schema da edição", () => {
+    const acoes = ler("src", "features", "users", "actions.ts");
+    const edicao = acoes.slice(acoes.indexOf("export const updateUser"));
+    assert.match(
+      edicao,
+      /userEditSchema\.parse/,
+      "a tela passa mas a action reprova — o erro volta como toast do servidor",
+    );
+  });
+});
+
 describe("os dois cadastros usam a mesma peça", () => {
   const arquivos: [string, string][] = [
     ["schema da prefeitura", ler("src", "features", "users", "schemas.ts")],
@@ -136,13 +195,19 @@ describe("os dois cadastros usam a mesma peça", () => {
   for (const [nome, conteudo] of formularios) {
     it(`${nome}: desenha o conselho`, () => {
       /**
+       * Sem `papelBase` como propriedade: o componente observa o controle por
+       * conta própria. Recebido de fora, ele dependia de o pai se redesenhar a
+       * cada troca do select — e o pai que esquecesse o `watch` teria um campo
+       * que aparece na edição e some na criação, que foi o defeito relatado.
+       */
+      /**
        * Compartilhado, e não copiado: duas cópias são o começo de dois
        * comportamentos, e a que ficar para trás vai ser justamente a que
        * ninguém abre com frequência.
        */
       assert.match(
         conteudo,
-        /<ConselhoFields\s+form=\{form\}\s+papelBase=\{form\.watch\("papelBase"\)\}/,
+        /<ConselhoFields\s+form=\{form\}\s*\/>/,
         `${nome} não desenha o conselho — o médico criado aqui nasce sem CRM`,
       );
     });

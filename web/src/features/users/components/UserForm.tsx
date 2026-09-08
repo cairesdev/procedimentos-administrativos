@@ -7,7 +7,7 @@ import { humanize } from "@/shared/ui/labels";
 import { useModalClose } from "@/shared/ui/Modal";
 import { useResourceForm } from "@/shared/ui/use-resource-form";
 import { createUser, updateUser } from "../actions";
-import { userSchema, type UserInput } from "../schemas";
+import { userEditSchema, userSchema, type UserInput } from "../schemas";
 import { ROLE_GROUPS, ROLES_DE_ESCOLA, type User } from "../types";
 import { ConselhoFields } from "./ConselhoFields";
 
@@ -21,7 +21,10 @@ export const UserForm = ({
   const closeModal = useModalClose();
   const isEditing = Boolean(user);
   const { form, onSubmit, isSubmitting } = useResourceForm<UserInput>({
-    schema: userSchema,
+    // O nome de usuário não é editável depois da criação, e o schema da edição
+    // é o que sabe disso — com o de criação, a validação reprovava um campo
+    // que a tela nem desenha.
+    schema: (isEditing ? userEditSchema : userSchema) as typeof userSchema,
     defaultValues: {
       nome: user?.nome ?? "",
       email: user?.email ?? "",
@@ -109,7 +112,7 @@ export const UserForm = ({
         {...form.register("destino")}
       />
 
-      <ConselhoFields form={form} papelBase={form.watch("papelBase")} />
+      <ConselhoFields form={form} />
 
       {exigeEscola && !destino.startsWith("escola:") ? (
         <Alert tone="error">

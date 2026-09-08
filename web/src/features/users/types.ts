@@ -23,7 +23,8 @@ export const ROLES = [
  */
 export const ROLE_DESCRIPTIONS: Record<(typeof ROLES)[number], string> = {
   ADMIN: "Administra a prefeitura inteira, inclusive a trilha de auditoria",
-  GESTOR: "Secretário ou chefe de gabinete: conduz a contratação e os cadastros",
+  GESTOR:
+    "Secretário ou chefe de gabinete: conduz a contratação e os cadastros",
   SERVIDOR: "Setor administrativo: abre solicitação e acompanha o trâmite",
   PROTOCOLO: "Balcão de atendimento ao cidadão",
   COMPRAS: "Fornecedores, contratos e a ordem de fornecimento",
@@ -39,8 +40,10 @@ export const ROLE_DESCRIPTIONS: Record<(typeof ROLES)[number], string> = {
    * ele faz é "o que esta pessoa preenche na ficha?".
    */
   SAUDE_RECEPCAO: "Recepção do hospital: identifica o paciente e abre a ficha",
-  SAUDE_TECNICO: "Auxiliar ou técnico de enfermagem: carimba o horário da medicação",
-  SAUDE_ENFERMEIRO: "Enfermeiro: faz a triagem, evolui e assina a saída do paciente",
+  SAUDE_TECNICO:
+    "Auxiliar ou técnico de enfermagem: carimba o horário da medicação",
+  SAUDE_ENFERMEIRO:
+    "Enfermeiro: faz a triagem, evolui e assina a saída do paciente",
   SAUDE_MEDICO: "Médico: avalia, pede exame, prescreve e executa procedimento",
 };
 
@@ -70,14 +73,25 @@ export type User = {
  */
 export const ROLE_GROUPS: { label: string; roles: Role[] }[] = [
   { label: "Administração da prefeitura", roles: ["ADMIN", "GESTOR"] },
-  { label: "Processos administrativos", roles: ["SERVIDOR", "COMPRAS", "CONTROLADORIA"] },
+  {
+    label: "Processos administrativos",
+    roles: ["SERVIDOR", "COMPRAS", "CONTROLADORIA"],
+  },
   { label: "Protocolo", roles: ["PROTOCOLO"] },
-  { label: "Almoxarifado e alimentação escolar", roles: ["NUTRICIONISTA", "UNIDADE"] },
+  {
+    label: "Almoxarifado e alimentação escolar",
+    roles: ["NUTRICIONISTA", "UNIDADE"],
+  },
   { label: "Patrimônio", roles: ["PATRIMONIO"] },
   { label: "Frotas", roles: ["FROTAS"] },
   {
     label: "Saúde",
-    roles: ["SAUDE_RECEPCAO", "SAUDE_TECNICO", "SAUDE_ENFERMEIRO", "SAUDE_MEDICO"],
+    roles: [
+      "SAUDE_RECEPCAO",
+      "SAUDE_TECNICO",
+      "SAUDE_ENFERMEIRO",
+      "SAUDE_MEDICO",
+    ],
   },
 ];
 

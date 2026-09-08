@@ -1,6 +1,6 @@
 "use client";
 
-import type { FieldValues, UseFormReturn, Path } from "react-hook-form";
+import { useWatch, type FieldValues, type Path, type UseFormReturn } from "react-hook-form";
 import { InputField, SelectField } from "@/shared/ui/form-field";
 import { FieldGrid } from "@/shared/ui/layout";
 import { assinaProntuario } from "../conselho";
@@ -12,14 +12,25 @@ import { assinaProntuario } from "../conselho";
  * campo que ninguém preenche; não pedir ao médico seria descobrir a falta no
  * meio do plantão, com a triagem recusando o fecho e ninguém entendendo por
  * quê — a saída está noutra tela, com outra permissão.
+ *
+ * **O papel é observado aqui dentro, com `useWatch`, e não recebido por
+ * propriedade.** Recebido, ele dependia de o formulário-pai se redesenhar a
+ * cada troca do select: quem esquecesse o `watch` no pai teria um campo que
+ * aparece na edição (onde o papel já vem certo do banco) e não aparece na
+ * criação — que foi exatamente o defeito relatado. Assinando o controle, o
+ * componente reage sozinho e o pai não tem como errar.
  */
 export const ConselhoFields = <T extends FieldValues>({
-  form, papelBase,
+  form,
 }: {
   form: UseFormReturn<T>;
-  papelBase: string;
 }) => {
-  if (!assinaProntuario(papelBase)) return null;
+  const papelBase = useWatch({
+    control: form.control,
+    name: "papelBase" as Path<T>,
+  }) as string | undefined;
+
+  if (!assinaProntuario(papelBase ?? "")) return null;
 
   const { errors } = form.formState;
   const campo = (nome: string) => form.register(nome as Path<T>);

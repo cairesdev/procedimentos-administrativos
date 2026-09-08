@@ -50,23 +50,34 @@ export type ConselhoInformado = {
  * segunda é a cobrança de médico e enfermeiro, feita **na criação** e não
  * descoberta às três da manhã com o paciente esperando.
  */
-export const comConselho = <T extends z.ZodType<ConselhoInformado>>(schema: T) => schema
-  .refine((dados) => {
-    const informados = [dados.conselhoTipo, dados.conselhoNumero, dados.conselhoUf]
-      .filter((valor) => valor?.trim());
-    return informados.length === 0 || informados.length === 3;
-  }, {
-    path: ["conselhoNumero"],
-    message: "Informe tipo, número e UF do conselho — os três, ou nenhum",
-  })
-  .refine(
-    (dados) => !assinaProntuario(dados.papelBase)
-      || Boolean(dados.conselhoNumero?.trim()),
-    {
-      path: ["conselhoNumero"],
-      message: "Médico e enfermeiro precisam do conselho: é o carimbo que vai na ficha",
-    },
-  );
+export const comConselho = <T extends z.ZodType<ConselhoInformado>>(
+  schema: T,
+) =>
+  schema
+    .refine(
+      (dados) => {
+        const informados = [
+          dados.conselhoTipo,
+          dados.conselhoNumero,
+          dados.conselhoUf,
+        ].filter((valor) => valor?.trim());
+        return informados.length === 0 || informados.length === 3;
+      },
+      {
+        path: ["conselhoNumero"],
+        message: "Informe tipo, número e UF do conselho — os três, ou nenhum",
+      },
+    )
+    .refine(
+      (dados) =>
+        !assinaProntuario(dados.papelBase) ||
+        Boolean(dados.conselhoNumero?.trim()),
+      {
+        path: ["conselhoNumero"],
+        message:
+          "Médico e enfermeiro precisam do conselho: é o carimbo que vai na ficha",
+      },
+    );
 
 /**
  * O conselho no formato que a API entende.
@@ -76,7 +87,9 @@ export const comConselho = <T extends z.ZodType<ConselhoInformado>>(schema: T) =
  * precisa conseguir limpar o CRM pela tela.
  */
 export const conselhoParaApi = (dados: {
-  conselhoTipo?: string; conselhoNumero?: string; conselhoUf?: string;
+  conselhoTipo?: string;
+  conselhoNumero?: string;
+  conselhoUf?: string;
 }) => ({
   conselhoTipo: dados.conselhoTipo?.trim() || null,
   conselhoNumero: dados.conselhoNumero?.trim() || null,

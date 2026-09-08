@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { runAction } from "@/shared/api/action-result";
-import { userSchema, type UserInput } from "./schemas";
+import { userEditSchema, userSchema, type UserInput } from "./schemas";
 import { conselhoParaApi } from "./conselho";
 
 /**
@@ -33,7 +33,7 @@ export const createUser = async (input: UserInput) =>
 
 export const updateUser = async (id: string, input: UserInput) =>
   runAction(async () => {
-    const parsed = userSchema.parse(input);
+    const parsed = userEditSchema.parse(input);
     const { destino, username: _username, senha, ...user } = parsed;
     const corpo = { ...user, ...conselhoParaApi(user) };
     await apiRequest(`${endpoints.users}/${id}`, {

@@ -457,7 +457,7 @@ const UserForm = ({ tenantId, onDone }: { tenantId: string; onDone: () => void }
         usuários de um município recém-ligado, e o médico criado sem CRM não
         fecharia bloco nenhum da ficha.
       */}
-      <ConselhoFields form={form} papelBase={form.watch("papelBase")} />
+      <ConselhoFields form={form} />
 
       <div>
         <Button type="submit" disabled={isSubmitting}>
