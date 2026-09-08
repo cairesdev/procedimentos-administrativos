@@ -13,6 +13,26 @@ import { CONSELHOS, SITUACOES, VINCULOS } from "./types";
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD");
 const opcional = z.string().trim().optional();
 
+/**
+ * A pessoa que a coordenação cadastra para inscrever.
+ *
+ * Só o nome é obrigatório, como no balcão do hospital: exigir CNS antes de
+ * inscrever não produz dado limpo, produz número inventado para conseguir
+ * salvar. O nascimento não é exigido e faz falta — sem ele a pessoa cai na
+ * linha "sem data de nascimento" do relatório, que é honesta e feia. A dica no
+ * campo diz isso.
+ */
+export const personSchema = z.object({
+  nome: z.string().trim().min(1, "Informe o nome da pessoa"),
+  nomeMae: opcional,
+  dataNascimento: data.optional().or(z.literal("")),
+  sexo: z.enum(["M", "F", "I"]).optional().or(z.literal("")),
+  cns: opcional,
+  cpf: opcional,
+  telefone: opcional,
+});
+export type PersonInput = z.infer<typeof personSchema>;
+
 export const enrollmentSchema = z.object({
   programaId: z.string().uuid("Escolha o programa"),
   pacienteId: z.string().uuid("Escolha a pessoa"),

@@ -30,6 +30,14 @@ const DIAS_DE_VALIDADE = 30;
  * **Ele não confere.** Cumprir e conferir são atos de pessoas diferentes, e o
  * link só carrega o primeiro — quem aceita continua sendo quem cobra.
  */
+/** O dia de hoje no relógio de quem usa o sistema. */
+const diaLocal = (): string => {
+  const agora = new Date();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${agora.getFullYear()}-${mes}-${dia}`;
+};
+
 export class ConvidarParaChecklist {
   constructor(
     private readonly convites: ChecklistConviteRepository,
@@ -138,7 +146,15 @@ export class ConvidarParaChecklist {
     const checklist = await this.checklists.buscar(convite.orgaoId, convite.checklistId);
     if (!checklist) throw new NaoEncontrado("Checklist não encontrado");
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    /**
+     * O dia do fornecedor, e não o de Greenwich.
+     *
+     * `toISOString()` dá a data em UTC: das 21h em diante, em Brasília, ela já
+     * é a de amanhã, e o item com prazo para hoje aparecia vencido para quem
+     * abrisse o link à noite. Prazo é dia de calendário — o mesmo motivo de
+     * `DataDoCalendario.ts` existir no módulo de programas.
+     */
+    const hoje = diaLocal();
 
     return {
       titulo: checklist.titulo,

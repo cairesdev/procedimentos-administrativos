@@ -52,6 +52,15 @@ export type AnexoDoRequerente = {
  * Guardar um token de sessão para o cidadão traria recuperação de acesso,
  * expiração e suporte, tudo por causa de duas ou três interações.
  */
+/** O dia de calendário daqui a `dias`, no relógio do município. */
+const emDias = (dias: number): string => {
+  const data = new Date();
+  data.setDate(data.getDate() + dias);
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${data.getFullYear()}-${mes}-${dia}`;
+};
+
 export class ExigirDoRequerente {
   constructor(
     private readonly protocolo: ProtocoloRepository,
@@ -83,11 +92,12 @@ export class ExigirDoRequerente {
 
     // O prazo é congelado na criação: mudar o padrão do assunto depois não pode
     // encurtar retroativamente o prazo de quem já foi notificado.
-    const prazoLimite = entrada.prazoDias
-      ? new Date(Date.now() + entrada.prazoDias * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10)
-      : null;
+    //
+    // A conta é em dias do calendário **local**: `toISOString()` daria o dia em
+    // UTC, e o prazo aberto depois das 21h em Brasília nasceria um dia mais
+    // longo do que o assunto define. O cidadão não perderia nada por isso, mas
+    // o número no papel deixaria de bater com a regra.
+    const prazoLimite = entrada.prazoDias ? emDias(entrada.prazoDias) : null;
 
     /**
      * O aviso ao requerente é o ponto da exigência.

@@ -92,6 +92,8 @@ export const endpoints = {
   programTherapies: (id: string) => `/saude/programas/catalogo/${id}/terapias`,
   programTherapy: (id: string, terapiaId: string) =>
     `/saude/programas/catalogo/${id}/terapias/${terapiaId}`,
+  programPeople: "/saude/programas/pessoas",
+  programPerson: (id: string) => `/saude/programas/pessoas/${id}`,
   enrollments: "/saude/programas/inscritos",
   enrollmentStatus: (id: string) => `/saude/programas/inscritos/${id}/situacao`,
   indications: (id: string) => `/saude/programas/inscritos/${id}/indicacoes`,

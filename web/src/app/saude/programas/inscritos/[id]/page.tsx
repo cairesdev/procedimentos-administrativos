@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { findEnrolled, listPrograms, listSessions } from "@/features/programs/queries";
-import { ChangeStatusButton } from "@/features/programs/components/EnrollmentActions";
+import {
+  ChangeStatusButton, CompletePersonButton,
+} from "@/features/programs/components/EnrollmentActions";
 import {
   EndTherapyButton, IndicateButton, SessionButton, StartTherapyButton,
 } from "@/features/programs/components/TherapyActions";
@@ -85,7 +87,19 @@ export default async function InscritoPage({ params }: Props) {
       <PageHeader
         title={inscricao.nome}
         subtitle={`${inscricao.programaNome} · prontuário ${inscricao.prontuario}`}
-        action={viewer.can("programs:manage") ? <ChangeStatusButton inscricao={inscricao} /> : null}
+        action={
+          viewer.can("programs:manage")
+            ? (
+              <Toolbar>
+                <ChangeStatusButton inscricao={inscricao} />
+                <CompletePersonButton
+                  pacienteId={inscricao.pacienteId}
+                  nome={inscricao.nome}
+                />
+              </Toolbar>
+            )
+            : null
+        }
       />
 
       <Stack>
@@ -100,8 +114,15 @@ export default async function InscritoPage({ params }: Props) {
               },
               { label: "CID", value: inscricao.cid ?? "—" },
               {
+                /*
+                  Nascimento vazio não é detalhe: é a pessoa caindo na linha
+                  "sem data de nascimento" do relatório que vai à Promotoria.
+                  A tela diz onde se conserta em vez de mostrar um travessão.
+                */
                 label: "Nascimento",
-                value: inscricao.dataNascimento ? toDate(inscricao.dataNascimento) : "—",
+                value: inscricao.dataNascimento
+                  ? toDate(inscricao.dataNascimento)
+                  : <span style={{ color: "var(--erro)" }}>sem data — completar cadastro</span>,
               },
               { label: "Terapias na fila", value: `${naFila.length}` },
             ]}

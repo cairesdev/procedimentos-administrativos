@@ -2483,12 +2483,42 @@ E duas regras nasceram no palco, ao tentar usar o módulo:
   segundo entra na observação do primeiro — contá-los dobraria a periodicidade
   de quem foi atendido uma vez só.
 
+### A coordenação cadastra a pessoa
+
+Decidido depois da primeira leitura das telas, e é o que destrava o
+preenchimento: boa parte das crianças com TEA **nunca passou pelo pronto
+atendimento**, e o cadastro de paciente estava atrás de `health:admit`, da
+recepção do hospital. A coordenação ficaria esperando o balcão digitar nome por
+nome — e a fila que o Ministério Público quer medir não existiria no sistema
+por um detalhe de permissão.
+
+O que foi feito, e o que **não** foi:
+
+- A coordenação cadastra, lê e completa o cadastro da pessoa por rotas próprias
+  sob `programs:manage` (`/saude/programas/pessoas`). É o **mesmo** caso de uso
+  do balcão: prontuário vitalício, documentos conferidos no domínio, e o
+  segundo cadastro da mesma pessoa devolvendo quem já existe.
+- A coordenação **não** ganhou `health:admit`, que abre ficha de atendimento, e
+  continua sem `health:read` e sem `health:records`.
+- A leitura do cadastro **retira as condições clínicas** na rota, e não na
+  tela: hipertensão, diabetes e alergia são prontuário. Tela esconde, rota
+  nega.
+- A tela só oferece o cadastro **depois de procurar e não achar**. O segundo
+  cadastro da mesma pessoa é o defeito clássico deste fluxo, e estraga
+  justamente o número do ofício: a mesma criança contada duas vezes na faixa
+  etária.
+
+Completar o cadastro depois existe pelo mesmo motivo: quem cadastra em mutirão
+deixa o nascimento para depois, e sem ele a pessoa cai na linha "sem data de
+nascimento" do relatório. Quem corrige é a coordenação, não o balcão — que
+nunca viu essa família.
+
 ### Quem alcança o quê
 
 | | Catálogo | Inscritos | Fila | Sessão | Equipe | Relatório |
 |---|---|---|---|---|---|---|
 | ADMIN | monta | — | — | — | — | — |
-| Coordenação | lê | inscreve | indica e inicia | registra | monta | apura e emite |
+| Coordenação | lê | cadastra a pessoa e inscreve | indica e inicia | registra | monta | apura e emite |
 | Terapeuta | lê | lê | lê | registra | lê | lê |
 | Médico/enfermeiro do plantão | — | — | — | — | — | — |
 

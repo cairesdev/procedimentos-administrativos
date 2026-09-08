@@ -92,6 +92,12 @@ VALUES
   '{(HOJE - datetime.timedelta(days=365 * 14)).isoformat()}', '{RECEPCAO}'),
  ('cccc0000-0000-0000-0000-000000000004', '{ORGAO}', 4, 'Dora Adulta',
   '{(HOJE - datetime.timedelta(days=365 * 25)).isoformat()}', '{RECEPCAO}');
+
+-- O contador do prontuario acompanha os quatro que entraram por SQL.
+-- Em producao ninguem insere paciente por fora: o cenario e que precisa
+-- deixar o banco no estado em que a API o teria deixado.
+INSERT INTO numeracao_sequencia (orgao_id, tipo, ano, contador)
+VALUES ('{ORGAO}', 'PRONTUARIO', 0, 4);
 """
 
 PESSOAS = [f"cccc0000-0000-0000-0000-00000000000{n}" for n in range(1, 5)]
@@ -153,7 +159,9 @@ class Palco:
         self.api = subprocess.Popen(
             ["npx", "tsx", "src/server.ts"],
             cwd=RAIZ, env=ambiente,
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=(open("/tmp/palco-api.log", "w") if os.environ.get("LOG_API")
+                    else subprocess.PIPE),
         )
         for _ in range(60):
             try:
@@ -231,6 +239,46 @@ def encenar() -> None:
     conferir("o medico do plantao tambem nao", status == 403, str(status))
     status, catalogo = chamar("GET", "/saude/programas/catalogo", coord)
     conferir("a coordenacao le o catalogo para inscrever", status == 200, str(status))
+
+    print("\nA coordenacao cadastra quem nunca passou pelo hospital")
+    status, _ = chamar("POST", "/saude/programas/pessoas", terapeuta,
+                       {"nome": "Nao Deveria Existir"})
+    conferir("o terapeuta nao cadastra pessoa", status == 403, str(status))
+
+    status, nova = chamar("POST", "/saude/programas/pessoas", coord, {
+        "nome": "Elena Nunca Foi ao Hospital",
+        "nomeMae": "Maria Nunca Foi",
+        "dataNascimento": "{}".format((HOJE - datetime.timedelta(days=365 * 8)).isoformat()),
+        "cpf": "52998224725",
+    })
+    conferir("a coordenacao cadastra a pessoa e ela nasce com prontuario",
+             status == 201 and nova.get("prontuario"), str(nova))
+
+    # O segundo cadastro da mesma pessoa e o defeito classico, e ele estraga
+    # justamente o numero do oficio: a mesma crianca contada duas vezes.
+    status, repetida = chamar("POST", "/saude/programas/pessoas", coord, {
+        "nome": "Elena de novo", "cpf": "529.982.247-25",
+    })
+    conferir("o mesmo CPF devolve quem ja existe, em vez de duplicar",
+             status == 409 and (repetida or {}).get("contexto", {}).get("pacienteId") == nova["id"],
+             str(repetida))
+
+    status, cadastro = chamar("GET", f"/saude/programas/pessoas/{nova['id']}", coord)
+    conferir("a coordenacao le o cadastro que criou", status == 200, str(status))
+    conferir("e o cadastro nao traz condicao clinica nenhuma",
+             isinstance(cadastro, dict) and "condicoes" not in cadastro, str(cadastro)[:200])
+
+    status, _ = chamar("PUT", f"/saude/programas/pessoas/{nova['id']}", coord, {
+        "nome": "Elena Nunca Foi ao Hospital",
+        "dataNascimento": (HOJE - datetime.timedelta(days=365 * 8)).isoformat(),
+        "cpf": "52998224725",
+        "telefone": "99999999999",
+    })
+    conferir("e completa o cadastro depois", status == 200, str(status))
+
+    status, _ = chamar("GET", f"/saude/pacientes/{nova['id']}", coord)
+    conferir("mas nao alcanca o paciente pela porta do hospital",
+             status == 403, str(status))
 
     print("\nAs inscricoes")
     status, achadas = chamar("GET", "/saude/programas/pessoas?termo=Ana", coord)

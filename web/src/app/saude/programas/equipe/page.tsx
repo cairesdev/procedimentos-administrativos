@@ -1,12 +1,24 @@
 import { listHealthUnits } from "@/features/health/queries";
 import { listPrograms, listTeam } from "@/features/programs/queries";
-import { AddTeamMemberButton, EndTeamMemberButton } from "@/features/programs/components/TeamActions";
+import {
+  AddTeamMemberButton,
+  EndTeamMemberButton,
+} from "@/features/programs/components/TeamActions";
 import { VINCULO_ROTULO } from "@/features/programs/types";
 import { requirePermission } from "@/shared/auth/guards";
 import { FilterBar, FilterField } from "@/shared/ui/FilterBar";
 import { toDate } from "@/shared/ui/labels";
 import {
-  Alert, Badge, Card, EmptyState, PageHeader, Stack, SummaryGrid, Table, Toolbar, numericCell,
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  PageHeader,
+  Stack,
+  SummaryGrid,
+  Table,
+  Toolbar,
+  numericCell,
 } from "@/shared/ui/layout";
 
 type PageProps = { searchParams: Promise<{ programa?: string }> };
@@ -25,7 +37,8 @@ export default async function EquipePage({ searchParams }: PageProps) {
   const { programa } = await searchParams;
 
   const programas = await listPrograms().catch(() => []);
-  const escolhido = programas.find((item) => item.id === programa) ?? programas[0];
+  const escolhido =
+    programas.find((item) => item.id === programa) ?? programas[0];
 
   const [equipe, unidades] = await Promise.all([
     escolhido ? listTeam(escolhido.id) : Promise.resolve([]),
@@ -34,25 +47,32 @@ export default async function EquipePage({ searchParams }: PageProps) {
 
   const ativos = equipe.filter((membro) => !membro.encerradoEm);
   const exclusivos = ativos.filter(
-    (membro) => Number(membro.horasNoPrograma) >= Number(membro.cargaHorariaSemanal),
+    (membro) =>
+      Number(membro.horasNoPrograma) >= Number(membro.cargaHorariaSemanal),
   ).length;
-  const horas = ativos.reduce((soma, membro) => soma + Number(membro.horasNoPrograma), 0);
+  const horas = ativos.reduce(
+    (soma, membro) => soma + Number(membro.horasNoPrograma),
+    0,
+  );
 
   return (
     <>
       <PageHeader
         title="Equipe"
-        subtitle={escolhido ? escolhido.nome : "Programas de cuidado continuado"}
+        subtitle={
+          escolhido ? escolhido.nome : "Programas de cuidado continuado"
+        }
         action={
-          escolhido && viewer.can("programs:manage")
-            ? (
-              <AddTeamMemberButton
-                programaId={escolhido.id}
-                terapias={escolhido.terapias.filter((terapia) => terapia.ativo)}
-                unidades={unidades.map((unidade) => ({ id: unidade.id, nome: unidade.nome }))}
-              />
-            )
-            : null
+          escolhido && viewer.can("programs:manage") ? (
+            <AddTeamMemberButton
+              programaId={escolhido.id}
+              terapias={escolhido.terapias.filter((terapia) => terapia.ativo)}
+              unidades={unidades.map((unidade) => ({
+                id: unidade.id,
+                nome: unidade.nome,
+              }))}
+            />
+          ) : null
         }
       />
 
@@ -65,11 +85,21 @@ export default async function EquipePage({ searchParams }: PageProps) {
         ) : null}
 
         {programas.length > 1 ? (
-          <FilterBar ativo={Boolean(programa)} base="/saude/programas/equipe" acao="Ver equipe">
+          <FilterBar
+            ativo={Boolean(programa)}
+            base="/saude/programas/equipe"
+            acao="Ver equipe"
+          >
             <FilterField label="Programa" htmlFor="programa" largo>
-              <select id="programa" name="programa" defaultValue={escolhido?.id ?? ""}>
+              <select
+                id="programa"
+                name="programa"
+                defaultValue={escolhido?.id ?? ""}
+              >
                 {programas.map((item) => (
-                  <option key={item.id} value={item.id}>{item.nome}</option>
+                  <option key={item.id} value={item.id}>
+                    {item.nome}
+                  </option>
                 ))}
               </select>
             </FilterField>
@@ -81,9 +111,15 @@ export default async function EquipePage({ searchParams }: PageProps) {
             <SummaryGrid
               items={[
                 { label: "Profissionais", value: `${ativos.length}` },
-                { label: "Horas semanais no programa", value: `${Math.round(horas * 10) / 10}` },
+                {
+                  label: "Horas semanais no programa",
+                  value: `${Math.round(horas * 10) / 10}`,
+                },
                 { label: "Dedicação exclusiva", value: `${exclusivos}` },
-                { label: "Dedicação parcial", value: `${ativos.length - exclusivos}` },
+                {
+                  label: "Dedicação parcial",
+                  value: `${ativos.length - exclusivos}`,
+                },
               ]}
             />
           </Card>
@@ -92,8 +128,14 @@ export default async function EquipePage({ searchParams }: PageProps) {
         <Card padded={false}>
           <Table
             columns={[
-              "Profissional", "Terapia", "Local", "Vínculo",
-              "Carga horária", "No programa", "Dedicação", "",
+              "Profissional",
+              "Terapia",
+              "Local",
+              "Vínculo",
+              "Carga horária",
+              "No programa",
+              "Dedicação",
+              "",
             ]}
             isEmpty={equipe.length === 0}
             emptyMessage="Ninguém na equipe deste programa."
@@ -101,17 +143,18 @@ export default async function EquipePage({ searchParams }: PageProps) {
               <EmptyState
                 titulo="Nenhum profissional na equipe"
                 descricao={
-                  "É esta lista que responde à terceira pergunta de uma "
-                  + "requisição: carga horária, local de atuação, vínculo "
-                  + "funcional, e se a pessoa atua exclusiva ou parcialmente no "
-                  + "programa."
+                  "É esta lista que responde à terceira pergunta de uma " +
+                  "requisição: carga horária, local de atuação, vínculo " +
+                  "funcional, e se a pessoa atua exclusiva ou parcialmente no " +
+                  "programa."
                 }
               />
             }
           >
             {equipe.map((membro) => {
               const exclusivo =
-                Number(membro.horasNoPrograma) >= Number(membro.cargaHorariaSemanal);
+                Number(membro.horasNoPrograma) >=
+                Number(membro.cargaHorariaSemanal);
               return (
                 <tr key={membro.id}>
                   <td>
@@ -119,13 +162,17 @@ export default async function EquipePage({ searchParams }: PageProps) {
                     {membro.conselho ? (
                       <>
                         <br />
-                        <small style={{ color: "var(--texto_suave)" }}>{membro.conselho}</small>
+                        <small style={{ color: "var(--texto_suave)" }}>
+                          {membro.conselho}
+                        </small>
                       </>
                     ) : null}
                   </td>
                   <td>{membro.terapiaNome ?? "—"}</td>
                   <td>{membro.unidadeSaudeNome ?? membro.localNome ?? "—"}</td>
-                  <td>{VINCULO_ROTULO[membro.tipoVinculo] ?? membro.tipoVinculo}</td>
+                  <td>
+                    {VINCULO_ROTULO[membro.tipoVinculo] ?? membro.tipoVinculo}
+                  </td>
                   <td className={numericCell}>{membro.cargaHorariaSemanal}h</td>
                   <td className={numericCell}>{membro.horasNoPrograma}h</td>
                   <td>
@@ -146,7 +193,10 @@ export default async function EquipePage({ searchParams }: PageProps) {
                   <td>
                     <Toolbar>
                       {!membro.encerradoEm && viewer.can("programs:manage") ? (
-                        <EndTeamMemberButton membroId={membro.id} nome={membro.nome} />
+                        <EndTeamMemberButton
+                          membroId={membro.id}
+                          nome={membro.nome}
+                        />
                       ) : null}
                     </Toolbar>
                   </td>

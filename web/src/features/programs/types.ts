@@ -52,6 +52,32 @@ export type Program = {
   terapias: Therapy[];
 };
 
+/**
+ * O cadastro da pessoa como a coordenação o alcança.
+ *
+ * Sem `condicoes`: hipertensão, diabetes e alergia são prontuário, e a rota
+ * não as devolve. O tipo diz a mesma coisa que a fronteira — se um dia alguém
+ * tentar mostrá-las aqui, não compila.
+ */
+export type PersonRecord = {
+  id: string;
+  prontuario: number;
+  nome: string;
+  nomeMae: string | null;
+  dataNascimento: string | null;
+  sexo: string | null;
+  cns: string | null;
+  cpf: string | null;
+  nis: string | null;
+  cnh: string | null;
+  rg: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  uf: string | null;
+  telefone: string | null;
+  email: string | null;
+};
+
 export type EnrolledSummary = {
   id: string;
   pacienteId: string;

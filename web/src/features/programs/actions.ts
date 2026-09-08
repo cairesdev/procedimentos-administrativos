@@ -1,18 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { apiRequest } from "@/shared/api/http-client";
+import { ZodError } from "zod";
+import { ApiError, apiRequest } from "@/shared/api/http-client";
 import { endpoints } from "@/shared/api/endpoints";
 import { comFiltros } from "@/shared/api/filtros";
 import { runAction } from "@/shared/api/action-result";
 import { lista } from "@/shared/api/colecao";
 import {
-  endTherapySchema, enrollmentSchema, indicationSchema, programSchema, sessionSchema,
-  startSchema, statusSchema, teamMemberSchema, therapySchema, windowSchema,
-  type EndTherapyInput, type EnrollmentInput, type IndicationInput, type ProgramInput,
-  type SessionInput, type StartInput, type StatusInput, type TeamMemberInput,
-  type TherapyInput, type WindowInput,
+  endTherapySchema, enrollmentSchema, indicationSchema, personSchema, programSchema,
+  sessionSchema, startSchema, statusSchema, teamMemberSchema, therapySchema, windowSchema,
+  type EndTherapyInput, type EnrollmentInput, type IndicationInput, type PersonInput,
+  type ProgramInput, type SessionInput, type StartInput, type StatusInput,
+  type TeamMemberInput, type TherapyInput, type WindowInput,
 } from "./schemas";
+import type { PersonRecord } from "./types";
 
 const BASE = "/saude/programas";
 
@@ -51,9 +53,117 @@ const recarregar = (inscricaoId?: string) => {
 export const lookupPeople = async (termo: string) => {
   if (termo.trim().length < 2) return [];
   return apiRequest<unknown>(
-    comFiltros(`${BASE}/pessoas`, { termo: termo.trim() }),
+    comFiltros(endpoints.programPeople, { termo: termo.trim() }),
   ).then(lista<{ id: string; prontuario: number; nome: string; dataNascimento: string | null }>);
 };
+
+/**
+ * Cadastra a pessoa sem passar pela recepção do hospital.
+ *
+ * A API atende com o **mesmo** caso de uso do balcão: prontuário vitalício,
+ * documentos conferidos no domínio, e a pessoa que já tem cadastro devolvida
+ * em vez de duplicada. Cadastrar não abre ficha e não dá acesso a prontuário
+ * nenhum.
+ *
+ * Foge do `runAction` de propósito: a tela precisa do **prontuário** — é o
+ * número que a coordenação confere em voz alta — e, no caso do cadastro
+ * repetido, precisa do id de quem já existe para selecioná-lo em vez de
+ * mandar procurar de novo. `ActionResult` carrega só a mensagem e o id.
+ */
+export const createPerson = async (
+  values: PersonInput,
+): Promise<
+  | { pessoa: { id: string; prontuario: number; nome: string }; aviso?: string }
+  | { error: string }
+> => {
+  try {
+    const dados = personSchema.parse(values);
+    const criada = await apiRequest<{ id: string; prontuario: number }>(
+      endpoints.programPeople,
+      {
+        method: "POST",
+        body: {
+          nome: dados.nome,
+          nomeMae: semVazio(dados.nomeMae),
+          dataNascimento: semVazio(dados.dataNascimento),
+          sexo: dados.sexo || null,
+          cns: semVazio(dados.cns),
+          cpf: semVazio(dados.cpf),
+          telefone: semVazio(dados.telefone),
+        },
+      },
+    );
+    recarregar();
+    return { pessoa: { id: criada.id, prontuario: criada.prontuario, nome: dados.nome } };
+  } catch (erro) {
+    /**
+     * Cadastro repetido é o caminho feliz, e não um erro.
+     *
+     * A API devolve 409 com o id e o prontuário de quem já existe — é a mesma
+     * pessoa, cadastrada num atendimento antigo. A tela aproveita o cadastro
+     * em vez de exigir que a coordenação procure de novo com outra grafia.
+     */
+    if (erro instanceof ApiError && erro.status === 409) {
+      const contexto = erro.details as
+        { pacienteId?: string; prontuario?: number; nome?: string } | undefined;
+      if (contexto?.pacienteId) {
+        return {
+          pessoa: {
+            id: contexto.pacienteId,
+            prontuario: Number(contexto.prontuario ?? 0),
+            nome: String(contexto.nome ?? values.nome),
+          },
+          aviso: erro.message,
+        };
+      }
+    }
+    if (erro instanceof ApiError) return { error: erro.message };
+    if (erro instanceof ZodError) {
+      return { error: erro.issues[0]?.message ?? "Dados inválidos" };
+    }
+    return { error: "Não foi possível cadastrar a pessoa" };
+  }
+};
+
+/** O cadastro da pessoa — sem condição clínica, que a rota não devolve. */
+export const findPerson = async (id: string) =>
+  apiRequest<PersonRecord>(endpoints.programPerson(id));
+
+/**
+ * Completar o cadastro — quase sempre a data de nascimento que faltou.
+ *
+ * O `PUT` grava a pessoa inteira, então o formulário carrega o que existe
+ * antes de mandar: enviar só o campo corrigido apagaria o CPF que alguém
+ * digitou no mês passado.
+ */
+export const updatePerson = async (id: string, values: PersonInput & {
+  nis?: string; cnh?: string; rg?: string; endereco?: string; cidade?: string;
+  uf?: string; email?: string;
+}) =>
+  runAction(async () => {
+    const dados = personSchema.parse(values);
+    const resposta = await apiRequest(endpoints.programPerson(id), {
+      method: "PUT",
+      body: {
+        nome: dados.nome,
+        nomeMae: semVazio(dados.nomeMae),
+        dataNascimento: semVazio(dados.dataNascimento),
+        sexo: dados.sexo || null,
+        cns: semVazio(dados.cns),
+        cpf: semVazio(dados.cpf),
+        telefone: semVazio(dados.telefone),
+        nis: semVazio(values.nis),
+        cnh: semVazio(values.cnh),
+        rg: semVazio(values.rg),
+        endereco: semVazio(values.endereco),
+        cidade: semVazio(values.cidade),
+        uf: semVazio(values.uf),
+        email: semVazio(values.email),
+      },
+    });
+    recarregar();
+    return resposta;
+  }, "Cadastro atualizado");
 
 export const lookupProfessionals = async () =>
   apiRequest<unknown>(`${BASE}/profissionais`)

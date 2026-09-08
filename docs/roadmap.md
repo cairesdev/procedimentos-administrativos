@@ -2015,6 +2015,30 @@ de risco e reabilitação entram sem tabela nova.
   número de diagnosticados não tem como ser auditado, e é o primeiro que a
   Promotoria confere.
 
+### O ajuste que veio depois da primeira leitura
+
+A coordenação **cadastra a pessoa**. Sem isso o módulo dependia de a recepção
+do hospital digitar nome por nome — e a maioria das crianças com TEA nunca
+passou pelo pronto atendimento. São três rotas próprias sob `programs:manage`
+(`POST/GET/PUT /saude/programas/pessoas`), com o mesmo caso de uso do balcão, e
+a coordenação continua **sem** `health:admit`, `health:read` e
+`health:records`. A leitura do cadastro retira as condições clínicas na rota,
+não na tela.
+
+Junto, três defeitos de fuso horário — a mesma armadilha, em quatro lugares:
+
+- `tests/dominio/fila-do-programa.test.ts` passava aqui e falhava na máquina do
+  João: o auxiliar `EM()` montava a data em UTC e amarrava a suíte ao fuso da
+  máquina. O mesmo em `tests/aplicacao/sessao-do-programa.test.ts`.
+- `ConvidarParaChecklist` e o prazo da exigência do protocolo tiravam o "hoje"
+  de `toISOString()`: das 21h em diante, em Brasília, já era o dia seguinte.
+- Ficou o guarda `tests/estrutura/dia-do-calendario.test.ts`, que varre `src` e
+  `tests` e recusa o padrão — com um caso provando que ele ainda acusa, para
+  não passar verde com a regex quebrada.
+
+A suíte agora roda igual em `America/Sao_Paulo`, `UTC`, `Asia/Tokyo`,
+`Pacific/Kiritimati` (UTC+14) e `Pacific/Midway` (UTC-11).
+
 ### O que ainda depende de gente, não de código
 
 - **A fila só existe se alguém a lançar.** O sistema mede honestamente o que

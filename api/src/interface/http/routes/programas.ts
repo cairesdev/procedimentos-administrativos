@@ -2,6 +2,9 @@ import { Router } from "express";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
 import { paginacaoSchema } from "../schemas/paginacao";
+// O mesmo schema do balcão: duas listas de campos para a mesma pessoa seriam
+// duas verdades sobre o que é um cadastro completo.
+import { pacienteSchema } from "../schemas/saude";
 import {
   encerramentoSchema, encerrarMembroSchema, indicacaoSchema, inicioSchema,
   inscricaoSchema, janelaSchema, membroSchema, programaSchema, sessaoSchema,
@@ -111,6 +114,76 @@ programasRouter.get("/pessoas", async (req, res, next) => {
     res.json(await container.gerenciarPrograma.procurarPessoas(
       req.sessao!.orgaoId, String(req.query.termo ?? ""),
     ));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * A coordenação cadastra a pessoa que vai inscrever.
+ *
+ * Foi a primeira coisa que travou o preenchimento na prática: boa parte das
+ * crianças com TEA nunca passou pelo pronto atendimento, e o cadastro de
+ * paciente estava atrás de `health:admit`, da recepção do hospital. A
+ * coordenação ficava esperando o balcão digitar nome por nome — e a fila que o
+ * Ministério Público quer medir não existia no sistema por um detalhe de
+ * permissão.
+ *
+ * É o **mesmo** caso de uso da recepção, com as mesmas regras: documento
+ * conferido no domínio, prontuário vitalício, e o segundo cadastro da mesma
+ * pessoa devolvendo o que já existe em vez de duplicar. Cadastrar a pessoa não
+ * abre ficha nenhuma: `health:admit` continua fora daqui, e o prontuário
+ * também.
+ */
+programasRouter.post("/pessoas", coordena, async (req, res, next) => {
+  try {
+    const criada = await container.cadastrarPaciente.cadastrar(
+      req.sessao!.orgaoId, pacienteSchema.parse(req.body), req.sessao!.usuarioId,
+    );
+    res.status(201).json(criada);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * O cadastro da pessoa, **sem as condições clínicas**.
+ *
+ * `ver` devolve o paciente inteiro, e o inteiro inclui hipertensão, diabetes e
+ * alergias — que são prontuário. A coordenação do programa precisa do que vai
+ * corrigir (nome, nascimento, documentos, contato) e de nada além disso, então
+ * a lista de condições é retirada aqui, na fronteira, e não "esquecida" na
+ * tela: tela esconde, rota nega.
+ */
+programasRouter.get("/pessoas/:id", coordena, async (req, res, next) => {
+  try {
+    const { condicoes, ...cadastro } = await container.cadastrarPaciente.ver(
+      req.sessao!.orgaoId, req.params.id!,
+    );
+    void condicoes;
+    res.json(cadastro);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Completar o cadastro da pessoa — e é quase sempre a data de nascimento.
+ *
+ * Quem cadastra em mutirão preenche o nome e o telefone e deixa o nascimento
+ * para depois. Sem ele a pessoa cai na linha "sem data de nascimento" do
+ * relatório, que é honesta e feia, e quem vai corrigi-la é justamente a
+ * coordenação — não o balcão do hospital, que nunca viu essa família.
+ *
+ * Continua sendo cadastro, e não prontuário: condição clínica, atendimento e
+ * histórico seguem do outro lado da porta.
+ */
+programasRouter.put("/pessoas/:id", coordena, async (req, res, next) => {
+  try {
+    await container.cadastrarPaciente.atualizar(
+      req.sessao!.orgaoId, req.params.id!, pacienteSchema.parse(req.body),
+    );
+    res.json({ message: "Cadastro atualizado" });
   } catch (error) {
     next(error);
   }
