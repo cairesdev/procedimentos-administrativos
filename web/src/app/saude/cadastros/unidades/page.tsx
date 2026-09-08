@@ -12,10 +12,11 @@ import { Alert, Card, EmptyState, PageHeader, Stack, Table } from "@/shared/ui/l
  * consome contrato e faz solicitação; isto aqui é o que o CNES conhece, com
  * código, tipo e endereço vindos do cadastro nacional.
  *
- * **Mora na administração, e não em `/saude`.** Quem cadastra é o ADMIN, e o
- * ADMIN não tem permissão clínica nenhuma — não lê prontuário nem abre ficha.
- * A tela dentro do sistema de saúde seria inalcançável justamente para a única
- * pessoa que pode usá-la, que foi como ela nasceu.
+ * **Voltou para dentro do sistema de saúde.** Ela morou na administração da
+ * prefeitura por um motivo que deixou de existir: o ADMIN não tinha permissão
+ * clínica nenhuma e não entrava em `/saude`, então a tela ficava inalcançável
+ * justamente para quem podia usá-la. Agora a direção lê o serviço, e o
+ * cadastro fica onde quem o procura vai olhar primeiro.
  */
 export default async function UnidadesDeSaudePage() {
   await requirePermission("health:manage", "SAUDE");

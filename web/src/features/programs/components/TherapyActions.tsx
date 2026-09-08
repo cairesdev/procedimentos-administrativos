@@ -49,8 +49,8 @@ export const IndicateButton = ({
   if (terapias.length === 0) {
     return (
       <Alert tone="info">
-        Este programa ainda não tem terapia cadastrada. Quem as cadastra é o
-        administrador, em Administração → Programas de cuidado.
+        Este programa ainda não tem terapia cadastrada. Quem as cadastra é quem
+        administra o módulo, em Cadastros → Programas de cuidado.
       </Alert>
     );
   }

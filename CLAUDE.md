@@ -51,7 +51,8 @@ api/               Express + TypeScript, Clean Architecture (implementado)
     infrastructure/db, storage — implementações Postgres (SQL puro) e MinIO
     interface/http/ rotas finas, middlewares, schemas Zod
     container.ts   composição manual de dependências
-web/               Next.js — hub + /processos, /patrimonio, /frotas, /administracao, /admin
+web/               Next.js — hub + /processos, /patrimonio, /frotas, /saude, /administracao, /admin
+                   /saude: visão do dia + /atendimentos, /pacientes, /programas, /cadastros
   Dockerfile       Next standalone → workcenterma/br-consultoria:web-*
 docs/              decisões, roadmap, UML
 docker-compose.yml Postgres 18 + MinIO + api + web; dados em ./data (bind mount)

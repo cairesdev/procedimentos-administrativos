@@ -1,26 +1,44 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { findEnrolled, listPrograms, listSessions } from "@/features/programs/queries";
 import {
-  ChangeStatusButton, CompletePersonButton,
+  findEnrolled,
+  listPrograms,
+  listSessions,
+} from "@/features/programs/queries";
+import {
+  ChangeStatusButton,
+  CompletePersonButton,
 } from "@/features/programs/components/EnrollmentActions";
 import {
-  EndTherapyButton, IndicateButton, SessionButton, StartTherapyButton,
+  EndTherapyButton,
+  IndicateButton,
+  SessionButton,
+  StartTherapyButton,
 } from "@/features/programs/components/TherapyActions";
 import { SITUACAO_ROTULO } from "@/features/programs/types";
 import { ApiError } from "@/shared/api/http-client";
 import { requirePermission } from "@/shared/auth/guards";
 import { toDate } from "@/shared/ui/labels";
 import {
-  Alert, Badge, Card, PageHeader, Stack, SummaryGrid, Table, Toolbar, numericCell,
+  Alert,
+  Badge,
+  Card,
+  PageHeader,
+  Stack,
+  SummaryGrid,
+  Table,
+  Toolbar,
+  numericCell,
 } from "@/shared/ui/layout";
 
 type Props = { params: Promise<{ id: string }> };
 
 const diasDesde = (data: string) =>
   Math.max(
-    Math.round((Date.now() - new Date(`${data}T00:00:00`).getTime()) / 86_400_000),
+    Math.round(
+      (Date.now() - new Date(`${data}T00:00:00`).getTime()) / 86_400_000,
+    ),
     0,
   );
 
@@ -45,13 +63,18 @@ export default async function InscritoPage({ params }: Props) {
   const { inscricao, indicacoes } = ficha;
 
   const programas = await listPrograms().catch(() => []);
-  const programa = programas.find((item) => item.nome === inscricao.programaNome);
+  const programa = programas.find(
+    (item) => item.nome === inscricao.programaNome,
+  );
 
   const jaIndicadas = new Set(
-    indicacoes.filter((indicacao) => !indicacao.encerradaEm).map((i) => i.terapiaId),
+    indicacoes
+      .filter((indicacao) => !indicacao.encerradaEm)
+      .map((i) => i.terapiaId),
   );
-  const disponiveis = (programa?.terapias ?? [])
-    .filter((terapia) => terapia.ativo && !jaIndicadas.has(terapia.id));
+  const disponiveis = (programa?.terapias ?? []).filter(
+    (terapia) => terapia.ativo && !jaIndicadas.has(terapia.id),
+  );
 
   // A sessão mais recente de cada terapia em andamento, para a coordenação
   // enxergar sem abrir uma tela por indicação.
@@ -60,9 +83,10 @@ export default async function InscritoPage({ params }: Props) {
   );
   const sessoes = await Promise.all(
     emAndamento.map((indicacao) =>
-      listSessions(indicacao.id).then((lista) => ({ indicacao, lista })).catch(
-        () => ({ indicacao, lista: [] }),
-      )),
+      listSessions(indicacao.id)
+        .then((lista) => ({ indicacao, lista }))
+        .catch(() => ({ indicacao, lista: [] })),
+    ),
   );
 
   const naFila = indicacoes.filter(
@@ -75,8 +99,11 @@ export default async function InscritoPage({ params }: Props) {
         <Link
           href="/saude/programas"
           style={{
-            color: "var(--texto_suave)", fontSize: "13px",
-            display: "inline-flex", alignItems: "center", gap: "4px",
+            color: "var(--texto_suave)",
+            fontSize: "13px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
           }}
         >
           <ChevronLeft size={15} aria-hidden="true" />
@@ -88,17 +115,15 @@ export default async function InscritoPage({ params }: Props) {
         title={inscricao.nome}
         subtitle={`${inscricao.programaNome} · prontuário ${inscricao.prontuario}`}
         action={
-          viewer.can("programs:manage")
-            ? (
-              <Toolbar>
-                <ChangeStatusButton inscricao={inscricao} />
-                <CompletePersonButton
-                  pacienteId={inscricao.pacienteId}
-                  nome={inscricao.nome}
-                />
-              </Toolbar>
-            )
-            : null
+          viewer.can("programs:manage") ? (
+            <Toolbar>
+              <ChangeStatusButton inscricao={inscricao} />
+              <CompletePersonButton
+                pacienteId={inscricao.pacienteId}
+                nome={inscricao.nome}
+              />
+            </Toolbar>
+          ) : null
         }
       />
 
@@ -110,7 +135,9 @@ export default async function InscritoPage({ params }: Props) {
               { label: "Inscrito em", value: toDate(inscricao.inscritoEm) },
               {
                 label: "Diagnóstico em",
-                value: inscricao.diagnosticoEm ? toDate(inscricao.diagnosticoEm) : "—",
+                value: inscricao.diagnosticoEm
+                  ? toDate(inscricao.diagnosticoEm)
+                  : "—",
               },
               { label: "CID", value: inscricao.cid ?? "—" },
               {
@@ -120,9 +147,13 @@ export default async function InscritoPage({ params }: Props) {
                   A tela diz onde se conserta em vez de mostrar um travessão.
                 */
                 label: "Nascimento",
-                value: inscricao.dataNascimento
-                  ? toDate(inscricao.dataNascimento)
-                  : <span style={{ color: "var(--erro)" }}>sem data — completar cadastro</span>,
+                value: inscricao.dataNascimento ? (
+                  toDate(inscricao.dataNascimento)
+                ) : (
+                  <span style={{ color: "var(--erro)" }}>
+                    sem data — completar cadastro
+                  </span>
+                ),
               },
               { label: "Terapias na fila", value: `${naFila.length}` },
             ]}
@@ -139,8 +170,10 @@ export default async function InscritoPage({ params }: Props) {
         */}
         {naFila.length > 0 ? (
           <Alert tone="info">
-            {naFila.length === 1 ? "Uma terapia indicada e ainda não iniciada." : `${naFila.length} terapias indicadas e ainda não iniciadas.`}
-            {" "}A espera conta a partir da indicação e só para quando o primeiro
+            {naFila.length === 1
+              ? "Uma terapia indicada e ainda não iniciada."
+              : `${naFila.length} terapias indicadas e ainda não iniciadas.`}{" "}
+            A espera conta a partir da indicação e só para quando o primeiro
             atendimento for registrado.
           </Alert>
         ) : null}
@@ -148,14 +181,24 @@ export default async function InscritoPage({ params }: Props) {
         <Card
           title="Terapias"
           action={
-            viewer.can("programs:manage")
-              ? <IndicateButton inscricaoId={inscricao.id} terapias={disponiveis} />
-              : null
+            viewer.can("programs:manage") ? (
+              <IndicateButton
+                inscricaoId={inscricao.id}
+                terapias={disponiveis}
+              />
+            ) : null
           }
           padded={false}
         >
           <Table
-            columns={["Terapia", "Indicada em", "Situação", "Combinado", "Sessões (90 dias)", ""]}
+            columns={[
+              "Terapia",
+              "Indicada em",
+              "Situação",
+              "Combinado",
+              "Sessões (90 dias)",
+              "",
+            ]}
             isEmpty={indicacoes.length === 0}
             emptyMessage="Nenhuma terapia indicada ainda."
           >
@@ -170,7 +213,9 @@ export default async function InscritoPage({ params }: Props) {
                       <br />
                       <small style={{ color: "var(--texto_suave)" }}>
                         {toDate(indicacao.encerradaEm)}
-                        {indicacao.motivoEncerramento ? ` — ${indicacao.motivoEncerramento}` : ""}
+                        {indicacao.motivoEncerramento
+                          ? ` — ${indicacao.motivoEncerramento}`
+                          : ""}
                       </small>
                     </>
                   ) : indicacao.iniciadaEm ? (
@@ -209,22 +254,24 @@ export default async function InscritoPage({ params }: Props) {
                 </td>
                 <td>
                   <Toolbar>
-                    {!indicacao.iniciadaEm && !indicacao.encerradaEm
-                      && viewer.can("programs:manage") ? (
-                        <StartTherapyButton
-                          indicacaoId={indicacao.id}
-                          inscricaoId={inscricao.id}
-                          terapiaNome={indicacao.terapiaNome}
-                        />
-                      ) : null}
-                    {indicacao.iniciadaEm && !indicacao.encerradaEm
-                      && viewer.can("programs:attend") ? (
-                        <SessionButton
-                          indicacaoId={indicacao.id}
-                          inscricaoId={inscricao.id}
-                          terapiaNome={indicacao.terapiaNome}
-                        />
-                      ) : null}
+                    {!indicacao.iniciadaEm &&
+                    !indicacao.encerradaEm &&
+                    viewer.can("programs:manage") ? (
+                      <StartTherapyButton
+                        indicacaoId={indicacao.id}
+                        inscricaoId={inscricao.id}
+                        terapiaNome={indicacao.terapiaNome}
+                      />
+                    ) : null}
+                    {indicacao.iniciadaEm &&
+                    !indicacao.encerradaEm &&
+                    viewer.can("programs:attend") ? (
+                      <SessionButton
+                        indicacaoId={indicacao.id}
+                        inscricaoId={inscricao.id}
+                        terapiaNome={indicacao.terapiaNome}
+                      />
+                    ) : null}
                     {!indicacao.encerradaEm && viewer.can("programs:manage") ? (
                       <EndTherapyButton
                         indicacaoId={indicacao.id}
@@ -240,7 +287,11 @@ export default async function InscritoPage({ params }: Props) {
         </Card>
 
         {sessoes.map(({ indicacao, lista }) => (
-          <Card key={indicacao.id} title={`Sessões — ${indicacao.terapiaNome}`} padded={false}>
+          <Card
+            key={indicacao.id}
+            title={`Sessões — ${indicacao.terapiaNome}`}
+            padded={false}
+          >
             <Table
               columns={["Data", "Profissional", "Compareceu", "Observação"]}
               isEmpty={lista.length === 0}
@@ -251,9 +302,11 @@ export default async function InscritoPage({ params }: Props) {
                   <td>{toDate(sessao.data)}</td>
                   <td>{sessao.profissional}</td>
                   <td>
-                    {sessao.compareceu
-                      ? <Badge tone="success">sim</Badge>
-                      : <Badge tone="warning">faltou</Badge>}
+                    {sessao.compareceu ? (
+                      <Badge tone="success">sim</Badge>
+                    ) : (
+                      <Badge tone="warning">faltou</Badge>
+                    )}
                   </td>
                   <td>{sessao.observacao ?? "—"}</td>
                 </tr>

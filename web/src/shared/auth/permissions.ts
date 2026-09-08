@@ -327,11 +327,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "health:admit",
     "health:read",
   ],
-  SAUDE_TECNICO: [
-    "documents:read",
-    "health:medicate",
-    "health:read",
-  ],
+  SAUDE_TECNICO: ["documents:read", "health:medicate", "health:read"],
   SAUDE_ENFERMEIRO: [
     "documents:issue",
     "documents:read",
@@ -388,5 +384,7 @@ export const hasPermission = (
   return exigidas.some((uma) => ROLE_PERMISSIONS[role].includes(uma));
 };
 
-export const hasModule = (modules: ModuleName[], required?: ModuleName): boolean =>
-  !required || modules.includes(required);
+export const hasModule = (
+  modules: ModuleName[],
+  required?: ModuleName,
+): boolean => !required || modules.includes(required);

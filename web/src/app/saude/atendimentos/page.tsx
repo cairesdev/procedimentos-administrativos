@@ -58,12 +58,12 @@ export default async function SaudePage({ searchParams }: PageProps) {
         {semUnidade ? (
           <Alert tone="error">
             Nenhuma unidade de saúde cadastrada ainda. Sem ela não há onde abrir
-            atendimento. Quem cadastra é o administrador da prefeitura, em
-            Administração → Unidades de saúde.
+            atendimento. Quem cadastra é quem administra o módulo, em
+            Cadastros → Unidades de saúde.
           </Alert>
         ) : null}
 
-        <FilterBar ativo={Boolean(termo || status || unidade || completo)} base="/saude">
+        <FilterBar ativo={Boolean(termo || status || unidade || completo)} base="/saude/atendimentos">
           <FilterField label="Buscar" htmlFor="termo" largo>
             <input
               id="termo"
@@ -153,7 +153,7 @@ export default async function SaudePage({ searchParams }: PageProps) {
           </Table>
         </Card>
 
-        <Pagination info={visitas} base="/saude" />
+        <Pagination info={visitas} base="/saude/atendimentos" />
       </Stack>
     </>
   );

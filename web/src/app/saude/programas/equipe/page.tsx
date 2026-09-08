@@ -79,8 +79,8 @@ export default async function EquipePage({ searchParams }: PageProps) {
       <Stack>
         {programas.length === 0 ? (
           <Alert tone="error">
-            Nenhum programa cadastrado ainda. Quem cadastra é o administrador da
-            prefeitura, em Administração → Programas de cuidado.
+            Nenhum programa cadastrado ainda. Quem cadastra é quem administra o
+            módulo, em Cadastros → Programas de cuidado.
           </Alert>
         ) : null}
 

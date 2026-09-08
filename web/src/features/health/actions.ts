@@ -18,6 +18,14 @@ import type { CnesEstablishment, CnesMunicipality, PatientSummary } from "./type
 const BASE = "/saude";
 
 /**
+ * A lista do plantão mudou de endereço quando `/saude` virou a visão do dia.
+ *
+ * As duas telas mostram a mesma fila — a raiz com o total, a outra com os
+ * nomes —, então as duas precisam ser revalidadas.
+ */
+const ATENDIMENTOS = "/saude/atendimentos";
+
+/**
  * Buscas que o navegador precisa fazer no meio de um formulário.
  *
  * `apiRequest` só roda no servidor — ele carrega o token da sessão. Quando um
@@ -63,7 +71,8 @@ const semVazioNumero = (valor?: string) => {
 
 const recarregar = (id?: string) => {
   revalidatePath(BASE);
-  if (id) revalidatePath(`${BASE}/atendimentos/${id}`);
+  revalidatePath(ATENDIMENTOS);
+  if (id) revalidatePath(`${ATENDIMENTOS}/${id}`);
 };
 
 // ---------------------------------------------------------------------------
@@ -83,7 +92,7 @@ export const saveHealthUnit = async (values: HealthUnitInput, id?: string) =>
       id ? `${endpoints.healthUnits}/${id}` : endpoints.healthUnits,
       { method: id ? "PUT" : "POST", body: corpo },
     );
-    revalidatePath(`${BASE}/unidades`);
+    revalidatePath("/saude/cadastros/unidades");
     return resposta;
   }, id ? "Unidade atualizada" : "Unidade cadastrada");
 

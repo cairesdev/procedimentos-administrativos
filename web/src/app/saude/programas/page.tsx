@@ -57,8 +57,8 @@ export default async function InscritosPage({ searchParams }: PageProps) {
         {semPrograma ? (
           <Alert tone="error">
             Nenhum programa cadastrado ainda. Sem ele não há onde inscrever
-            ninguém. Quem cadastra é o administrador da prefeitura, em
-            Administração → Programas de cuidado.
+            ninguém. Quem cadastra é quem administra o módulo, em
+            Cadastros → Programas de cuidado.
           </Alert>
         ) : null}
 

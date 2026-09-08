@@ -184,7 +184,7 @@ export const saveProgram = async (values: ProgramInput, id?: string) =>
     const resposta = id
       ? await apiRequest(`${endpoints.programCatalog}/${id}`, { method: "PUT", body: corpo })
       : await apiRequest(endpoints.programCatalog, { method: "POST", body: corpo });
-    revalidatePath("/administracao/programas");
+    revalidatePath("/saude/cadastros/programas");
     return resposta;
   }, id ? "Programa atualizado" : "Programa criado");
 
@@ -207,7 +207,7 @@ export const saveTherapy = async (
       : await apiRequest(endpoints.programTherapies(programaId), {
         method: "POST", body: corpo,
       });
-    revalidatePath("/administracao/programas");
+    revalidatePath("/saude/cadastros/programas");
     return resposta;
   }, terapiaId ? "Terapia atualizada" : "Terapia criada");
 

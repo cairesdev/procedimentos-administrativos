@@ -298,21 +298,37 @@ export const workspaces: Workspace[] = [
     accentSoft: "#e6f4ef",
     module: "SAUDE",
     permission: ["health:read", "programs:read"],
+    /**
+     * São **dois serviços** dentro de um sistema, e o menu diz isso.
+     *
+     * O pronto atendimento e o cuidado continuado não se cruzam: a coordenação
+     * do programa não abre ficha nem lê prontuário, e o plantão não mexe na
+     * fila das terapias. Numa lista só, as cinco telas pareciam etapas de um
+     * mesmo trabalho — e quem entrava não sabia por onde começar.
+     */
     sections: [
       {
-        group: "Atendimento",
+        group: "Início",
+        icon: "inbox",
+        links: [
+          {
+            href: "/saude",
+            label: "Visão do dia",
+            // As duas portas do sistema: o plantão e a coordenação. Sem a
+            // lista, metade das pessoas cairia direto numa tela de trabalho
+            // sem saber o que mais existe.
+            permission: ["health:read", "programs:read"],
+          },
+        ],
+      },
+      {
+        group: "Pronto atendimento",
         icon: "stethoscope",
         links: [
-          { href: "/saude", label: "Atendimentos", permission: "health:read" },
+          { href: "/saude/atendimentos", label: "Atendimentos", permission: "health:read" },
           { href: "/saude/pacientes", label: "Pacientes", permission: "health:read" },
         ],
       },
-      /**
-       * O programa de cuidado continuado mora no mesmo sistema do pronto
-       * atendimento e não se mistura com ele: a coordenação não abre ficha e
-       * não lê prontuário, e o plantão não mexe na fila do programa. É o menu
-       * mostrando a separação que a matriz de permissões já faz.
-       */
       {
         group: "Cuidado continuado",
         icon: "listChecks",
@@ -320,6 +336,22 @@ export const workspaces: Workspace[] = [
           { href: "/saude/programas", label: "Inscritos", permission: "programs:read" },
           { href: "/saude/programas/equipe", label: "Equipe", permission: "programs:read" },
           { href: "/saude/programas/relatorio", label: "Relatório", permission: "programs:read" },
+        ],
+      },
+      {
+        group: "Cadastros",
+        icon: "building",
+        links: [
+          {
+            href: "/saude/cadastros/unidades",
+            label: "Unidades de saúde",
+            permission: "health:manage",
+          },
+          {
+            href: "/saude/cadastros/programas",
+            label: "Programas de cuidado",
+            permission: "programs:setup",
+          },
         ],
       },
     ],
@@ -378,32 +410,14 @@ export const workspaces: Workspace[] = [
           { href: "/administracao/unidades", label: "Unidades", permission: "units:read" },
           { href: "/administracao/setores", label: "Setores", permission: "sectors:read" },
           { href: "/administracao/usuarios", label: "Usuários", permission: "users:read" },
-          /**
-           * O cadastro das unidades de saúde mora aqui, e não em `/saude`.
-           *
-           * Quem o faz é o ADMIN, e o ADMIN não tem permissão clínica nenhuma
-           * — não lê prontuário, não abre ficha, não entra no sistema de
-           * saúde. Deixar a tela lá dentro a tornava inalcançável justamente
-           * para a única pessoa que pode usá-la.
-           */
-          {
-            href: "/administracao/unidades-saude",
-            label: "Unidades de saúde",
-            permission: "health:manage",
-            module: "SAUDE",
-          },
-          /**
-           * O catálogo dos programas mora aqui pela mesma razão, e nem de
-           * longe pela mesma permissão: montar programa e terapia é cadastro
-           * sem pessoa nenhuma dentro, e por isso é do administrador. A lista
-           * de inscritos, que carrega situação e CID, fica do outro lado.
-           */
-          {
-            href: "/administracao/programas",
-            label: "Programas de cuidado",
-            permission: "programs:setup",
-            module: "SAUDE",
-          },
+          /*
+            As unidades de saúde e o catálogo de programas moraram aqui por um
+            motivo que deixou de existir: o ADMIN não tinha permissão clínica
+            nenhuma, não entrava em `/saude`, e a tela ficava inalcançável
+            justamente para quem podia usá-la. Agora a direção lê o serviço, e
+            os dois cadastros voltaram para dentro do sistema de Saúde, onde
+            quem os procura vai olhar primeiro.
+          */
         ],
       },
       {

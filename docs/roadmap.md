@@ -2075,3 +2075,25 @@ outra.
 consultas no Postgres real, e os **dois palcos** por HTTP — a ficha inteira e
 o programa do catálogo ao ofício. Cada guarda novo foi quebrado de propósito e
 acusou.
+
+## O módulo estava confuso, e a confusão tinha três causas
+
+Nenhuma era defeito de código: as telas funcionavam. O problema era o mapa.
+
+- **Faltava um ponto de partida.** Quem entrava caía direto na lista de
+  atendimentos. `/saude` virou a **visão do dia**: os dois serviços lado a
+  lado, com quantos estão em atendimento agora e quantas pessoas esperam
+  terapia, e cada número levando ao lugar onde ele se resolve. A lista do
+  plantão mudou para `/saude/atendimentos`.
+- **Os cadastros moravam noutro sistema.** Unidades de saúde e Programas de
+  cuidado estavam em Administração — exílio que existia porque o ADMIN não
+  entrava em `/saude`. Como a direção agora lê o serviço, os dois voltaram
+  para `/saude/cadastros/*`, onde quem os procura olha primeiro.
+- **Dois serviços numa lista só.** O menu passou a ter quatro grupos: Início,
+  Pronto atendimento, Cuidado continuado e Cadastros. A recepção do hospital
+  nunca abre a fila de terapias e a coordenação nunca abre uma ficha — o menu
+  agora mostra a separação que a matriz de permissões já fazia.
+
+O que cada papel vê, conferido papel a papel: recepção, técnico, enfermeiro e
+médico veem Início + Pronto atendimento; coordenação e terapeuta veem Início +
+Cuidado continuado; ADMIN e GESTOR veem os quatro grupos.

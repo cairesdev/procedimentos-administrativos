@@ -9,10 +9,10 @@ import {
 /**
  * O catálogo dos programas de cuidado continuado e suas terapias.
  *
- * **Mora na administração, e não em `/saude/programas`.** Aqui não há pessoa
- * nenhuma: é a lista dos serviços que a prefeitura oferece. A lista de
- * inscritos, que carrega situação e CID, fica do outro lado — o administrador
- * não a alcança, pela mesma razão que não alcança prontuário.
+ * Aqui não há pessoa nenhuma: é a lista dos serviços que a prefeitura
+ * oferece, e por isso ela abre para quem administra o módulo. Quem está
+ * inscrito, com situação e CID, é outra tela e outra permissão — a de quem
+ * acompanha as famílias.
  */
 export default async function ProgramasPage() {
   await requirePermission("programs:setup", "SAUDE");
@@ -37,8 +37,8 @@ export default async function ProgramasPage() {
       <Stack>
         <Alert tone="info">
           O cadastro aqui é do serviço, não das pessoas: quem está inscrito, em
-          que fila e com qual diagnóstico é acompanhado pela coordenação, no
-          sistema de Saúde.
+          que fila e com qual diagnóstico aparece em Cuidado continuado, e é
+          acompanhado pela coordenação.
         </Alert>
 
         {programas.length === 0 ? (
