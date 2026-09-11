@@ -74,5 +74,4 @@ ALTER TABLE termo_responsabilidade_item
          ));
 
 COMMENT ON COLUMN bem.estado_conservacao IS
-  'Escala NOVO > BOM > REGULAR > RUIM > PESSIMO, mais DANIFICADO (dano '
-  'pontual) e EM_CONSERTO (onde o bem está, não como está).';
+  'Escala NOVO > BOM > REGULAR > RUIM > PESSIMO, mais DANIFICADO (dano pontual) e EM_CONSERTO (onde o bem está, não como está).';
