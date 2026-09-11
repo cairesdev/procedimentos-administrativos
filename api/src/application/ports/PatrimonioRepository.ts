@@ -95,6 +95,31 @@ export type TransferenciaResumo = {
   status: StatusTransferencia;
 };
 
+/**
+ * Como o bem está — a lista que o `CHECK` das duas tabelas aceita.
+ *
+ * Os cinco primeiros são uma régua, do melhor para o pior. Os dois últimos
+ * não são degraus dela e por isso vêm depois: **danificado** é dano pontual
+ * (a tela trincada de um monitor novo em tudo o mais) e **em conserto** diz
+ * onde o bem está, não como ele está.
+ *
+ * Mora aqui, e não copiada na rota e na tela, pelo mesmo motivo de
+ * `MOTIVOS_DE_BAIXA`: duas listas são o começo de duas verdades, e a que
+ * ficar para trás vai ser a que alguém usa no inventário — onde o erro sai
+ * impresso e assinado.
+ */
+export const ESTADOS_DE_CONSERVACAO = [
+  "NOVO",
+  "BOM",
+  "REGULAR",
+  "RUIM",
+  "PESSIMO",
+  "DANIFICADO",
+  "EM_CONSERTO",
+] as const;
+
+export type EstadoDeConservacao = (typeof ESTADOS_DE_CONSERVACAO)[number];
+
 export const MOTIVOS_DE_BAIXA = [
   "QUEBRADO",
   "DOADO",

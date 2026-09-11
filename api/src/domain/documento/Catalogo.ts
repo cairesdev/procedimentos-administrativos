@@ -152,6 +152,15 @@ const PROCESSO = [
    * nome que ele tem no papel.
    */
   "processo.descricaoPedido",
+  /**
+   * O valor **deste processo** — a soma do que ele pediu.
+   *
+   * Existe porque a capa imprimia `contrato.valorTotal` embaixo do rótulo
+   * "VALOR DO PROCESSO", e os dois números não são o mesmo: um contrato anual
+   * atende dezenas de processos. Quem abrisse a pasta de um pedido de
+   * R$ 12 mil leria meio milhão.
+   */
+  "processo.valorTotal", "processo.valorTotalPorExtenso",
 ];
 
 /** Último despacho e parecer do processo — servem a qualquer peça de trâmite. */

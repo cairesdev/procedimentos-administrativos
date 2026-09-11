@@ -8,8 +8,22 @@ import { AssetMovementActions } from "./AssetMovementActions";
 import { AssetForm } from "./AssetForm";
 import { CONSERVATION_STATES, type Asset, type AssetCategory, type AssetLocation } from "../types";
 
-const stateTone = (state: string) =>
-  state === "DANIFICADO" || state === "EM_CONSERTO" ? "warning" : "success";
+/**
+ * A cor do selo segue a régua, e não uma lista de exceções.
+ *
+ * Antes era "danificado ou em conserto é amarelo, o resto é verde" — e com a
+ * escala nova o bem péssimo apareceria em verde, junto do novo. Quem passa o
+ * olho na lista de bens de uma escola precisa enxergar o ruim de longe: é para
+ * isso que a coluna colorida existe.
+ */
+const stateTone = (state: string) => {
+  if (state === "PESSIMO") return "error" as const;
+  if (state === "RUIM" || state === "DANIFICADO" || state === "EM_CONSERTO") {
+    return "warning" as const;
+  }
+  if (state === "REGULAR") return "accent" as const;
+  return "success" as const;
+};
 
 export const AssetTable = ({
   assets,

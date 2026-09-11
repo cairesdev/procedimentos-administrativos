@@ -163,7 +163,15 @@ export const Badge = ({
   tone = "neutral",
   children,
 }: {
-  tone?: "neutral" | "success" | "warning" | "accent";
+  /**
+   * `error` entrou com a escala de conservação do patrimônio.
+   *
+   * O selo tinha quatro tons e nenhum vermelho: o bem em estado péssimo saía
+   * no mesmo amarelo do que está em conserto, e quem passa o olho na lista de
+   * uma escola precisa enxergar o que não serve mais de longe. O `Alert` já
+   * tinha o tom; o `Badge` não.
+   */
+  tone?: "neutral" | "success" | "warning" | "accent" | "error";
   children: ReactNode;
 }) => {
   const toneClass = {
@@ -171,6 +179,7 @@ export const Badge = ({
     success: styles.badge_success,
     warning: styles.badge_warning,
     accent: styles.badge_accent,
+    error: styles.badge_error,
   }[tone];
   return <span className={`${styles.badge} ${toneClass}`}>{children}</span>;
 };

@@ -178,6 +178,26 @@ nasceram tombados.
 periódico com folha de conferência. O código do local não pode ser editado depois de criado, porque
 já compõe o tombamento dos bens.
 
+### A escala de conservação (migration 0051)
+
+Eram quatro estados: `NOVO`, `BOM`, `DANIFICADO` e `EM_CONSERTO`. Entre "bom" e "danificado" não
+havia nada, e é onde mora a maior parte do acervo de uma prefeitura — a cadeira que ainda serve e
+está gasta. Quem conferia escolhia "bom" para não acusar dano, e o inventário saía dizendo que
+está tudo bom.
+
+Entraram três degraus: **`REGULAR`**, **`RUIM`** e **`PESSIMO`**. A régua ficou
+`NOVO > BOM > REGULAR > RUIM > PESSIMO`.
+
+`DANIFICADO` e `EM_CONSERTO` **ficam**, e não são degraus dela: danificado é dano pontual (a tela
+trincada de um monitor novo em tudo o mais) e "em conserto" diz *onde* o bem está, não *como* ele
+está. Aposentá-los obrigaria a reescrever o estado de bens já tombados e de inventários já
+fechados — a única coisa que um sistema de patrimônio não pode fazer.
+
+A lista vale para as **quatro** colunas que guardam estado: o bem, o item do inventário e os dois
+do termo de responsabilidade (entrega e devolução). Ela mora em `ESTADOS_DE_CONSERVACAO`, no port
+do patrimônio, e a tela a espelha — duas listas seriam o começo de duas verdades, e a que ficasse
+para trás seria usada no inventário, onde o erro sai impresso e assinado.
+
 **2ª fatia entregue** — o módulo está completo:
 
 - **Transferência com aceite**: o pedido nasce PENDENTE e **o bem não sai do lugar até o destino

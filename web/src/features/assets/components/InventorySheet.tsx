@@ -234,8 +234,14 @@ export const InventorySheet = ({
                     aria-label={`Estado observado de ${item.codigoTombamento}`}
                   >
                     <option value="">Sem mudança</option>
+                    {/*
+                      A explicação vai no `title` porque o `<option>` não
+                      aceita mais que texto: "regular" e "ruim" separam mal
+                      sozinhos, e quem hesita marca "bom" — que é como um
+                      acervo inteiro termina classificado como bom.
+                    */}
                     {CONSERVATION_STATES.map((state) => (
-                      <option key={state.value} value={state.value}>
+                      <option key={state.value} value={state.value} title={state.hint}>
                         {state.label}
                       </option>
                     ))}

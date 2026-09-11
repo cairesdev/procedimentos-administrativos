@@ -3,7 +3,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { container } from "../../../container";
 import { exigirPermissao } from "../middlewares/exigirPermissao";
-import { MOTIVOS_DE_BAIXA } from "../../../application/ports/PatrimonioRepository";
+import {
+  ESTADOS_DE_CONSERVACAO, MOTIVOS_DE_BAIXA,
+} from "../../../application/ports/PatrimonioRepository";
 import { paginacaoSchema } from "../schemas/paginacao";
 
 const localSchema = z.object({
@@ -71,7 +73,10 @@ const conferenciaSchema = z.object({
       z.object({
         bemId: z.string().uuid(),
         situacao: z.enum(["ENCONTRADO", "NAO_ENCONTRADO"]),
-        estadoObservado: z.enum(["NOVO", "BOM", "DANIFICADO", "EM_CONSERTO"]).optional(),
+        // A lista vem do port, e não repetida aqui: o inventário é onde o
+        // estado novo precisa caber primeiro, e uma cópia esquecida aqui
+        // recusaria "regular" com erro de validação.
+        estadoObservado: z.enum(ESTADOS_DE_CONSERVACAO).optional(),
         observacao: z.string().max(2000).optional(),
       }),
     )

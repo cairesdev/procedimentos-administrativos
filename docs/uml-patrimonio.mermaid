@@ -35,7 +35,7 @@ erDiagram
         uuid categoria_id FK
         uuid remessa_lote_id FK "opcional - quando veio por remessa"
         string nome
-        enum estado_conservacao "NOVO | BOM | DANIFICADO | EM_CONSERTO"
+        enum estado_conservacao "NOVO > BOM > REGULAR > RUIM > PESSIMO, + DANIFICADO | EM_CONSERTO"
         enum status "ATIVO | BAIXADO"
     }
     REMESSA_PATRIMONIO {
@@ -85,6 +85,6 @@ erDiagram
         uuid inventario_id FK
         uuid bem_id FK
         enum situacao "ENCONTRADO | NAO_ENCONTRADO"
-        enum estado_observado "NOVO | BOM | DANIFICADO | EM_CONSERTO"
+        enum estado_observado "mesma lista de estado_conservacao"
         string observacao "divergencias para tratamento"
     }

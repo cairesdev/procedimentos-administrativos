@@ -253,6 +253,12 @@
   color: #4b3fa8;
 }
 
+/* Mesmo par de cores do alerta de erro, para o vermelho ser um só. */
+.badge_error {
+  background: var(--perigo_suave);
+  color: #8f271f;
+}
+
 .alert {
   padding: 9px 12px;
   border-radius: var(--raio);

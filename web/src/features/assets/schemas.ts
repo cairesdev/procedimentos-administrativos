@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONSERVATION_STATE_VALUES } from "./types";
 
 export const assetLocationSchema = z.object({
   codigo: z.string().regex(/^\d{1,10}$/, "Só números, ex.: 001"),
@@ -58,7 +59,9 @@ export const inventoryCheckSchema = z.object({
       z.object({
         bemId: z.uuid(),
         situacao: z.enum(["ENCONTRADO", "NAO_ENCONTRADO"]),
-        estadoObservado: z.enum(["NOVO", "BOM", "DANIFICADO", "EM_CONSERTO"]).optional(),
+        // Da mesma lista que a tela desenha: uma cópia aqui recusaria, na
+        // validação, o estado que o `<select>` acabou de oferecer.
+        estadoObservado: z.enum(CONSERVATION_STATE_VALUES).optional(),
         observacao: z.string().max(2000).optional(),
       }),
     )

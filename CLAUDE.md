@@ -33,6 +33,8 @@ Uma base de dados atende várias prefeituras. Módulos implementados:
    discutida e aprovada antes de virar código — não gere schema/código de features não discutidas.
 2. `docs/roadmap.md` — o que está pronto e o que está pendente.
 3. `docs/deploy-vps.md` — roteiro de produção.
+3. `docs/manual-saude.md` — manual do usuário do módulo de saúde (os dois serviços,
+   quem faz o quê, e por que o sistema recusa cada coisa).
 4. `docs/uml-entidades.mermaid` (+ `uml-frotas`, `uml-patrimonio`, `uml-almoxarifado`) — modelo de dados.
 4. Skill `procedimentos-backend` — convenções de código (instalada no ambiente).
 

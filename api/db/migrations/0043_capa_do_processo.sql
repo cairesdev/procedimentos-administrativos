@@ -18,7 +18,10 @@
 --    que ninguém mantém — o problema que este projeto já teve quatro vezes.
 --
 -- O quadro de movimentação financeira fica, com o valor bruto vindo do
--- contrato. Dedução e líquido saem em branco de propósito: variam por
+-- **processo** — a soma do que ele pediu, e não o total do contrato que o
+-- atende. (Nasceu apontando para o contrato; a 0050 corrigiu as bases que já
+-- tinham este modelo semeado, e o texto aqui foi acertado junto para que uma
+-- base nova nasça certa.) Dedução e líquido saem em branco de propósito: variam por
 -- pagamento, e o documento nasce como rascunho editável — quem emite preenche
 -- antes de assinar. Melhor um campo em branco que quem emite completa do que um
 -- número que o sistema chutou.
@@ -75,8 +78,8 @@ $corpo$<p style="text-align: center; font-size: 34pt; font-weight: bold; margin:
 
 <div style="border: 1px solid #999999; padding: 12px; margin: 0 0 22px">
 <p style="text-align: center; margin: 0 0 2px"><small>VALOR DO PROCESSO</small></p>
-<p style="text-align: center; font-size: 22pt; font-weight: bold; margin: 0 0 2px">R$ {{contrato.valorTotal}}</p>
-<p style="text-align: center; margin: 0"><small>{{contrato.valorTotalPorExtenso}}</small></p>
+<p style="text-align: center; font-size: 22pt; font-weight: bold; margin: 0 0 2px">R$ {{processo.valorTotal}}</p>
+<p style="text-align: center; margin: 0"><small>{{processo.valorTotalPorExtenso}}</small></p>
 </div>
 
 <p style="text-align: left; margin: 0 0 2px"><small>CONTRATADA</small></p>
@@ -96,7 +99,7 @@ Contrato nº <strong>{{contrato.numero}}</strong>, vigente de {{contrato.dataIni
 <p style="text-align: left; margin: 18px 0 6px"><small>MOVIMENTAÇÃO FINANCEIRA</small></p>
 <table style="width: 100%; border-collapse: collapse">
 <tbody>
-<tr><td style="width: 70%; padding: 4px">Valor bruto (a)</td><td style="text-align: right; padding: 4px">R$ {{contrato.valorTotal}}</td></tr>
+<tr><td style="width: 70%; padding: 4px">Valor bruto (a)</td><td style="text-align: right; padding: 4px">R$ {{processo.valorTotal}}</td></tr>
 <tr><td style="padding: 4px">Total das deduções (b)</td><td style="padding: 4px"></td></tr>
 <tr><td style="padding: 4px"><strong>Total líquido (a &minus; b)</strong></td><td style="padding: 4px"></td></tr>
 </tbody>

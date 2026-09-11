@@ -1277,6 +1277,47 @@ CASOS: list[tuple[str, str, bool]] = [
      "('11111111-1111-1111-1111-111111111111',"
      "'9a000000-0000-0000-0000-000000000001','2026-03-31','2026-01-01')",
      False),
+
+    # ----------------------------------------------------------------------
+    # A escala de conservacao do patrimonio (0051).
+    #
+    # Entre "bom" e "danificado" nao havia nada, e e onde mora a maior parte do
+    # acervo: a cadeira que ainda serve e esta gasta. Quem inventariava
+    # escolhia "bom" para nao acusar dano, e o inventario saia dizendo que esta
+    # tudo bom.
+    ("o bem passa a regular, que e o degrau que faltava",
+     "UPDATE bem SET estado_conservacao = 'REGULAR' "
+     "WHERE id = 'be000000-0000-0000-0000-000000000001'",
+     True),
+    ("e chega a pessimo",
+     "UPDATE bem SET estado_conservacao = 'PESSIMO' "
+     "WHERE id = 'be000000-0000-0000-0000-000000000001'",
+     True),
+    # Lista fechada continua fechada: o CHECK e o que impede a escala de virar
+    # texto livre, com cada conferente inventando a propria palavra.
+    ("estado fora da escala e recusado",
+     "UPDATE bem SET estado_conservacao = 'ESTRAGADO' "
+     "WHERE id = 'be000000-0000-0000-0000-000000000001'",
+     False),
+    ("o termo de responsabilidade registra a entrega em estado ruim",
+     "INSERT INTO termo_responsabilidade (id, orgao_id, numero, responsavel_id, "
+     "local_id, emitido_por) VALUES "
+     "('7e000000-0000-0000-0000-000000000051',"
+     "'11111111-1111-1111-1111-111111111111','0051/2026',"
+     "'4e500000-0000-0000-0000-000000000001','33333333-3333-3333-3333-333333333333',"
+     "'88888888-8888-8888-8888-888888888888'); "
+     "INSERT INTO termo_responsabilidade_item (termo_id, bem_id, estado_na_entrega) "
+     "VALUES ('7e000000-0000-0000-0000-000000000051',"
+     "'be000000-0000-0000-0000-000000000002','RUIM')",
+     True),
+    # A diferenca entre o estado da entrega e o da devolucao e a unica coisa
+    # que o termo prova. Deixar a devolucao com a lista velha faria o bem
+    # voltar "bom" por falta de palavra.
+    ("e a devolucao em estado pessimo",
+     "UPDATE termo_responsabilidade_item "
+     "SET devolvido_em = current_date, estado_na_devolucao = 'PESSIMO' "
+     "WHERE termo_id = '7e000000-0000-0000-0000-000000000051'",
+     True),
 ]
 
 

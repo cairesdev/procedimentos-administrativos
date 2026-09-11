@@ -33,7 +33,22 @@ const PROCESSO = `
          to_char(p.data_abertura AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY') AS "dataAbertura",
          coalesce(s.nome, '—') AS "setorAtual",
          coalesce(u.nome, '—') AS "unidadeSolicitante",
-         coalesce(nullif(btrim(p.descricao_pedido), ''), '—') AS "descricaoPedido"
+         coalesce(nullif(btrim(p.descricao_pedido), ''), '—') AS "descricaoPedido",
+         -- O valor deste processo: a soma do que ele pediu.
+         --
+         -- Nao e o valor do contrato. Um contrato anual de R$ 500 mil atende
+         -- dezenas de processos, e a capa que imprimia o total do contrato
+         -- dizia que cada pedido de mangueira custou meio milhao, embaixo do
+         -- rotulo "VALOR DO PROCESSO".
+         --
+         -- solicitacao.processo_id e chave primaria: um processo tem no maximo
+         -- uma solicitacao, entao a soma e direta.
+         --
+         -- Comentario de linha, e sem acento: o guarda de SQL le estas
+         -- consultas com um parser que engasga em travessao dentro de bloco.
+         coalesce((SELECT sum(si.valor_calculado)
+                     FROM solicitacao_item si
+                    WHERE si.solicitacao_id = p.id), 0) AS "valorTotal"
     FROM processo p
     LEFT JOIN setor s ON s.id = p.setor_atual_id
     LEFT JOIN solicitacao sol ON sol.processo_id = p.id
@@ -778,8 +793,16 @@ export class PostgresFonteDeContexto implements FonteDeContexto {
     processoId: string,
     orgao: Record<string, unknown>,
   ): Promise<ContextoDeDocumento | null> => {
-    const processo = (await pool.query(PROCESSO, [orgaoId, processoId])).rows[0];
-    if (!processo) return null;
+    const linha = (await pool.query(PROCESSO, [orgaoId, processoId])).rows[0];
+    if (!linha) return null;
+
+    // O número sai formatado daqui, como o do contrato: o modelo imprime, não
+    // calcula. Processo sem itens vale R$ 0,00 — e é a verdade sobre ele.
+    const processo = {
+      ...linha,
+      valorTotal: dinheiro(linha.valorTotal),
+      valorTotalPorExtenso: valorPorExtenso(Number(linha.valorTotal ?? 0)),
+    };
 
     // Último despacho: serve de texto ao despacho e de justificativa ao
     // parecer. Vem sempre, porque qualquer peça de trâmite pode citá-lo.
